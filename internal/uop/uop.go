@@ -23,10 +23,68 @@ var (
 	ErrEntryNotFound = errors.New("entry not found")
 )
 
-// Entry3D represents an entry in a UOP file with offset, length, and extra data
-type Entry3D = [3]uint32
+// CompressionFlag represents the compression method used for a UOP entry
+type CompressionFlag int16
 
-// FileEntry represents a single entry in a UOP file
+// Compression flag constants
+const (
+	CompressionNone   CompressionFlag = 0
+	CompressionZlib   CompressionFlag = 1
+	CompressionMythic CompressionFlag = 2
+)
+
+// Entry interface defines methods to access entry information in a UOP file
+type Entry interface {
+	// Lookup returns the offset in the file where the entry data begins
+	Lookup() int
+
+	// Length returns the size of the entry data
+	Length() int
+
+	// Extra returns additional data associated with the entry (extra1, extra2)
+	Extra() (int, int)
+
+	// Zip returns the size after decompression and compression flag (0=none, 1=zlib, 2=mythic)
+	Zip() (int, byte)
+}
+
+// Entry6D represents an entry in UOP files with 6 components including compression info
+type Entry6D struct {
+	LookupOffset       uint32 // Offset where the entry data begins
+	DataLength         uint32 // Size of the entry data (compressed)
+	DecompressedLength uint32 // Size after decompression
+	ExtraInfo          uint32 // Extra data (can be split into Extra1/Extra2)
+	CompressionType    byte   // Compression flag (0 = none, 1 = zlib, 2 = mythic)
+}
+
+// Implementation of the Entry interface for Entry6D
+func (e *Entry6D) Lookup() int {
+	return int(e.LookupOffset)
+}
+
+func (e *Entry6D) Length() int {
+	return int(e.DataLength)
+}
+
+func (e *Entry6D) Extra() (int, int) {
+	// For UOP entries, ExtraInfo is typically treated as a single value
+	return int(e.ExtraInfo), 0
+}
+
+func (e *Entry6D) Zip() (int, byte) {
+	return int(e.DecompressedLength), e.CompressionType
+}
+
+// ToEntry3D converts an Entry6D to a simplified Entry3D format
+func (e *Entry6D) ToEntry3D() [3]uint32 {
+	return [3]uint32{
+		e.LookupOffset,
+		e.DataLength,
+		e.ExtraInfo,
+	}
+}
+
+// FileEntry represents a single entry in a UOP file's structure
 type FileEntry struct {
 	Offset     int64  // Offset where the entry data begins in the file
 	HeaderSize int32  // Size of the entry header
@@ -37,12 +95,11 @@ type FileEntry struct {
 	Flag       int16  // Compression flag (0 = none, 1 = zlib)
 }
 
-// Reader provides access to UOP file data
+// Reader implements the interface for reading UOP files
 type Reader struct {
 	file        *os.File              // File handle
-	entries     map[int]*Entry3D      // Map of cached entries by index
-	fileEntries map[uint64]*FileEntry // Map of file entries by hash
-	entryCount  int                   // Total number of entries
+	entries     map[uint64]*Entry6D   // Map of entries by logical index or hash
+	fileEntries map[uint64]*FileEntry // Map of raw file entries by hash from the file
 	mu          sync.RWMutex          // Mutex for thread safety
 	closed      bool                  // Flag to track if reader is closed
 }
@@ -56,7 +113,7 @@ func NewReader(filename string) (*Reader, error) {
 
 	r := &Reader{
 		file:        file,
-		entries:     make(map[int]*Entry3D),
+		entries:     make(map[uint64]*Entry6D),
 		fileEntries: make(map[uint64]*FileEntry),
 	}
 
@@ -88,10 +145,7 @@ func (r *Reader) parseFile() error {
 	// signature := binary.LittleEndian.Uint32(header[8:12])
 	nextBlock := int64(binary.LittleEndian.Uint64(header[12:20]))
 	// blockCapacity := binary.LittleEndian.Uint32(header[20:24])
-	entryCount := binary.LittleEndian.Uint32(header[24:28])
-
-	// Set entry count
-	r.entryCount = int(entryCount)
+	// entryCount := binary.LittleEndian.Uint32(header[24:28])
 
 	// Prepare to read block structure
 	for nextBlock != 0 {
@@ -132,68 +186,20 @@ func (r *Reader) parseFile() error {
 
 			// Store the entry in fileEntries map
 			r.fileEntries[fileEntry.Hash] = fileEntry
+
+			// Create and store the corresponding Entry6D
+			entry6D := &Entry6D{
+				LookupOffset:       uint32(fileEntry.Offset + int64(fileEntry.HeaderSize)),
+				DataLength:         uint32(fileEntry.Size),
+				DecompressedLength: uint32(fileEntry.SizeDecomp),
+				ExtraInfo:          0, // Could be used for extra info if needed
+				CompressionType:    byte(fileEntry.Flag),
+			}
+			r.entries[fileEntry.Hash] = entry6D
 		}
 
 		// Move to next block
 		nextBlock = nextBlockOffset
-	}
-
-	return nil
-}
-
-// GetEntryFromHash retrieves an entry from its hash
-func (r *Reader) GetEntryFromHash(hash uint64) (*Entry3D, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	if r.closed {
-		return nil, ErrReaderClosed
-	}
-
-	fileEntry, exists := r.fileEntries[hash]
-	if !exists {
-		return nil, ErrEntryNotFound
-	}
-
-	// Create a new Entry3D
-	entry := &Entry3D{
-		uint32(fileEntry.Offset + int64(fileEntry.HeaderSize)), // Offset
-		uint32(fileEntry.Size),                                 // Length
-		uint32(fileEntry.SizeDecomp),                           // Extra (decompressed size)
-	}
-
-	return entry, nil
-}
-
-// SetupEntries builds the logical index mapping based on a pattern
-func (r *Reader) SetupEntries(pattern string, maxIndex int) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if r.closed {
-		return ErrReaderClosed
-	}
-
-	// Clear existing entries
-	r.entries = make(map[int]*Entry3D)
-
-	// Generate file names based on pattern and calculate hashes
-	for i := 0; i < maxIndex; i++ {
-		filename := fmt.Sprintf("build/%s/%08d.dat", pattern, i)
-		hash := HashFileName(filename)
-
-		// Find entry with this hash
-		if fileEntry, exists := r.fileEntries[hash]; exists {
-			// Create a new Entry3D
-			entry := &Entry3D{
-				uint32(fileEntry.Offset + int64(fileEntry.HeaderSize)), // Offset
-				uint32(fileEntry.Size),                                 // Length
-				uint32(fileEntry.SizeDecomp),                           // Extra (decompressed size)
-			}
-
-			// Store by logical index
-			r.entries[i] = entry
-		}
 	}
 
 	return nil
@@ -214,21 +220,21 @@ func (r *Reader) Close() error {
 	return r.file.Close()
 }
 
-// EntryAt retrieves entry information by its logical index
-func (r *Reader) EntryAt(index int) (Entry3D, error) {
+// EntryAt retrieves entry information by its hash
+func (r *Reader) EntryAt(hash uint64) (Entry, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	if r.closed {
-		return Entry3D{}, ErrReaderClosed
+		return nil, ErrReaderClosed
 	}
 
-	entry, exists := r.entries[index]
+	entry, exists := r.entries[hash]
 	if !exists {
-		return Entry3D{}, ErrInvalidIndex
+		return nil, ErrInvalidIndex
 	}
 
-	return *entry, nil
+	return entry, nil
 }
 
 // ReadAt reads data from a specific offset and length
@@ -271,18 +277,17 @@ func (r *Reader) ReadAt(offset int64, length int) ([]byte, error) {
 }
 
 // Read reads the data for a specific entry
-func (r *Reader) Read(index int) ([]byte, error) {
-	entry, err := r.EntryAt(index)
-	if err != nil {
-		return nil, err
+func (r *Reader) Read(entry Entry) ([]byte, error) {
+	if entry == nil {
+		return nil, errors.New("nil entry")
 	}
 
-	return r.ReadAt(int64(entry[0]), int(entry[1]))
+	return r.ReadAt(int64(entry.Lookup()), entry.Length())
 }
 
 // Entries returns an iterator over available entries
-func (r *Reader) Entries() iter.Seq[Entry3D] {
-	return func(yield func(Entry3D) bool) {
+func (r *Reader) Entries() iter.Seq[Entry] {
+	return func(yield func(Entry) bool) {
 		r.mu.RLock()
 		defer r.mu.RUnlock()
 
@@ -291,11 +296,53 @@ func (r *Reader) Entries() iter.Seq[Entry3D] {
 		}
 
 		for _, entry := range r.entries {
-			if !yield(*entry) {
+			if !yield(entry) {
 				return
 			}
 		}
 	}
+}
+
+// SetupEntries builds the logical index mapping based on a pattern
+func (r *Reader) SetupEntries(pattern string, maxIndex int) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.closed {
+		return ErrReaderClosed
+	}
+
+	// Clear existing entries
+	r.entries = make(map[uint64]*Entry6D)
+
+	// Generate file names based on pattern and calculate hashes
+	for i := 0; i < maxIndex; i++ {
+		filename := fmt.Sprintf("build/%s/%08d.dat", pattern, i)
+		hash := HashFileName(filename)
+
+		// Find entry with this hash
+		if fileEntry, exists := r.fileEntries[hash]; exists {
+			// Create a new Entry6D
+			entry := &Entry6D{
+				LookupOffset:       uint32(fileEntry.Offset + int64(fileEntry.HeaderSize)),
+				DataLength:         uint32(fileEntry.Size),
+				DecompressedLength: uint32(fileEntry.SizeDecomp),
+				ExtraInfo:          uint32(i), // Store index as extra info
+				CompressionType:    byte(fileEntry.Flag),
+			}
+
+			// Store by hash
+			r.entries[hash] = entry
+		}
+	}
+
+	return nil
+}
+
+// GetEntryByName retrieves an entry by its file path/name
+func (r *Reader) GetEntryByName(filePath string) (Entry, error) {
+	hash := HashFileName(filePath)
+	return r.EntryAt(hash)
 }
 
 // HashFileName calculates a hash for a filename as used in UOP files

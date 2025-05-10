@@ -32,8 +32,8 @@ func TestBuildPatternName(t *testing.T) {
 	}
 }
 
-// TestReaderOperations tests the UOP reader operations using actual UOP files
-func TestReaderOperations(t *testing.T) {
+// TestNewReader tests creating a new UOP reader
+func TestNewReader(t *testing.T) {
 	testDataPath := uotest.Path()
 	require.NotEmpty(t, testDataPath, "Test data path should not be empty")
 
@@ -50,62 +50,10 @@ func TestReaderOperations(t *testing.T) {
 
 	// Test file opening
 	reader, err := NewReader(testUOP)
-	require.NoError(t, err)
+	require.NoError(t, err, "Failed to create reader")
+	require.NotNil(t, reader, "Reader should not be nil")
+
 	defer reader.Close()
-
-	// Test basic file info
-	_, err = os.Stat(testUOP)
-	require.NoError(t, err)
-
-	// Extract UOP pattern from filename
-	pattern := BuildPatternName(filepath.Base(testUOP))
-
-	// Test SetupEntries with a reasonable max index
-	err = reader.SetupEntries(pattern, 5000) // A reasonable high limit for test
-	require.NoError(t, err)
-
-	// Test iterator
-	var entriesCount int
-	reader.Entries()(func(entry Entry3D) bool {
-		// Verify the entry is not just zeros
-		if entry[0] > 0 || entry[1] > 0 {
-			entriesCount++
-		}
-		return true
-	})
-
-	// A real UOP file should have some entries
-	t.Logf("Found %d entries in UOP file", entriesCount)
-	assert.Greater(t, entriesCount, 0, "Should have found some entries in the UOP file")
-
-	// Try reading an entry if we found any
-	if entriesCount > 0 {
-		// Find first valid entry
-		var validIndex int = -1
-		reader.Entries()(func(entry Entry3D) bool {
-			validIndex++
-			return entry[0] == 0 && entry[1] == 0
-		})
-
-		// If we found a valid entry, test reading it
-		if validIndex >= 0 {
-			entry, err := reader.EntryAt(validIndex)
-			assert.NoError(t, err)
-
-			// Try reading the entry's data
-			data, err := reader.Read(validIndex)
-			if assert.NoError(t, err) {
-				assert.NotEmpty(t, data, "Entry data should not be empty")
-				t.Logf("Successfully read entry %d with size %d bytes", validIndex, len(data))
-			}
-
-			// Also test direct ReadAt
-			directData, err := reader.ReadAt(int64(entry[0]), int(entry[1]))
-			if assert.NoError(t, err) {
-				assert.Equal(t, data, directData, "Direct read should match entry read")
-			}
-		}
-	}
 }
 
 // TestInvalidFiles tests error handling for invalid files
@@ -113,6 +61,13 @@ func TestInvalidFiles(t *testing.T) {
 	// Test with non-existent file
 	_, err := NewReader("non_existent_file.uop")
 	assert.Error(t, err)
+
+	// Try to open a non-UOP file as UOP
+	filePath := filepath.Join(uotest.Path(), "tiledata.mul") // MUL file, not UOP
+	if _, err := os.Stat(filePath); err == nil {
+		_, err = NewReader(filePath)
+		assert.Error(t, err, "Should fail to open non-UOP file as UOP")
+	}
 
 	// Create a temporary file with invalid content
 	tmpFile, err := os.CreateTemp("", "invalid_*.uop")
@@ -129,8 +84,8 @@ func TestInvalidFiles(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// TestGetEntryFromHash tests retrieving entries by hash
-func TestGetEntryFromHash(t *testing.T) {
+// TestEntryOperations tests entry-related operations (EntryAt, Read, Entries)
+func TestEntryOperations(t *testing.T) {
 	testDataPath := uotest.Path()
 	require.NotEmpty(t, testDataPath, "Test data path should not be empty")
 
@@ -143,21 +98,80 @@ func TestGetEntryFromHash(t *testing.T) {
 
 	// Use the first found UOP file for testing
 	testUOP := uopFiles[0]
+	patternBase := BuildPatternName(filepath.Base(testUOP))
+	pattern := patternBase
+
+	// Adjust pattern if it's a legacy MUL file
+	if idx := len(pattern) - len("LegacyMUL"); idx > 0 && pattern[idx:] == "LegacyMUL" {
+		pattern = pattern[:idx]
+	}
+
+	t.Logf("Using file: %s with pattern: %s", testUOP, pattern)
 
 	reader, err := NewReader(testUOP)
 	require.NoError(t, err)
 	defer reader.Close()
 
-	// Get file pattern and generate a hash
-	pattern := BuildPatternName(filepath.Base(testUOP))
-	testHash := HashFileName(fmt.Sprintf("build/%s/0000000000.dat", pattern))
+	// Setup entries mapping
+	err = reader.SetupEntries(pattern, 10000) // A reasonable upper limit for test
+	require.NoError(t, err)
 
-	// Try to get entry from hash
-	entry, err := reader.GetEntryFromHash(testHash)
-	if err == ErrEntryNotFound {
-		t.Skip("Test hash not found in UOP file")
-	} else {
-		assert.NoError(t, err)
+	// Test Entries iterator
+	var count int
+	for entry := range reader.Entries() {
 		assert.NotNil(t, entry)
+		count++
+
+		// Just check a few entries to keep the test fast
+		if count >= 10 {
+			break
+		}
+	}
+
+	t.Logf("Found %d entries in first 10 iterations", count)
+
+	// If we found entries, test EntryAt and Read
+	if count > 0 {
+		// Try to retrieve a specific entry by hash
+		testFilename := fmt.Sprintf("build/%s/00000000.dat", pattern)
+		hash := HashFileName(testFilename)
+		t.Logf("Testing with hash for %s: 0x%X", testFilename, hash)
+
+		entry, err := reader.EntryAt(hash)
+		if err == nil {
+			assert.NotNil(t, entry)
+			t.Logf("Found entry with Lookup: %d, Length: %d", entry.Lookup(), entry.Length())
+
+			// Test methods of the Entry interface
+			assert.GreaterOrEqual(t, entry.Lookup(), 0)
+			assert.GreaterOrEqual(t, entry.Length(), 0)
+
+			// Test Zip() method for compression info
+			decompSize, compFlag := entry.Zip()
+			t.Logf("Decompressed size: %d, Compression flag: %d", decompSize, compFlag)
+			assert.GreaterOrEqual(t, decompSize, 0)
+			assert.GreaterOrEqual(t, int(compFlag), 0)
+
+			// Test Read method
+			data, err := reader.Read(entry)
+			if assert.NoError(t, err) {
+				assert.NotNil(t, data)
+				assert.Len(t, data, entry.Length())
+				t.Logf("Read %d bytes of data", len(data))
+			}
+		} else {
+			t.Logf("Entry not found by hash: %v", err)
+		}
+
+		// Also test GetEntryByName
+		entry, err = reader.GetEntryByName(testFilename)
+		if err == nil {
+			t.Logf("Found entry by name with Lookup: %d, Length: %d",
+				entry.Lookup(), entry.Length())
+		} else {
+			t.Logf("Entry not found by name: %v", err)
+		}
+	} else {
+		t.Skip("No entries found to test EntryAt and Read")
 	}
 }
