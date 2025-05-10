@@ -11,11 +11,66 @@ import (
 	"sync"
 )
 
-// Entry3D represents an entry in a MUL file with offset, length, and extra data
-type Entry3D = [3]uint32
+// Entry interface defines methods to access entry information in a MUL file
+type Entry interface {
+	// Lookup returns the offset in the file where the entry data begins
+	Lookup() int
 
-// Reader provides access to MUL file data
-type Reader struct {
+	// Length returns the size of the entry data
+	Length() int
+
+	// Extra returns additional data associated with the entry (extra1, extra2)
+	Extra() (int, int)
+
+	// Zip returns the size after decompression and compression flag (0=none, 1=zlib, 2=mythic)
+	Zip() (int, byte)
+}
+
+// Reader interface defines methods for accessing MUL file data
+type Reader interface {
+	// EntryAt retrieves entry information by its logical index/hash
+	EntryAt(uint64) (Entry, error)
+
+	// Read reads data from a specific entry
+	Read(entry Entry) ([]byte, error)
+
+	// Entries returns an iterator over available entries
+	Entries() iter.Seq[Entry]
+
+	// Close releases resources
+	Close() error
+}
+
+// Entry3D represents an entry in MUL index files
+type Entry3D struct {
+	LookupOffset uint32 // Offset where the entry data begins
+	DataLength   uint32 // Size of the entry data
+	ExtraInfo    uint32 // Extra data (can be split into Extra1/Extra2)
+}
+
+// Implementation of Entry interface methods for Entry3D
+
+func (e *Entry3D) Lookup() int {
+	return int(e.LookupOffset)
+}
+
+func (e *Entry3D) Length() int {
+	return int(e.DataLength)
+}
+
+func (e *Entry3D) Extra() (int, int) {
+	// In standard MUL files, Extra is just a single value
+	// We just return it as the first value and 0 as the second
+	return int(e.ExtraInfo), 0
+}
+
+func (e *Entry3D) Zip() (int, byte) {
+	// MUL files don't use compression, so return 0 for both
+	return 0, 0
+}
+
+// MulReader provides access to MUL file data
+type MulReader struct {
 	file       *os.File     // File handle for the MUL file
 	idxFile    *os.File     // Optional index file handle
 	idxEntries []Entry3D    // Cached index entries
@@ -30,23 +85,24 @@ var (
 	ErrOutOfBounds   = errors.New("read operation would exceed file bounds")
 	ErrInvalidIndex  = errors.New("invalid index")
 	ErrInvalidOffset = errors.New("invalid offset")
+	ErrInvalidEntry  = errors.New("invalid entry")
 )
 
 // NewReader creates and initializes a new MUL reader
-func NewReader(filename string) (*Reader, error) {
+func NewReader(filename string) (*MulReader, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open MUL file: %w", err)
 	}
 
-	return &Reader{
+	return &MulReader{
 		file:      file,
 		entrySize: 12, // Default entry size is 12 bytes (3 uint32s)
 	}, nil
 }
 
 // NewReaderWithIndex creates a new MUL reader with a separate index file
-func NewReaderWithIndex(mulFilename, idxFilename string) (*Reader, error) {
+func NewReaderWithIndex(mulFilename, idxFilename string) (*MulReader, error) {
 	// Open MUL file
 	file, err := os.Open(mulFilename)
 	if err != nil {
@@ -60,7 +116,7 @@ func NewReaderWithIndex(mulFilename, idxFilename string) (*Reader, error) {
 		return nil, fmt.Errorf("failed to open IDX file: %w", err)
 	}
 
-	reader := &Reader{
+	reader := &MulReader{
 		file:      file,
 		idxFile:   idxFile,
 		entrySize: 12, // Default entry size is 12 bytes (3 uint32s)
@@ -76,7 +132,7 @@ func NewReaderWithIndex(mulFilename, idxFilename string) (*Reader, error) {
 }
 
 // cacheIndexEntries loads all index entries from the index file into memory
-func (r *Reader) cacheIndexEntries() error {
+func (r *MulReader) cacheIndexEntries() error {
 	if r.idxFile == nil {
 		return errors.New("no index file provided")
 	}
@@ -103,37 +159,37 @@ func (r *Reader) cacheIndexEntries() error {
 	// Parse entries
 	for i := 0; i < entryCount; i++ {
 		offset := i * r.entrySize
-		r.idxEntries[i][0] = binary.LittleEndian.Uint32(data[offset : offset+4])    // Offset
-		r.idxEntries[i][1] = binary.LittleEndian.Uint32(data[offset+4 : offset+8])  // Length
-		r.idxEntries[i][2] = binary.LittleEndian.Uint32(data[offset+8 : offset+12]) // Extra
+		r.idxEntries[i].LookupOffset = binary.LittleEndian.Uint32(data[offset : offset+4])
+		r.idxEntries[i].DataLength = binary.LittleEndian.Uint32(data[offset+4 : offset+8])
+		r.idxEntries[i].ExtraInfo = binary.LittleEndian.Uint32(data[offset+8 : offset+12])
 	}
 
 	return nil
 }
 
-// EntryAt retrieves entry information by its logical index
-func (r *Reader) EntryAt(index int) (Entry3D, error) {
+// EntryAt retrieves entry information by its logical index/hash
+func (r *MulReader) EntryAt(index uint64) (Entry, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	if r.closed {
-		return Entry3D{}, ErrReaderClosed
+		return nil, ErrReaderClosed
 	}
 
 	if r.idxEntries != nil {
 		// If we have cached index entries, retrieve from cache
-		if index < 0 || index >= len(r.idxEntries) {
-			return Entry3D{}, ErrInvalidIndex
+		if int(index) < 0 || int(index) >= len(r.idxEntries) {
+			return nil, ErrInvalidIndex
 		}
-		return r.idxEntries[index], nil
+		return &r.idxEntries[index], nil
 	}
 
 	// If we don't have an index file, we can't retrieve by index
-	return Entry3D{}, errors.New("index file not provided")
+	return nil, errors.New("index file not provided")
 }
 
 // ReadAt reads data from a specific offset and length
-func (r *Reader) ReadAt(offset int64, length int) ([]byte, error) {
+func (r *MulReader) ReadAt(offset int64, length int) ([]byte, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -177,23 +233,22 @@ func (r *Reader) ReadAt(offset int64, length int) ([]byte, error) {
 }
 
 // Read reads the data for a specific entry
-func (r *Reader) Read(index int) ([]byte, error) {
-	entry, err := r.EntryAt(index)
-	if err != nil {
-		return nil, err
+func (r *MulReader) Read(entry Entry) ([]byte, error) {
+	if entry == nil {
+		return nil, ErrInvalidEntry
 	}
 
 	// Skip invalid entries (offset == 0xFFFFFFFF or length == 0)
-	if entry[0] == 0xFFFFFFFF || entry[1] == 0 {
+	if entry.Lookup() == -1 || entry.Length() == 0 {
 		return nil, nil
 	}
 
-	return r.ReadAt(int64(entry[0]), int(entry[1]))
+	return r.ReadAt(int64(entry.Lookup()), entry.Length())
 }
 
 // Entries returns an iterator over available entries
-func (r *Reader) Entries() iter.Seq[Entry3D] {
-	return func(yield func(Entry3D) bool) {
+func (r *MulReader) Entries() iter.Seq[Entry] {
+	return func(yield func(Entry) bool) {
 		r.mu.RLock()
 		defer r.mu.RUnlock()
 
@@ -202,16 +257,19 @@ func (r *Reader) Entries() iter.Seq[Entry3D] {
 		}
 
 		// Return entries from cache if available
-		for _, entry := range r.idxEntries {
-			if !yield(entry) {
-				return
+		if r.idxEntries != nil {
+			for i := range r.idxEntries {
+				if !yield(&r.idxEntries[i]) {
+					return
+				}
 			}
 		}
+		// If no index file, we don't have entries to iterate over
 	}
 }
 
 // Close releases resources
-func (r *Reader) Close() error {
+func (r *MulReader) Close() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -244,6 +302,8 @@ func (r *Reader) Close() error {
 
 	return nil
 }
+
+// Helper functions for reading data types from byte slices
 
 // ReadByte reads a single byte from data at the specified offset
 func ReadByte(data []byte, offset int) (byte, int, error) {
