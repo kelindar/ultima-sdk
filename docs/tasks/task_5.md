@@ -14,40 +14,7 @@ Additionally, `Helpers/MythicDecompress.cs` provides the decompression utilities
 
 1. Create an `internal/uofile` package directory.
 
-2. Define Entry and Reader interfaces that abstract the differences between MUL and UOP formats:
-
-   ```go
-    type Entry interface {
-      // Lookup returns the offset in the file where the entry data begins
-      Lookup() int
-
-      // Length returns the size of the entry data
-      Length() int
-
-      // Extra returns additional data associated with the entry (extra1, extra2)
-      Extra() (int, int)
-
-      // Zip returns the size after decompression and compression flag (0=none, 1=zlib, 2=mythic)
-      Zip() (int, byte)
-    }
-
-    type Reader interface {
-
-        // EntryAt retrieves entry information by its hash
-        EntryAt(uint64) (Entry, error)
-
-        // Read reads data from a specific offset and length
-        Read(entry Entry) ([]byte, error)
-
-        // Entries returns an iterator over available entries
-        Entries() iter.Seq[Entry]
-
-        // Close releases resources
-        Close() error
-   }
-   ```
-
-3. Implement a `File` struct that uses the `Reader` interface:
+2. Implement a `File` struct that uses the `Reader` interface:
 
    ```go
    type File struct {
@@ -57,69 +24,26 @@ Additionally, `Helpers/MythicDecompress.cs` provides the decompression utilities
    }
    ```
 
-4. Implement methods for the `File` struct:
+3. Implement methods for accessing both MUL and UOP file data that complies to the following interface:
 
    ```go
-   // NewFile creates a new File instance that automatically selects between MUL and UOP formats
-   func NewFile(idxPath, mulPath, uopPath string) (*File, error)
+   type Reader interface {
 
-   // Load loads index data and prepares the file for reading
-   func (f *File) Load() error
+   	// Read reads data from a specific entry
+   	Read(index uint64) ([]byte, error)
 
-   // ReadData reads data for a specific index
-   func (f *File) ReadData(index int) ([]byte, error)
+   	// Entries returns an iterator over available entries
+   	Entries() iter.Seq[uint64]
 
-   // ReadCompressedData reads data for a specific index without decompressing
-   func (f *File) ReadCompressedData(index int) ([]byte, error)
-
-   // ReadDataOffset reads partial data from an entry
-   func (f *File) ReadDataOffset(index int, offset, length int) ([]byte, error)
-
-   // ApplyPatch applies a verdata patch to an entry
-   func (f *File) ApplyPatch(patch verdata.Patch) error
-
-   // Close closes associated readers
-   func (f *File) Close() error
-   ```
-
-5. Implement compression utilities in `internal/file/compression.go`:
-
-   ```go
-   // Decompress decompresses data based on the compression flag
-   func Decompress(data []byte, flag CompressionFlag) ([]byte, error)
-
-   // ZlibDecompress decompresses zlib data
-   func ZlibDecompress(data []byte) ([]byte, error)
-
-   // MythicDecompress decompresses data using the Mythic compression algorithm
-   func MythicDecompress(data []byte) ([]byte, error)
-   ```
-
-6. Write adapter functions to make the specific readers (MUL's and UOP's) compatible with the unified interface:
-
-   ```go
-   // mulReaderAdapter adapts a mul.Reader to the unified Reader interface
-   type mulReaderAdapter struct {
-       reader *mul.Reader
+   	// Close releases resources
+   	Close() error
    }
 
-   // NewMulReader creates a new Reader from a MUL file
-   func NewMulReader(filename string) (Reader, error)
-
-   // uopReaderAdapter adapts a uop.Reader to the unified Reader interface
-   type uopReaderAdapter struct {
-       reader *uop.Reader
-   }
-
-   // NewUopReader creates a new Reader from a UOP file
-   func NewUopReader(filename string) (Reader, error)
    ```
 
-7. Write comprehensive unit tests in `file_test.go`:
+4. Write comprehensive unit tests in `file_test.go`:
    - Test loading index files for both formats
    - Test reading data from both MUL and UOP files
-   - Test applying verdata patches
-   - Test compression/decompression
    - Test automatic format detection
 
 ## Key Considerations

@@ -34,21 +34,6 @@ const (
 	CompressionMythic CompressionFlag = 2
 )
 
-// Entry interface defines methods to access entry information in a UOP file
-type Entry interface {
-	// Lookup returns the offset in the file where the entry data begins
-	Lookup() int
-
-	// Length returns the size of the entry data
-	Length() int
-
-	// Extra returns additional data associated with the entry (extra1, extra2)
-	Extra() (int, int)
-
-	// Zip returns the size after decompression and compression flag (0=none, 1=zlib, 2=mythic)
-	Zip() (int, byte)
-}
-
 // Entry6D represents an entry in UOP files with 6 components including compression info
 type Entry6D struct {
 	offset uint32    // Offset where the entry data begins
@@ -56,23 +41,6 @@ type Entry6D struct {
 	rawLen uint32    // Size after decompression
 	extra  [2]uint32 // Extra data
 	typ    byte      // Compression flag (0 = none, 1 = zlib, 2 = mythic)
-}
-
-// Implementation of the Entry interface for Entry6D
-func (e *Entry6D) Lookup() int {
-	return int(e.offset)
-}
-
-func (e *Entry6D) Length() int {
-	return int(e.size)
-}
-
-func (e *Entry6D) Extra() (int, int) {
-	return int(e.extra[0]), int(e.extra[1])
-}
-
-func (e *Entry6D) Zip() (int, byte) {
-	return int(e.rawLen), e.typ
 }
 
 // Reader implements the interface for reading UOP files
@@ -258,21 +226,6 @@ func (r *Reader) Close() error {
 	return r.file.Close()
 }
 
-// EntryAt retrieves entry information by its index
-func (r *Reader) EntryAt(idx uint64) (Entry, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	switch {
-	case idx >= uint64(len(r.entries)):
-		return nil, ErrInvalidIndex
-	case r.closed:
-		return nil, ErrReaderClosed
-	default:
-		return &r.entries[idx], nil
-	}
-}
-
 // ReadAt reads data from a specific offset and length
 func (r *Reader) ReadAt(offset int64, length int) ([]byte, error) {
 	r.mu.RLock()
@@ -312,36 +265,19 @@ func (r *Reader) ReadAt(offset int64, length int) ([]byte, error) {
 	return data, nil
 }
 
-// Read reads the data for a specific entry
-func (r *Reader) Read(entry Entry) ([]byte, error) {
-	if entry == nil {
-		return nil, errors.New("nil entry")
-	}
-
-	return r.ReadAt(int64(entry.Lookup()), entry.Length())
-}
-
-// Entries returns an iterator over available entries
-func (r *Reader) Entries() iter.Seq[Entry] {
-	return func(yield func(Entry) bool) {
-		r.mu.RLock()
-		defer r.mu.RUnlock()
-
-		if r.closed {
-			return
-		}
-
-		for _, entry := range r.entries {
-			if !yield(&entry) {
-				return
-			}
-		}
-	}
-}
-
 // GetEntryByName retrieves an entry by its file path/name
-func (r *Reader) GetEntryByName(filePath string) (Entry, error) {
-	return r.EntryAt(hashFileName(filePath))
+func (r *Reader) GetEntryByName(filePath string) (uint64, error) {
+	return hashFileName(filePath), nil
+}
+
+// BuildPatternName constructs the UOP naming pattern from a filename
+func BuildPatternName(filename string) string {
+	base := filepath.Base(filename)
+	ext := filepath.Ext(base)
+	if ext != "" {
+		return base[:len(base)-len(ext)]
+	}
+	return base
 }
 
 // hashFileName calculates a hash for a filename as used in UOP files
@@ -434,12 +370,43 @@ func hashFileName(s string) uint64 {
 	return (uint64(esi) << 32) | uint64(eax)
 }
 
-// BuildPatternName constructs the UOP naming pattern from a filename
-func BuildPatternName(filename string) string {
-	base := filepath.Base(filename)
-	ext := filepath.Ext(base)
-	if ext != "" {
-		return base[:len(base)-len(ext)]
+// Read reads data from a specific index
+func (r *Reader) Read(index uint64) ([]byte, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	switch {
+	case index >= uint64(len(r.entries)):
+		return nil, ErrInvalidIndex
+	case r.closed:
+		return nil, ErrReaderClosed
 	}
-	return base
+
+	entry := &r.entries[index]
+	if entry.size == 0 {
+		return nil, ErrEntryNotFound
+	}
+
+	return r.ReadAt(int64(entry.offset), int(entry.size))
+}
+
+// Entries returns an iterator over available entry indices
+func (r *Reader) Entries() iter.Seq[uint64] {
+	return func(yield func(uint64) bool) {
+		r.mu.RLock()
+		defer r.mu.RUnlock()
+
+		if r.closed {
+			return
+		}
+
+		for i, entry := range r.entries {
+			// Only yield valid entries with non-zero size
+			if entry.size > 0 {
+				if !yield(uint64(i)) {
+					return
+				}
+			}
+		}
+	}
 }

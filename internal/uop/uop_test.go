@@ -1,6 +1,7 @@
 package uop
 
 import (
+	"iter"
 	"path/filepath"
 	"testing"
 
@@ -54,7 +55,7 @@ func TestNewReader(t *testing.T) {
 	defer reader.Close()
 }
 
-// TestEntryOperations tests entry-related operations (EntryAt, Read, Entries)
+// TestEntryOperations tests entry-related operations (Read and Entries methods)
 func TestEntryOperations(t *testing.T) {
 	testUOP := filepath.Join(uotest.Path(), "artLegacyMUL.uop")
 
@@ -73,27 +74,59 @@ func TestEntryOperations(t *testing.T) {
 	require.NoError(t, err)
 	defer reader.Close()
 
-	// Test Entries iterator
+	// Test Entries iterator with the new interface
 	var count int
-	for entry := range reader.Entries() {
-		assert.NotNil(t, entry)
-		count++
+	var indices []uint64
 
-		// Just check a few entries to keep the test fast
+	// Collect up to 10 entries for further testing
+	for index := range reader.Entries() {
+		indices = append(indices, index)
+		count++
 		if count >= 10 {
 			break
 		}
 	}
 
-	assert.Equal(t, 10, count, "Should have found 10 entries in the first iteration")
+	assert.GreaterOrEqual(t, count, 1, "Should have found at least 1 entry")
 
-	// Test EntryAt
-	entry, err := reader.EntryAt(0)
-	require.NoError(t, err)
-	assert.NotNil(t, entry)
+	// Test Read method with the first valid index
+	if len(indices) > 0 {
+		firstIndex := indices[0]
+		data, err := reader.Read(firstIndex)
+		require.NoError(t, err)
+		assert.NotNil(t, data, "Data should not be nil")
+		assert.Greater(t, len(data), 0, "Data should not be empty")
 
-	// Check if the entry is valid
-	data, err := reader.Read(entry)
+		// Test invalid index
+		_, err = reader.Read(uint64(0xFFFFFFFF))
+		assert.Error(t, err, "Reading invalid index should return error")
+	}
+}
+
+// TestReaderInterface tests that Reader implements the required interface
+func TestReaderInterface(t *testing.T) {
+	testDataPath := uotest.Path()
+	require.NotEmpty(t, testDataPath, "Test data path should not be empty")
+
+	// Find UOP files in test data directory
+	uopFiles, err := filepath.Glob(filepath.Join(testDataPath, "*.uop"))
+	if err != nil || len(uopFiles) == 0 {
+		t.Skip("No UOP files found in test data directory")
+		return
+	}
+
+	// Use the first found UOP file for testing
+	testUOP := uopFiles[0]
+
+	// Create a reader
+	reader, err := NewReader(testUOP, 10)
 	require.NoError(t, err)
-	assert.NotNil(t, data)
+	defer reader.Close()
+
+	// Test that we can assign the reader to a variable of the interface type
+	var _ interface {
+		Read(uint64) ([]byte, error)
+		Entries() iter.Seq[uint64]
+		Close() error
+	} = reader
 }

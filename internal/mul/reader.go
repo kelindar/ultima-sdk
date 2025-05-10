@@ -15,7 +15,7 @@ import (
 type Reader interface {
 
 	// Read reads data from a specific entry
-	Read(uint64) ([]byte, error)
+	Read(index uint64) ([]byte, error)
 
 	// Entries returns an iterator over available entries
 	Entries() iter.Seq[uint64]

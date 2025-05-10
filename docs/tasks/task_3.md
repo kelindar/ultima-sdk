@@ -41,33 +41,17 @@ The primary reference is `BinaryExtensions.cs`, which provides extension methods
 4. Implement methods for accessing MUL file data that complies to the following interface:
 
    ```go
-    type Entry interface {
-      // Lookup returns the offset in the file where the entry data begins
-      Lookup() int
+   // Reader interface defines methods for accessing MUL file data
+   type Reader interface {
 
-      // Length returns the size of the entry data
-      Length() int
+   	// Read reads data from a specific entry
+   	Read(index uint64) ([]byte, error)
 
-      // Extra returns additional data associated with the entry (extra1, extra2)
-      Extra() (int, int)
+   	// Entries returns an iterator over available entries
+   	Entries() iter.Seq[uint64]
 
-      // Zip returns the size after decompression and compression flag (0=none, 1=zlib, 2=mythic)
-      Zip() (int, byte)
-    }
-
-    type Reader interface {
-
-        // EntryAt retrieves entry information by its logical index/hash
-        EntryAt(uint64) (Entry, error)
-
-        // Read reads data from a specific offset and length
-        Read(entry Entry) ([]byte, error)
-
-        // Entries returns an iterator over available entries
-        Entries() iter.Seq[Entry]
-
-        // Close releases resources
-        Close() error
+   	// Close releases resources
+   	Close() error
    }
    ```
 
