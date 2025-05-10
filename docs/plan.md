@@ -19,7 +19,7 @@ To create an idiomatic Go library that provides the same functionality as the or
 3.  **Mark for Review:** Once a task and its tests are complete, change its status from ❌ to ❓.
 4.  **Wait for Review:** Do not proceed to the next task until the current one marked with ❓ has been manually reviewed and marked as ✅ (Done) or reverted to ❌ (Needs Rework).
 5.  **Ask for Clarification:** If a task description is unclear, ambiguous, or seems too large/complex for a single step, ask for clarification before proceeding.
-6.  **Use the Test Data:** Use the test data located in `d:\Workspace\Go\src\github.com\kelindar\ultima-sdk-testdata\` for all tests. This is crucial for verifying the correctness of the ported code by comparing outputs or behavior with the C# reference. Use the provided `TestWith` helper function to simplify test setup.
+6.  **Use the Test Data and `TestWith` Helper:** All unit tests that require an initialized SDK instance **must** use the provided `TestWith(t *testing.T, testFn func(*testing.T, *SDK))` helper function located in `testing.go`. This function ensures the SDK is correctly initialized with the test data from `d:\Workspace\Go\src\github.com\kelindar\ultima-sdk-testdata\`. This is crucial for verifying the correctness of the ported code by comparing outputs or behavior with the C# reference.
 
 ## Porting Instructions & Checklist
 
@@ -29,11 +29,11 @@ Follow these steps sequentially. Each step involves translating the correspondin
     - Create the root directory `ultima-sdk-go`.
     - Run `go mod init github.com/kelindar/ultima-sdk-go` (or your preferred module path).
     - Create the `internal/` subdirectory for implementation details.
-2.  **[❌] Implement `SDK` Struct and Lifecycle (`sdk.go`):**
+2.  **[❓] Implement `SDK` Struct and Lifecycle (`sdk.go`):**
     - Define `SDK` struct.
     - Implement `Open(directory string) (*SDK, error)` and `sdk.Close()` methods.
     - _Sub-task: Write basic tests for Open/Close._
-    - _Sub-task: Verify against C# `Ultima.Client` constructor and `Files.Initialize`/`Files.Dispose` patterns for resource management._
+    - \_Sub-task: Verify against C# `Ultima.Client` constructor and `Files.Initialize`/`Files.Dispose` patterns for resource management.
 3.  **[❌] Implement MUL File Reading Utilities (`internal/mul`):**
     - Create `internal/mul` package.
     - Define and expose a `Reader` struct for handling MUL file specific reading logic.
@@ -75,7 +75,7 @@ Follow these steps sequentially. Each step involves translating the correspondin
 11. **[❌] Port `StringList.cs`, `StringEntry.cs` -> `cliloc.go`:**
     - Implement `Cliloc` loading (e.g., `Cliloc.enu`). Provide `SDK.GetString(id int) string`.
     - _Sub-task: Write tests for loading cliloc files and retrieving strings._
-12. **[❌] Implement Internal Image Handling Utilities (`internal/image`):**
+12. **[✅] Implement Internal Image Handling Utilities (`internal/bitmap`):**
     - Handle 16-bit ARGB1555 pixel format to `image.Image` conversion.
     - Implement hue application logic.
     - _Sub-task: Write tests for pixel format conversion and hue application._

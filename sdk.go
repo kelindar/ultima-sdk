@@ -1,0 +1,63 @@
+package ultima
+
+import (
+	"fmt"
+	"os"
+)
+
+// SDK represents the main entry point for accessing Ultima Online game files.
+// It holds the necessary state, such as the base path to the game files.
+type SDK struct {
+	basePath string
+	// In future tasks, this struct will be expanded to include handles
+	// to indexed game files (e.g., art, map, gumps, sounds).
+}
+
+// Open initializes a new SDK instance for the specified Ultima Online client directory.
+// It verifies that the provided path exists and is a directory.
+//
+// The 'directory' parameter should be the path to the root of the Ultima Online
+// installation directory where files like 'art.mul', 'map0.mul', etc., are located.
+//
+// This function corresponds to the initialization phase of the C# SDK's `Client`
+// and `Files.Initialize()`. Actual file loading will be handled by subsequent
+// methods and internal components.
+func Open(directory string) (*SDK, error) {
+	info, err := os.Stat(directory)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("ultima: client directory '%s' does not exist: %w", directory, err)
+		}
+		return nil, fmt.Errorf("ultima: failed to access client directory '%s': %w", directory, err)
+	}
+
+	if !info.IsDir() {
+		return nil, fmt.Errorf("ultima: provided path '%s' is not a directory", directory)
+	}
+
+	sdk := &SDK{
+		basePath: directory,
+	}
+
+	// In later tasks, this is where initial file indexing or loading might be triggered,
+	// similar to C#'s Files.Initialize(). For now, we just store the path.
+
+	return sdk, nil
+}
+
+// Close releases any resources held by the SDK instance.
+// This is analogous to C#'s `Files.Dispose()` and should be called when the SDK
+// is no longer needed to free up file handles or other resources.
+// Currently, it's a placeholder as no persistent resources are held beyond the basePath.
+func (s *SDK) Close() error {
+	// In future tasks, this will close file handles and release other resources.
+	s.basePath = "" // Indicate that the SDK is "closed" by clearing its path.
+	// Add more cleanup logic here as resources are added to the SDK struct.
+	return nil
+}
+
+// BasePath returns the base directory path provided when the SDK was opened.
+// This is primarily for internal use or testing to confirm the SDK was initialized correctly.
+func (s *SDK) BasePath() string {
+	return s.basePath
+}
