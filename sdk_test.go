@@ -4,8 +4,21 @@ import (
 	"os"
 	"testing"
 
+	uotest "github.com/kelindar/ultima-sdk/internal/testing"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+// TestWith runs a test with a properly initialized SDK instance using the test data directory.
+// The function ensures the SDK is initialized with valid test data and passes it to the test function.
+func TestWith(t *testing.T, testFn func(*testing.T, *SDK)) {
+	sdk, err := Open(uotest.Path())
+	require.NoError(t, err, "failed to open SDK with test data directory")
+	require.NotNil(t, sdk, "SDK instance should not be nil")
+
+	// Run the test with the SDK instance
+	testFn(t, sdk)
+}
 
 func TestOpenClose_WithValidDirectory(t *testing.T) {
 	TestWith(t, func(t *testing.T, sdk *SDK) {

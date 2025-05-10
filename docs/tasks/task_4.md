@@ -17,33 +17,9 @@ Key C# methods to analyze include:
 ## Work Items
 
 1. Create an `internal/uop` package directory.
-2. Define the necessary structures for UOP file format:
+2. Implement hash calculation functions:
 
-   ```go
-   type FileHeader struct {
-       Signature   [4]byte // "MYP\0"
-       Version     uint32
-       Timestamp   uint32
-       NextTable   uint64
-       BlockCount  uint32
-       // Other header fields as needed
-   }
-
-   type FileEntry struct {
-       Offset       uint64
-       HeaderLength uint32
-       CompLength   uint32
-       DecompLength uint32
-       Hash         uint64
-       Checksum     uint32
-       Compression  uint16
-       // Other fields as needed
-   }
-
-   type Reader struct {
-       // File handle
-   }
-   ```
+   - `hashFileName(name string) uint64` - Calculate UOP file hash from a name
 
 3. Implement methods for accessing MUL file data that complies to the following interface:
 
@@ -70,11 +46,7 @@ Key C# methods to analyze include:
    }
    ```
 
-4. Implement hash calculation functions:
-
-   - `hashFileName(name string) uint64` - Calculate UOP file hash from a name
-
-5. Write comprehensive unit tests in `uop_test.go`:
+4. Write comprehensive unit tests in `uop_test.go`:
    - Test initialization and parsing of UOP files
    - Test hash calculation against known values
    - Test extracting specific entries by hash and name
@@ -83,6 +55,7 @@ Key C# methods to analyze include:
 
 ## Key Considerations
 
+- Check reference implementation (C#)
 - UOP files use a complex structure with hash tables for lookup
 - File entries may be compressed (usually zlib), but leave decompression to `internal/file`
 - UOP file format changes across different UO client versions
