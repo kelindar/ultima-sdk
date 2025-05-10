@@ -1,25 +1,31 @@
 # Task 21: Port Map.cs & MapHelper.cs to map.go
 
 ## Objective
+
 Implement support for loading and accessing map data from Ultima Online map files (`map*.mul`, `staidx*.mul`, `statics*.mul`) and their UOP equivalents. This component is one of the most complex in the SDK as it handles the core world data including terrain, static items, and their properties.
 
 ## C# Reference Implementation Analysis
+
 The C# implementation spans multiple files:
+
 - `Map.cs` - The main class for loading and accessing map data
 - `TileMatrix.cs` - Handles the actual loading and storage of map blocks
 - `TileMatrixPatch.cs` - Applies patch data to maps
 - `Helpers/MapHelper.cs` - Contains helper functions for map operations
 
 The implementation must handle:
+
 - Multiple map files for different facets (Felucca, Trammel, etc.)
 - Static items overlaid on terrain
 - Map patching systems
 - Efficient lookup of map data by coordinates
 
 ## Work Items
+
 1. Create a new file `map.go` in the root package.
 
 2. Define the core map structures:
+
    ```go
    // LandTile represents a terrain tile
    type LandTile struct {
@@ -56,6 +62,7 @@ The implementation must handle:
    ```
 
 3. Add methods to the SDK struct for accessing map data:
+
    ```go
    // Map retrieves a specific map by its ID
    func (s *SDK) Map(id int) (*Map, error) {
@@ -69,6 +76,7 @@ The implementation must handle:
    ```
 
 4. Implement methods for the Map struct:
+
    ```go
    // GetLandTile retrieves the land tile at the specified coordinates
    func (m *Map) GetLandTile(x, y int) (LandTile, error) {
@@ -87,6 +95,7 @@ The implementation must handle:
    ```
 
 5. Implement helper functions for map operations:
+
    ```go
    // WorldToBlock converts world coordinates to block coordinates
    func WorldToBlock(x, y int) (int, int) {
@@ -100,6 +109,7 @@ The implementation must handle:
    ```
 
 6. Implement the internal loading mechanisms:
+
    ```go
    // Internal function to load map data
    func (s *SDK) loadMap(id int) (*Map, error) {
@@ -116,6 +126,7 @@ The implementation must handle:
    - Test patch application
 
 ## Key Considerations
+
 - Maps are divided into 8x8 tile blocks for efficient storage and retrieval
 - Static items are stored separately from land tiles
 - Maps can be large, so efficient caching is important
@@ -129,7 +140,9 @@ The implementation must handle:
 - Consider adding utility functions for common map operations (line of sight, distance calculation, etc.)
 
 ## Expected Output
+
 A complete implementation that allows:
+
 - Loading map data for different facets
 - Retrieving land tiles and static items by coordinates
 - Handling map blocks efficiently with proper caching
@@ -137,6 +150,7 @@ A complete implementation that allows:
 - Accessing tile properties seamlessly through TileData integration
 
 ## Verification
+
 - Compare loaded map data with the C# implementation
 - Verify land tiles and static items match between implementations
 - Test with known coordinates to ensure correct tile retrieval

@@ -1,17 +1,21 @@
 # Task 14: Port Light.cs to light.go
 
 ## Objective
+
 Implement support for loading and accessing light source definitions from the `light.idx` and `light.mul` files, which define various light sources and their properties in Ultima Online.
 
 ## C# Reference Implementation Analysis
+
 The C# implementation in `Light.cs` handles loading light information from `lightidx.mul` and `light.mul`. Light sources in UO define illumination patterns used for various game effects like torches, magic, and day/night cycles.
 
 The files contain binary data describing the light patterns, dimensions, and intensity values.
 
 ## Work Items
+
 1. Create a new file `light.go` in the root package.
 
 2. Define the `Light` struct that represents a single light source:
+
    ```go
    type Light struct {
        ID     int
@@ -22,6 +26,7 @@ The files contain binary data describing the light patterns, dimensions, and int
    ```
 
 3. Add methods to the SDK struct for accessing light definitions:
+
    ```go
    // Light retrieves a specific light definition by its ID
    func (s *SDK) Light(id int) (*Light, error) {
@@ -35,6 +40,7 @@ The files contain binary data describing the light patterns, dimensions, and int
    ```
 
 4. Implement the internal loading mechanism:
+
    ```go
    // Internal function to load light data
    func (s *SDK) loadLights() error {
@@ -49,6 +55,7 @@ The files contain binary data describing the light patterns, dimensions, and int
    - Test error handling for invalid light IDs
 
 ## Key Considerations
+
 - The `lightidx.mul` file contains index information mapping to entries in `light.mul`
 - The light data itself is structured as a pattern of intensity values
 - Some light IDs may not be defined or may have zero dimensions
@@ -58,13 +65,16 @@ The files contain binary data describing the light patterns, dimensions, and int
 - Light data may be useful for rendering lighting effects in applications using the SDK
 
 ## Expected Output
+
 A complete implementation that allows:
+
 - Loading light source data from light.idx and light.mul
 - Accessing individual light sources by ID
 - Iterating over all available light sources
 - Retrieving dimensions and pattern data for rendering
 
 ## Verification
+
 - Compare loaded light dimensions with the C# implementation
 - Verify that pattern data matches between implementations
 - Test with common light IDs (e.g., torch, magic effects) to ensure correct loading

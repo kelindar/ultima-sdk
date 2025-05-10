@@ -1,10 +1,13 @@
 # Task 16: Port Art.cs to art.go
 
 ## Objective
+
 Implement support for loading and accessing static art tiles and land tiles from `artidx.mul` and `art.mul` (or their UOP equivalents). These files contain the graphical representation of all land and static item tiles used in Ultima Online.
 
 ## C# Reference Implementation Analysis
+
 The C# implementation in `Art.cs` handles loading art data from the MUL files or UOP alternatives. It includes:
+
 - Methods to load and decode both land tiles and static items
 - Support for both MUL and UOP file formats
 - Caching mechanisms to improve performance
@@ -14,9 +17,11 @@ The C# implementation in `Art.cs` handles loading art data from the MUL files or
 The art system is fundamental to UO, as it provides the visual representation of all map elements and items.
 
 ## Work Items
+
 1. Create a new file `art.go` in the root package.
 
 2. Define the `ArtTile` struct that will represent a single art tile:
+
    ```go
    type ArtTile struct {
        ID      int
@@ -40,6 +45,7 @@ The art system is fundamental to UO, as it provides the visual representation of
    ```
 
 3. Add methods to the SDK struct for accessing art tiles:
+
    ```go
    // ArtTile retrieves static art data by its tile ID
    func (s *SDK) ArtTile(tileID int) (*ArtTile, error) {
@@ -48,6 +54,7 @@ The art system is fundamental to UO, as it provides the visual representation of
    ```
 
 4. Implement internal utility functions:
+
    ```go
    // Internal function for loading and decoding art data
    func (s *SDK) loadArtData(id int, isStatic bool) ([]byte, int, int, error) {
@@ -69,6 +76,7 @@ The art system is fundamental to UO, as it provides the visual representation of
    - Test UOP file support (if applicable)
 
 ## Key Considerations
+
 - Art data is stored in a specialized format that requires careful decoding
 - Land tiles and static items have different storage formats and decoding methods
 - The implementation should support both MUL and UOP file formats seamlessly
@@ -80,7 +88,9 @@ The art system is fundamental to UO, as it provides the visual representation of
 - Use the bitmap package (implemented in Task 12) for image handling
 
 ## Expected Output
+
 A complete implementation that allows:
+
 - Loading art data from both MUL and UOP files
 - Retrieving individual art tiles by ID
 - Decoding tiles into standard Go image.Image instances
@@ -88,6 +98,7 @@ A complete implementation that allows:
 - Efficient memory usage through lazy loading and caching
 
 ## Verification
+
 - Compare decoded images with the C# implementation to ensure visual accuracy
 - Test with known tile IDs to verify dimensions and visual appearance
 - Verify that invalid/removed tiles are handled correctly

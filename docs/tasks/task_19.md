@@ -1,29 +1,34 @@
 # Task 19: Port Sound.cs and WaveFormat.cs to sound.go
 
 ## Objective
+
 Implement support for loading and accessing sound data from `soundidx.mul` and `sound.mul` files. These files contain audio samples used for various in-game effects in Ultima Online, stored in a custom format based on WAV/PCM.
 
 ## C# Reference Implementation Analysis
+
 The C# implementation spans two primary files:
+
 - `Sound.cs` - Handles loading sound entries and providing access to their data
 - `WaveFormat.cs` - Contains structures and utilities for working with WAV audio format
 
 The implementation loads sound samples from the MUL files and provides methods to convert them to standard audio formats. The sounds are stored with headers that describe their format (PCM parameters).
 
 ## Work Items
+
 1. Create a new file `sound.go` in the root package.
 
 2. Define the `Sound` struct that represents a single sound entry:
+
    ```go
    type Sound struct {
        ID       int
        Name     string
-       
+
        // WAV format information
        Channels      uint16
        SamplesPerSec uint32
        BitsPerSample uint16
-       
+
        // The actual audio data
        Data []byte
    }
@@ -35,6 +40,7 @@ The implementation loads sound samples from the MUL files and provides methods t
    ```
 
 3. Add methods to the SDK struct for accessing sounds:
+
    ```go
    // Sound retrieves a specific sound by its ID
    func (s *SDK) Sound(id int) (*Sound, error) {
@@ -48,6 +54,7 @@ The implementation loads sound samples from the MUL files and provides methods t
    ```
 
 4. Implement utility functions for WAV handling:
+
    ```go
    // WriteWaveHeader writes a WAV file header to the provided writer
    func WriteWaveHeader(w io.Writer, dataSize int, channels, samplesPerSec, bitsPerSample uint16) error {
@@ -63,6 +70,7 @@ The implementation loads sound samples from the MUL files and provides methods t
    - Test integrity of the sound data
 
 ## Key Considerations
+
 - Sound files in UO use a specialized format that includes PCM parameters
 - Converting to standard WAV format requires adding proper headers
 - Some sounds may be invalid or missing
@@ -73,7 +81,9 @@ The implementation loads sound samples from the MUL files and provides methods t
 - Sound file naming conventions may need to be handled for certain utilities
 
 ## Expected Output
+
 A complete implementation that allows:
+
 - Loading sound data from soundidx.mul and sound.mul
 - Retrieving individual sounds by ID
 - Converting sound data to standard WAV format
@@ -81,6 +91,7 @@ A complete implementation that allows:
 - Iterating over all available sounds
 
 ## Verification
+
 - Compare sound data with the C# implementation to ensure accuracy
 - Test conversion to WAV format and verify playability
 - Verify sound properties match the C# implementation

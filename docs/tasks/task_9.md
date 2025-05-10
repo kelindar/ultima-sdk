@@ -1,19 +1,24 @@
 # Task 9: Port Skills.cs and SkillGroups.cs to skill.go
 
 ## Objective
+
 Implement support for loading and accessing skill and skill group data from `skills.idx`, `skills.mul`, and `skillgrp.mul` files, which define the character skills and their grouping in the UO client.
 
 ## C# Reference Implementation Analysis
+
 The C# implementation consists of two main classes:
+
 - `Skills` - Handles loading skill definitions from `skills.idx` and `skills.mul`
 - `SkillGroups` - Handles loading skill group definitions from `skillgrp.mul`
 
 These files contain information about all character skills, whether they're action-based or passive, their names, and how they're grouped in the UI. The skill system is integral to character progression in UO.
 
 ## Work Items
+
 1. Create a new file `skill.go` in the root package.
 
 2. Define the `Skill` struct that represents a single skill entry:
+
    ```go
    type Skill struct {
        ID        int
@@ -23,13 +28,14 @@ These files contain information about all character skills, whether they're acti
    ```
 
 3. Define the `SkillGroup` struct that represents a group of skills:
+
    ```go
    type SkillGroup struct {
        ID    int
        Name  string
        skills []int // IDs of skills in this group
    }
-   
+
    // Skills returns an iterator over the skills belonging to this skill group
    func (sg *SkillGroup) Skills(sdk *SDK) iter.Seq[*Skill] {
        // Implementation for iterating over skills in the group
@@ -37,6 +43,7 @@ These files contain information about all character skills, whether they're acti
    ```
 
 4. Add methods to the SDK struct for accessing skills and skill groups:
+
    ```go
    // Skill retrieves a specific skill by its ID
    func (s *SDK) Skill(id int) (*Skill, error) {
@@ -60,6 +67,7 @@ These files contain information about all character skills, whether they're acti
    ```
 
 5. Implement the internal loading mechanisms:
+
    ```go
    // Internal function to load skill data
    func (s *SDK) loadSkills() error {
@@ -81,6 +89,7 @@ These files contain information about all character skills, whether they're acti
    - Test retrieving skills within a specific group
 
 ## Key Considerations
+
 - The `skills.idx` file contains index information mapping to entries in `skills.mul`
 - The `skills.mul` file contains the actual skill data (name, action flag)
 - The `skillgrp.mul` file contains group definitions and their member skills
@@ -91,13 +100,16 @@ These files contain information about all character skills, whether they're acti
 - Ensure proper error handling for all file operations and index bounds checking
 
 ## Expected Output
+
 A complete implementation that allows:
+
 - Loading skill and skill group data
 - Accessing individual skills and skill groups by ID
 - Iterating over all available skills and skill groups
 - Finding all skills within a specific group
 
 ## Verification
+
 - Compare loaded skill and group names with the C# implementation
 - Verify the action flag is correctly set for action-oriented skills
 - Ensure all skills are properly assigned to their correct groups

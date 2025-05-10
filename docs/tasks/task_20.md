@@ -1,39 +1,45 @@
 # Task 20: Port ASCIIFont.cs and UnicodeFont.cs to font.go
 
 ## Objective
+
 Implement support for loading and accessing font definitions from `fonts.mul` (ASCII fonts) and `unifont*.mul` files (Unicode fonts). These files define the character sets used for rendering text in the Ultima Online client.
 
 ## C# Reference Implementation Analysis
+
 The C# implementation consists of two main classes:
+
 - `ASCIIFont.cs` - Handles loading and managing ASCII fonts from fonts.mul
-- `UnicodeFont.cs` - Handles loading and managing Unicode fonts from unifont*.mul files
+- `UnicodeFont.cs` - Handles loading and managing Unicode fonts from unifont\*.mul files
 
 Both implementations provide methods for loading font data, measuring text, and rendering characters. ASCII fonts are bitmap-based with variable character widths, while Unicode fonts have additional complexity with separate character tables.
 
 ## Work Items
+
 1. Create a new file `font.go` in the root package.
 
 2. Define the `Font` interface that both ASCII and Unicode fonts will implement:
+
    ```go
    type Font interface {
        // GetCharacter returns the image for a specific character
        GetCharacter(c rune) (image.Image, error)
-       
+
        // GetWidth returns the width of a character in pixels
        GetWidth(c rune) (int, error)
-       
+
        // GetHeight returns the height of the font in pixels
        GetHeight() int
-       
+
        // MeasureText returns the width of the given text in pixels
        MeasureText(text string) (int, error)
-       
+
        // CreateImage renders text as an image
        CreateImage(text string) (image.Image, error)
    }
    ```
 
 3. Define the `ASCIIFont` struct:
+
    ```go
    type ASCIIFont struct {
        ID          int
@@ -45,6 +51,7 @@ Both implementations provide methods for loading font data, measuring text, and 
    ```
 
 4. Define the `UnicodeFont` struct:
+
    ```go
    type UnicodeFont struct {
        ID            int
@@ -56,6 +63,7 @@ Both implementations provide methods for loading font data, measuring text, and 
    ```
 
 5. Add methods to the SDK struct for accessing fonts:
+
    ```go
    // ASCIIFont retrieves a specific ASCII font by its ID
    func (s *SDK) ASCIIFont(id int) (Font, error) {
@@ -69,6 +77,7 @@ Both implementations provide methods for loading font data, measuring text, and 
    ```
 
 6. Implement the internal loading mechanisms:
+
    ```go
    // Internal function to load ASCII font data
    func (s *SDK) loadASCIIFont(id int) (*ASCIIFont, error) {
@@ -89,7 +98,8 @@ Both implementations provide methods for loading font data, measuring text, and 
    - Test image generation for text strings
 
 ## Key Considerations
-- ASCII fonts (fonts.mul) use a different format than Unicode fonts (unifont*.mul)
+
+- ASCII fonts (fonts.mul) use a different format than Unicode fonts (unifont\*.mul)
 - ASCII fonts cover the standard 256 ASCII characters, while Unicode fonts support a broader range
 - Font rendering should be pixel-perfect compared to the C# implementation
 - Some characters may have special handling (e.g., color codes, formatting)
@@ -100,7 +110,9 @@ Both implementations provide methods for loading font data, measuring text, and 
 - Unicode fonts are stored across multiple files and may require special handling
 
 ## Expected Output
+
 A complete implementation that allows:
+
 - Loading both ASCII and Unicode fonts
 - Retrieving individual character images and widths
 - Measuring text strings
@@ -108,6 +120,7 @@ A complete implementation that allows:
 - Convenient access through a common Font interface
 
 ## Verification
+
 - Compare rendered characters with the C# implementation to ensure visual accuracy
 - Test text measurement against known good values
 - Verify character widths match the C# implementation

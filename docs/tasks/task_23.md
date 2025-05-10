@@ -1,10 +1,13 @@
 # Task 23: Port Multis.cs & MultiHelpers.cs to multi.go
 
 ## Objective
+
 Implement support for loading and accessing multi-object data from `multi.idx` and `multi.mul` (or UOP equivalents). Multi-objects are complex structures composed of multiple items, such as houses, boats, and other large objects in Ultima Online.
 
 ## C# Reference Implementation Analysis
+
 The C# implementation consists of:
+
 - `Multis.cs` - Main class for loading multi data
 - `MultiComponentList.cs` - Represents the collection of items that make up a multi
 - `MultiMap.cs` - Special visualization of multi structures
@@ -13,9 +16,11 @@ The C# implementation consists of:
 The implementation handles loading multi definitions, which consist of lists of items with relative coordinates that compose the structure. It also provides methods for working with these structures, like calculating bounds and rendering.
 
 ## Work Items
+
 1. Create a new file `multi.go` in the root package.
 
 2. Define the `MultiItem` struct that represents a single component of a multi:
+
    ```go
    type MultiItem struct {
        ItemID   int
@@ -28,6 +33,7 @@ The implementation handles loading multi definitions, which consist of lists of 
    ```
 
 3. Define the `Multi` struct that represents a complete multi-object:
+
    ```go
    type Multi struct {
        ID       int
@@ -48,6 +54,7 @@ The implementation handles loading multi definitions, which consist of lists of 
    ```
 
 4. Add methods to the SDK struct for accessing multi data:
+
    ```go
    // Multi retrieves a specific multi by its ID
    func (s *SDK) Multi(id int) (*Multi, error) {
@@ -61,6 +68,7 @@ The implementation handles loading multi definitions, which consist of lists of 
    ```
 
 5. Implement helper functions for multi operations:
+
    ```go
    // CreateMultiImage generates a 2D representation of the multi object
    func CreateMultiImage(m *Multi, artProvider func(int) (image.Image, error)) image.Image {
@@ -69,6 +77,7 @@ The implementation handles loading multi definitions, which consist of lists of 
    ```
 
 6. Implement the internal loading mechanism:
+
    ```go
    // Internal function to load multi data
    func (s *SDK) loadMulti(id int) (*Multi, error) {
@@ -89,6 +98,7 @@ The implementation handles loading multi definitions, which consist of lists of 
    - Test handling of invalid multi IDs
 
 ## Key Considerations
+
 - Multi data should integrate with TileData for item properties
 - Multi bounds calculation is important for proper rendering and collision detection
 - The implementation should support both MUL and UOP file formats
@@ -101,7 +111,9 @@ The implementation handles loading multi definitions, which consist of lists of 
 - Housing multi objects are particularly important in UO and should be tested thoroughly
 
 ## Expected Output
+
 A complete implementation that allows:
+
 - Loading multi object data from multi.idx and multi.mul (or UOP)
 - Retrieving individual multi objects by ID
 - Accessing the component items of a multi
@@ -110,6 +122,7 @@ A complete implementation that allows:
 - Generating visual representations of multi objects
 
 ## Verification
+
 - Compare loaded multi data with the C# implementation
 - Verify item counts and positions match between implementations
 - Test bounds calculations for accuracy

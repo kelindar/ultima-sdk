@@ -1,23 +1,29 @@
 # Task 13: Port TileData.cs & TileDataHelpers.cs to tiledata.go
 
 ## Objective
+
 Implement support for loading and accessing tile data from the `tiledata.mul` file, which contains essential information about land and static item tiles in the game, including their properties, names, and flags.
 
 ## C# Reference Implementation Analysis
+
 The C# implementation consists of:
+
 - `TileData.cs` - Main class that loads and provides access to land and item tile data
 - `TileDataHelpers.cs` - Contains helper methods for working with tile flags and properties
 
 The `tiledata.mul` file contains two distinct sections:
+
 1. Land tile data - Describes terrain tiles (texture IDs, flags, names)
 2. Static item data - Describes static objects (flags, weight, quality, name, etc.)
 
 The implementation must handle both old and new tiledata formats, as the structure changed between UO clients.
 
 ## Work Items
+
 1. Create a new file `tiledata.go` in the root package.
 
 2. Define the `LandTileData` struct for land tiles:
+
    ```go
    type LandTileData struct {
        ID    int
@@ -28,6 +34,7 @@ The implementation must handle both old and new tiledata formats, as the structu
    ```
 
 3. Define the `StaticItemData` struct for static item tiles:
+
    ```go
    type StaticItemData struct {
        ID          int
@@ -45,6 +52,7 @@ The implementation must handle both old and new tiledata formats, as the structu
    ```
 
 4. Implement methods for the SDK struct to access tile data:
+
    ```go
    // LandTileData retrieves the details for a specific land tile ID
    func (s *SDK) LandTileData(id int) (*LandTileData, error) {
@@ -68,6 +76,7 @@ The implementation must handle both old and new tiledata formats, as the structu
    ```
 
 5. Implement helper functions for working with tile flags:
+
    ```go
    // Flag checking functions for land tiles
    func IsWet(flags uint64) bool { /* ... */ }
@@ -81,6 +90,7 @@ The implementation must handle both old and new tiledata formats, as the structu
    ```
 
 6. Implement the internal loading mechanism:
+
    ```go
    // Internal function to load tile data
    func (s *SDK) loadTileData() error {
@@ -97,6 +107,7 @@ The implementation must handle both old and new tiledata formats, as the structu
    - Test handling of different tiledata formats
 
 ## Key Considerations
+
 - The tiledata.mul format changed between UO clients - the implementation needs to handle both old and new formats
 - The old format uses 32-bit flags, while the new format uses 64-bit flags
 - Character encoding is typically Windows-1252, not UTF-8
@@ -106,7 +117,9 @@ The implementation must handle both old and new tiledata formats, as the structu
 - Names are stored as fixed-length null-padded strings
 
 ## Expected Output
+
 A complete implementation that allows:
+
 - Loading land tile and static item data from tiledata.mul
 - Accessing individual tile entries by ID
 - Checking tile flags and properties
@@ -114,6 +127,7 @@ A complete implementation that allows:
 - Properly handling both old and new tiledata formats
 
 ## Verification
+
 - Compare loaded tile names and properties with the C# implementation
 - Verify flag values match between implementations
 - Test with known tile IDs to ensure properties are correctly loaded
