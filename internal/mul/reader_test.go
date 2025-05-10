@@ -43,19 +43,12 @@ func TestEntryAt(t *testing.T) {
 	defer reader.Close()
 
 	// Test valid index
-	entry, err := reader.EntryAt(1) // Index 1 should exist in any art.mul
+	entry, err := reader.entryAt(1) // Index 1 should exist in any art.mul
 	assert.NoError(t, err)
 	assert.NotNil(t, entry)
 
-	// Test methods of the Entry interface
-	assert.GreaterOrEqual(t, entry.Lookup(), 0)
-	assert.GreaterOrEqual(t, entry.Length(), 0)
-	extra1, extra2 := entry.Extra()
-	assert.GreaterOrEqual(t, extra1, 0)
-	assert.Equal(t, 0, extra2) // Second value should be 0 for MUL entries
-
 	// Test out of bounds index
-	_, err = reader.EntryAt(99999999) // This index should be way out of bounds
+	_, err = reader.entryAt(99999999) // This index should be way out of bounds
 	assert.Error(t, err)
 }
 

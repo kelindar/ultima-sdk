@@ -31,28 +31,6 @@ type Entry3D struct {
 	extra  uint32 // Extra data (can be split into Extra1/Extra2)
 }
 
-// Lookup returns the offset in the file where the entry data begins
-func (e *Entry3D) Lookup() int {
-	return int(e.offset)
-}
-
-// Length returns the size of the entry data
-func (e *Entry3D) Length() int {
-	return int(e.length)
-}
-
-// Extra returns additional data associated with the entry
-// In standard MUL files, Extra is just a single value
-// We just return it as the first value and 0 as the second
-func (e *Entry3D) Extra() (int, int) {
-	return int(e.extra), 0
-}
-
-func (e *Entry3D) Zip() (int, byte) {
-	// MUL files don't use compression, so return 0 for both
-	return 0, 0
-}
-
 // MulReader provides access to MUL file data
 type MulReader struct {
 	file       *os.File     // File handle for the MUL file
@@ -153,23 +131,23 @@ func (r *MulReader) cacheIndexEntries() error {
 
 // Read reads the data for a specific entry
 func (r *MulReader) Read(index uint64) ([]byte, error) {
-	entry, err := r.EntryAt(index)
+	entry, err := r.entryAt(index)
 	switch {
 	case err != nil:
 		return nil, err
 	case entry == nil:
 		return nil, ErrInvalidEntry
-	case entry.Lookup() == -1: // Skip invalid entries (offset == 0xFFFFFFFF or length == 0)
+	case entry.offset == 0xFFFFFFFF: // Skip invalid entries (offset == 0xFFFFFFFF or length == 0)
 		return nil, nil
-	case entry.Length() == 0:
+	case entry.length == 0:
 		return nil, nil
 	}
 
-	return r.ReadAt(int64(entry.Lookup()), entry.Length())
+	return r.ReadAt(int64(entry.offset), int(entry.length))
 }
 
-// EntryAt retrieves entry information by its logical index/hash
-func (r *MulReader) EntryAt(index uint64) (*Entry3D, error) {
+// entryAt retrieves entry information by its logical index/hash
+func (r *MulReader) entryAt(index uint64) (*Entry3D, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -245,7 +223,11 @@ func (r *MulReader) Entries() iter.Seq[uint64] {
 
 		// Return entries from cache if available
 		if r.idxEntries != nil {
-			for i := range r.idxEntries {
+			for i, entry := range r.idxEntries {
+				if entry.offset == 0xFFFFFFFF || entry.length == 0 {
+					continue // skip invalid entries
+				}
+
 				if !yield(uint64(i)) {
 					return
 				}
@@ -290,7 +272,7 @@ func (r *MulReader) Close() error {
 	return nil
 }
 
-// Helper functions for reading data types from byte slices
+// ------------------------------- Reader Helper Functions ------------------------------- //
 
 // ReadByte reads a single byte from data at the specified offset
 func ReadByte(data []byte, offset int) (byte, int, error) {

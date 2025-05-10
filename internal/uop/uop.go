@@ -37,7 +37,7 @@ const (
 // Entry6D represents an entry in UOP files with 6 components including compression info
 type Entry6D struct {
 	offset uint32    // Offset where the entry data begins
-	size   uint32    // Size of the entry data (compressed)
+	length uint32    // Size of the entry data (compressed)
 	rawLen uint32    // Size after decompression
 	extra  [2]uint32 // Extra data
 	typ    byte      // Compression flag (0 = none, 1 = zlib, 2 = mythic)
@@ -188,7 +188,7 @@ func (r *Reader) parseFile() error {
 				extra2 := binary.LittleEndian.Uint32(entryData[idx+38 : idx+42])
 				r.entries[entryIdx] = Entry6D{
 					offset: uint32(offset + 8),
-					size:   uint32(encodedSize - 8),
+					length: uint32(encodedSize - 8),
 					rawLen: uint32(decodedSize),
 					extra:  [2]uint32{extra1, extra2},
 					typ:    byte(flag),
@@ -197,7 +197,7 @@ func (r *Reader) parseFile() error {
 			} else {
 				r.entries[entryIdx] = Entry6D{
 					offset: uint32(offset),
-					size:   uint32(encodedSize),
+					length: uint32(encodedSize),
 					rawLen: uint32(decodedSize),
 					extra:  [2]uint32{0x0FFFFFFF, 0x0FFFFFFF}, // we cant read it right now, but -1 and 0 makes this entry invalid
 					typ:    byte(flag),
@@ -210,6 +210,48 @@ func (r *Reader) parseFile() error {
 	}
 
 	return nil
+}
+
+// Read reads data from a specific index
+func (r *Reader) Read(index uint64) ([]byte, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	switch {
+	case index >= uint64(len(r.entries)):
+		return nil, ErrInvalidIndex
+	case r.closed:
+		return nil, ErrReaderClosed
+	}
+
+	entry := &r.entries[index]
+	if entry.length == 0 {
+		return nil, ErrEntryNotFound
+	}
+
+	return r.readAt(int64(entry.offset), int(entry.length))
+}
+
+// Entries returns an iterator over available entry indices
+func (r *Reader) Entries() iter.Seq[uint64] {
+	return func(yield func(uint64) bool) {
+		r.mu.RLock()
+		defer r.mu.RUnlock()
+
+		if r.closed {
+			return
+		}
+
+		for i, entry := range r.entries {
+			if entry.offset == 0xFFFFFFFF || entry.length == 0 {
+				continue // skip invalid entries
+			}
+
+			if !yield(uint64(i)) {
+				return
+			}
+		}
+	}
 }
 
 // Close releases resources
@@ -226,8 +268,8 @@ func (r *Reader) Close() error {
 	return r.file.Close()
 }
 
-// ReadAt reads data from a specific offset and length
-func (r *Reader) ReadAt(offset int64, length int) ([]byte, error) {
+// readAt reads data from a specific offset and length
+func (r *Reader) readAt(offset int64, length int) ([]byte, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -263,21 +305,6 @@ func (r *Reader) ReadAt(offset int64, length int) ([]byte, error) {
 	}
 
 	return data, nil
-}
-
-// GetEntryByName retrieves an entry by its file path/name
-func (r *Reader) GetEntryByName(filePath string) (uint64, error) {
-	return hashFileName(filePath), nil
-}
-
-// BuildPatternName constructs the UOP naming pattern from a filename
-func BuildPatternName(filename string) string {
-	base := filepath.Base(filename)
-	ext := filepath.Ext(base)
-	if ext != "" {
-		return base[:len(base)-len(ext)]
-	}
-	return base
 }
 
 // hashFileName calculates a hash for a filename as used in UOP files
@@ -368,45 +395,4 @@ func hashFileName(s string) uint64 {
 	}
 
 	return (uint64(esi) << 32) | uint64(eax)
-}
-
-// Read reads data from a specific index
-func (r *Reader) Read(index uint64) ([]byte, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	switch {
-	case index >= uint64(len(r.entries)):
-		return nil, ErrInvalidIndex
-	case r.closed:
-		return nil, ErrReaderClosed
-	}
-
-	entry := &r.entries[index]
-	if entry.size == 0 {
-		return nil, ErrEntryNotFound
-	}
-
-	return r.ReadAt(int64(entry.offset), int(entry.size))
-}
-
-// Entries returns an iterator over available entry indices
-func (r *Reader) Entries() iter.Seq[uint64] {
-	return func(yield func(uint64) bool) {
-		r.mu.RLock()
-		defer r.mu.RUnlock()
-
-		if r.closed {
-			return
-		}
-
-		for i, entry := range r.entries {
-			// Only yield valid entries with non-zero size
-			if entry.size > 0 {
-				if !yield(uint64(i)) {
-					return
-				}
-			}
-		}
-	}
 }
