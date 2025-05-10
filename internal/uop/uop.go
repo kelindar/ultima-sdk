@@ -9,6 +9,7 @@ import (
 	"iter"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -50,71 +51,83 @@ type Entry interface {
 
 // Entry6D represents an entry in UOP files with 6 components including compression info
 type Entry6D struct {
-	LookupOffset       uint32 // Offset where the entry data begins
-	DataLength         uint32 // Size of the entry data (compressed)
-	DecompressedLength uint32 // Size after decompression
-	ExtraInfo          uint32 // Extra data (can be split into Extra1/Extra2)
-	CompressionType    byte   // Compression flag (0 = none, 1 = zlib, 2 = mythic)
+	offset uint32    // Offset where the entry data begins
+	size   uint32    // Size of the entry data (compressed)
+	rawLen uint32    // Size after decompression
+	extra  [2]uint32 // Extra data
+	typ    byte      // Compression flag (0 = none, 1 = zlib, 2 = mythic)
 }
 
 // Implementation of the Entry interface for Entry6D
 func (e *Entry6D) Lookup() int {
-	return int(e.LookupOffset)
+	return int(e.offset)
 }
 
 func (e *Entry6D) Length() int {
-	return int(e.DataLength)
+	return int(e.size)
 }
 
 func (e *Entry6D) Extra() (int, int) {
-	// For UOP entries, ExtraInfo is typically treated as a single value
-	return int(e.ExtraInfo), 0
+	return int(e.extra[0]), int(e.extra[1])
 }
 
 func (e *Entry6D) Zip() (int, byte) {
-	return int(e.DecompressedLength), e.CompressionType
-}
-
-// ToEntry3D converts an Entry6D to a simplified Entry3D format
-func (e *Entry6D) ToEntry3D() [3]uint32 {
-	return [3]uint32{
-		e.LookupOffset,
-		e.DataLength,
-		e.ExtraInfo,
-	}
-}
-
-// FileEntry represents a single entry in a UOP file's structure
-type FileEntry struct {
-	Offset     int64  // Offset where the entry data begins in the file
-	HeaderSize int32  // Size of the entry header
-	Size       int32  // Size of the entry data (compressed)
-	SizeDecomp int32  // Size of the entry data when decompressed
-	Hash       uint64 // Hash of the entry filename
-	Adler32    uint32 // Adler32 checksum
-	Flag       int16  // Compression flag (0 = none, 1 = zlib)
+	return int(e.rawLen), e.typ
 }
 
 // Reader implements the interface for reading UOP files
 type Reader struct {
-	file        *os.File              // File handle
-	entries     map[uint64]*Entry6D   // Map of entries by logical index or hash
-	fileEntries map[uint64]*FileEntry // Map of raw file entries by hash from the file
-	mu          sync.RWMutex          // Mutex for thread safety
-	closed      bool                  // Flag to track if reader is closed
+	file      *os.File     // File handle
+	entries   []Entry6D    // Map of entries by logical index or hash
+	mu        sync.RWMutex // Mutex for thread safety
+	hasextra  bool         // Flag to indicate if extra data is present
+	length    int          // Length of the file
+	idxLength int          // Length of the index
+	ext       string       // File extension
+	closed    bool         // Flag to track if reader is closed
+}
+
+// Option defines a function that configures a Reader.
+type Option func(*Reader)
+
+// WithExtra sets a flag to indicate if extra data is present in the entries.
+func WithExtra() Option {
+	return func(r *Reader) {
+		r.hasextra = true
+	}
+}
+
+// WithExtension sets the file extension for the pattern.
+func WithExtension(ext string) Option {
+	return func(r *Reader) {
+		r.ext = ext
+	}
+}
+
+// WithIndexLength sets the length of the index.
+func WithIndexLength(length int) Option {
+	return func(r *Reader) {
+		r.idxLength = length
+	}
 }
 
 // NewReader creates a new UOP file reader
-func NewReader(filename string) (*Reader, error) {
+func NewReader(filename string, length int, options ...Option) (*Reader, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open UOP file: %w", err)
 	}
 
 	r := &Reader{
-		file:        file,
-		entries:     make(map[uint64]*Entry6D),
-		fileEntries: make(map[uint64]*FileEntry),
+		file:    file,
+		entries: make([]Entry6D, length),
+		ext:     ".dat",
+		length:  length,
+	}
+
+	// Apply any provided options
+	for _, option := range options {
+		option(r)
 	}
 
 	// Parse the UOP file structure
@@ -128,6 +141,8 @@ func NewReader(filename string) (*Reader, error) {
 
 // parseFile reads the UOP file header and builds the entry tables
 func (r *Reader) parseFile() error {
+	uopPattern := strings.ToLower(strings.ReplaceAll(filepath.Base(r.file.Name()), filepath.Ext(r.file.Name()), ""))
+
 	// Read and verify the file header
 	header := make([]byte, 28)
 	if _, err := r.file.ReadAt(header, 0); err != nil {
@@ -135,8 +150,7 @@ func (r *Reader) parseFile() error {
 	}
 
 	// Check magic number
-	magic := binary.LittleEndian.Uint32(header[0:4])
-	if magic != uopMagic {
+	if magic := binary.LittleEndian.Uint32(header[0:4]); magic != uopMagic {
 		return ErrInvalidFormat
 	}
 
@@ -146,6 +160,14 @@ func (r *Reader) parseFile() error {
 	nextBlock := int64(binary.LittleEndian.Uint64(header[12:20]))
 	// blockCapacity := binary.LittleEndian.Uint32(header[20:24])
 	// entryCount := binary.LittleEndian.Uint32(header[24:28])
+
+	// Build the pattern name
+	hashes := make(map[uint64]int, r.length)
+	for i := 0; i < r.length; i++ {
+		name := fmt.Sprintf("build/%s/%08d%s", uopPattern, i, r.ext)
+		hash := hashFileName(name)
+		hashes[hash] = i
+	}
 
 	// Prepare to read block structure
 	for nextBlock != 0 {
@@ -168,34 +190,51 @@ func (r *Reader) parseFile() error {
 
 		// Parse each entry in the block
 		for i := 0; i < fileCount; i++ {
-			offset := i * entrySize
-			fileEntry := &FileEntry{
-				Offset:     int64(binary.LittleEndian.Uint64(entryData[offset : offset+8])),
-				HeaderSize: int32(binary.LittleEndian.Uint32(entryData[offset+8 : offset+12])),
-				Size:       int32(binary.LittleEndian.Uint32(entryData[offset+12 : offset+16])),
-				SizeDecomp: int32(binary.LittleEndian.Uint32(entryData[offset+16 : offset+20])),
-				Hash:       binary.LittleEndian.Uint64(entryData[offset+20 : offset+28]),
-				Adler32:    binary.LittleEndian.Uint32(entryData[offset+28 : offset+32]),
-				Flag:       int16(binary.LittleEndian.Uint16(entryData[offset+32 : offset+34])),
-			}
+			idx := i * entrySize
+
+			offset := int64(binary.LittleEndian.Uint64(entryData[idx : idx+8]))
+			headerSize := int32(binary.LittleEndian.Uint32(entryData[idx+8 : idx+12]))
+			encodedSize := int32(binary.LittleEndian.Uint32(entryData[idx+12 : idx+16]))
+			decodedSize := int32(binary.LittleEndian.Uint32(entryData[idx+16 : idx+20]))
+			hash := binary.LittleEndian.Uint64(entryData[idx+20 : idx+28])
+			_ = binary.LittleEndian.Uint32(entryData[idx+28 : idx+32]) // data_hash (unused)
+			flag := int16(binary.LittleEndian.Uint16(entryData[idx+32 : idx+34]))
 
 			// Skip entries with offset 0 (they're placeholders)
-			if fileEntry.Offset == 0 {
+			if offset == 0 {
 				continue
 			}
 
-			// Store the entry in fileEntries map
-			r.fileEntries[fileEntry.Hash] = fileEntry
-
-			// Create and store the corresponding Entry6D
-			entry6D := &Entry6D{
-				LookupOffset:       uint32(fileEntry.Offset + int64(fileEntry.HeaderSize)),
-				DataLength:         uint32(fileEntry.Size),
-				DecompressedLength: uint32(fileEntry.SizeDecomp),
-				ExtraInfo:          0, // Could be used for extra info if needed
-				CompressionType:    byte(fileEntry.Flag),
+			entryIdx, ok := hashes[hash]
+			if !ok {
+				continue
 			}
-			r.entries[fileEntry.Hash] = entry6D
+			if entryIdx < 0 || entryIdx > r.idxLength {
+				return fmt.Errorf("hashes dictionary and files collection have different count of entries!")
+			}
+
+			offset += int64(headerSize)
+
+			if r.hasextra && flag != 0 {
+				extra1 := binary.LittleEndian.Uint32(entryData[idx+34 : idx+38])
+				extra2 := binary.LittleEndian.Uint32(entryData[idx+38 : idx+42])
+				r.entries[entryIdx] = Entry6D{
+					offset: uint32(offset + 8),
+					size:   uint32(encodedSize - 8),
+					rawLen: uint32(decodedSize),
+					extra:  [2]uint32{extra1, extra2},
+					typ:    byte(flag),
+				}
+
+			} else {
+				r.entries[entryIdx] = Entry6D{
+					offset: uint32(offset),
+					size:   uint32(encodedSize),
+					rawLen: uint32(decodedSize),
+					extra:  [2]uint32{0x0FFFFFFF, 0x0FFFFFFF}, // we cant read it right now, but -1 and 0 makes this entry invalid
+					typ:    byte(flag),
+				}
+			}
 		}
 
 		// Move to next block
@@ -216,25 +255,22 @@ func (r *Reader) Close() error {
 
 	r.closed = true
 	r.entries = nil
-	r.fileEntries = nil
 	return r.file.Close()
 }
 
-// EntryAt retrieves entry information by its hash
-func (r *Reader) EntryAt(hash uint64) (Entry, error) {
+// EntryAt retrieves entry information by its index
+func (r *Reader) EntryAt(idx uint64) (Entry, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	if r.closed {
-		return nil, ErrReaderClosed
-	}
-
-	entry, exists := r.entries[hash]
-	if !exists {
+	switch {
+	case idx >= uint64(len(r.entries)):
 		return nil, ErrInvalidIndex
+	case r.closed:
+		return nil, ErrReaderClosed
+	default:
+		return &r.entries[idx], nil
 	}
-
-	return entry, nil
 }
 
 // ReadAt reads data from a specific offset and length
@@ -296,58 +332,21 @@ func (r *Reader) Entries() iter.Seq[Entry] {
 		}
 
 		for _, entry := range r.entries {
-			if !yield(entry) {
+			if !yield(&entry) {
 				return
 			}
 		}
 	}
 }
 
-// SetupEntries builds the logical index mapping based on a pattern
-func (r *Reader) SetupEntries(pattern string, maxIndex int) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if r.closed {
-		return ErrReaderClosed
-	}
-
-	// Clear existing entries
-	r.entries = make(map[uint64]*Entry6D)
-
-	// Generate file names based on pattern and calculate hashes
-	for i := 0; i < maxIndex; i++ {
-		filename := fmt.Sprintf("build/%s/%08d.dat", pattern, i)
-		hash := HashFileName(filename)
-
-		// Find entry with this hash
-		if fileEntry, exists := r.fileEntries[hash]; exists {
-			// Create a new Entry6D
-			entry := &Entry6D{
-				LookupOffset:       uint32(fileEntry.Offset + int64(fileEntry.HeaderSize)),
-				DataLength:         uint32(fileEntry.Size),
-				DecompressedLength: uint32(fileEntry.SizeDecomp),
-				ExtraInfo:          uint32(i), // Store index as extra info
-				CompressionType:    byte(fileEntry.Flag),
-			}
-
-			// Store by hash
-			r.entries[hash] = entry
-		}
-	}
-
-	return nil
-}
-
 // GetEntryByName retrieves an entry by its file path/name
 func (r *Reader) GetEntryByName(filePath string) (Entry, error) {
-	hash := HashFileName(filePath)
-	return r.EntryAt(hash)
+	return r.EntryAt(hashFileName(filePath))
 }
 
-// HashFileName calculates a hash for a filename as used in UOP files
+// hashFileName calculates a hash for a filename as used in UOP files
 // This is a direct port of the C# algorithm
-func HashFileName(s string) uint64 {
+func hashFileName(s string) uint64 {
 	var eax, ecx, edx, ebx, esi, edi uint32
 
 	eax = 0
