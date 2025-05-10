@@ -65,21 +65,7 @@ The primary reference is `BinaryExtensions.cs`, which provides extension methods
    func ReadString(data []byte, offset, fixedLength int) (string, int, error)
    ```
 
-5. Implement iterator methods for index-based MUL files:
-
-   ```go
-   // Entries returns an iterator over all entries in the index file
-   func (r *Reader) Entries() iter.Seq[*Entry] {
-       // Implementation for iterating over entries
-   }
-
-   // EntriesWithData returns an iterator that yields both the entry and its corresponding data
-   func (r *Reader) EntriesWithData() iter.Seq2[*Entry, []byte] {
-       // Implementation for iterating over entries with their data
-   }
-   ```
-
-6. Write comprehensive unit tests in `reader_test.go`:
+5. Write comprehensive unit tests in `reader_test.go`:
    - Test initialization of the reader with various MUL files
    - Test reading data at specific offsets
    - Test accessing entries by index
