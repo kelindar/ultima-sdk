@@ -12,7 +12,7 @@ Additionally, `Helpers/MythicDecompress.cs` provides the decompression utilities
 
 ## Work Items
 
-1. Create an `internal/file` package directory.
+1. Create an `internal/uofile` package directory.
 
 2. Define Entry and Reader interfaces that abstract the differences between MUL and UOP formats:
 

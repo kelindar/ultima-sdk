@@ -80,11 +80,11 @@ type Reader struct {
 	file      *os.File     // File handle
 	entries   []Entry6D    // Map of entries by logical index or hash
 	mu        sync.RWMutex // Mutex for thread safety
-	hasextra  bool         // Flag to indicate if extra data is present
 	length    int          // Length of the file
 	idxLength int          // Length of the index
 	ext       string       // File extension
 	closed    bool         // Flag to track if reader is closed
+	hasextra  bool         // Flag to indicate if extra data is present
 }
 
 // Option defines a function that configures a Reader.

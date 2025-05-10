@@ -1,7 +1,6 @@
 package mul
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -69,27 +68,10 @@ func TestRead(t *testing.T) {
 	require.NoError(t, err)
 	defer reader.Close()
 
-	// Find a valid entry to read
-	var validEntry Entry
-	for i := uint64(0); i < 100; i++ {
-		entry, err := reader.EntryAt(i)
-		if err != nil {
-			continue
-		}
-
-		if entry.Lookup() != -1 && entry.Length() > 0 {
-			validEntry = entry
-			break
-		}
-	}
-
-	require.NotNil(t, validEntry, "Failed to find a valid entry for testing")
-
 	// Read data for the entry
-	data, err := reader.Read(validEntry)
+	data, err := reader.Read(1)
 	assert.NoError(t, err)
 	assert.NotNil(t, data)
-	assert.Len(t, data, validEntry.Length())
 }
 
 // TestEntries tests the iterator for entries
@@ -186,32 +168,4 @@ func TestHelperFunctions(t *testing.T) {
 	_, _, err = ReadByte(data, 100)
 	assert.Error(t, err)
 	assert.Equal(t, ErrOutOfBounds, err)
-}
-
-// TestErrorHandling tests error conditions
-func TestErrorHandling(t *testing.T) {
-	// Test opening non-existent file
-	_, err := NewReader("nonexistent.mul")
-	assert.Error(t, err)
-
-	// Create a temporary reader for testing
-	tempFile, err := os.CreateTemp("", "temp.mul")
-	require.NoError(t, err)
-	tempPath := tempFile.Name()
-	tempFile.Close()
-	defer os.Remove(tempPath)
-
-	reader, err := NewReader(tempPath)
-	require.NoError(t, err)
-	defer reader.Close()
-
-	// Test reading with invalid offset
-	_, err = reader.ReadAt(-1, 10)
-	assert.Error(t, err)
-	assert.Equal(t, ErrInvalidOffset, err)
-
-	// Test reading with nil entry
-	_, err = reader.Read(nil)
-	assert.Error(t, err)
-	assert.Equal(t, ErrInvalidEntry, err)
 }

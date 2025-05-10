@@ -11,31 +11,14 @@ import (
 	"sync"
 )
 
-// Entry interface defines methods to access entry information in a MUL file
-type Entry interface {
-	// Lookup returns the offset in the file where the entry data begins
-	Lookup() int
-
-	// Length returns the size of the entry data
-	Length() int
-
-	// Extra returns additional data associated with the entry (extra1, extra2)
-	Extra() (int, int)
-
-	// Zip returns the size after decompression and compression flag (0=none, 1=zlib, 2=mythic)
-	Zip() (int, byte)
-}
-
 // Reader interface defines methods for accessing MUL file data
 type Reader interface {
-	// EntryAt retrieves entry information by its logical index/hash
-	EntryAt(uint64) (Entry, error)
 
 	// Read reads data from a specific entry
-	Read(entry Entry) ([]byte, error)
+	Read(uint64) ([]byte, error)
 
 	// Entries returns an iterator over available entries
-	Entries() iter.Seq[Entry]
+	Entries() iter.Seq[uint64]
 
 	// Close releases resources
 	Close() error
@@ -168,8 +151,25 @@ func (r *MulReader) cacheIndexEntries() error {
 	return nil
 }
 
+// Read reads the data for a specific entry
+func (r *MulReader) Read(index uint64) ([]byte, error) {
+	entry, err := r.EntryAt(index)
+	switch {
+	case err != nil:
+		return nil, err
+	case entry == nil:
+		return nil, ErrInvalidEntry
+	case entry.Lookup() == -1: // Skip invalid entries (offset == 0xFFFFFFFF or length == 0)
+		return nil, nil
+	case entry.Length() == 0:
+		return nil, nil
+	}
+
+	return r.ReadAt(int64(entry.Lookup()), entry.Length())
+}
+
 // EntryAt retrieves entry information by its logical index/hash
-func (r *MulReader) EntryAt(index uint64) (Entry, error) {
+func (r *MulReader) EntryAt(index uint64) (*Entry3D, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -177,8 +177,8 @@ func (r *MulReader) EntryAt(index uint64) (Entry, error) {
 		return nil, ErrReaderClosed
 	}
 
+	// If we have cached index entries, retrieve from cache
 	if r.idxEntries != nil {
-		// If we have cached index entries, retrieve from cache
 		if int(index) < 0 || int(index) >= len(r.idxEntries) {
 			return nil, ErrInvalidIndex
 		}
@@ -233,23 +233,9 @@ func (r *MulReader) ReadAt(offset int64, length int) ([]byte, error) {
 	return data, nil
 }
 
-// Read reads the data for a specific entry
-func (r *MulReader) Read(entry Entry) ([]byte, error) {
-	if entry == nil {
-		return nil, ErrInvalidEntry
-	}
-
-	// Skip invalid entries (offset == 0xFFFFFFFF or length == 0)
-	if entry.Lookup() == -1 || entry.Length() == 0 {
-		return nil, nil
-	}
-
-	return r.ReadAt(int64(entry.Lookup()), entry.Length())
-}
-
 // Entries returns an iterator over available entries
-func (r *MulReader) Entries() iter.Seq[Entry] {
-	return func(yield func(Entry) bool) {
+func (r *MulReader) Entries() iter.Seq[uint64] {
+	return func(yield func(uint64) bool) {
 		r.mu.RLock()
 		defer r.mu.RUnlock()
 
@@ -260,7 +246,7 @@ func (r *MulReader) Entries() iter.Seq[Entry] {
 		// Return entries from cache if available
 		if r.idxEntries != nil {
 			for i := range r.idxEntries {
-				if !yield(&r.idxEntries[i]) {
+				if !yield(uint64(i)) {
 					return
 				}
 			}

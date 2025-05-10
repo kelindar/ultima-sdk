@@ -1,10 +1,6 @@
 # Go Coding Standards
 
 This document outlines the coding standards and best practices for Go projects. It's structured into, each focusing on a different aspect of Go development. The rules are designed to ensure code quality, maintainability, and performance.
-Below is the **Kelindar Go Coding Standard** in the exact format you asked for. 
-Each topic has **10 clearly‑formatted rules**, each with an example.
-
----
 
 # 1 Data Orientation & Memory Layout
 
