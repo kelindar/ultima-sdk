@@ -41,39 +41,40 @@ Key C# methods to analyze include:
    }
 
    type Reader struct {
-       file       *os.File
-       entries    map[uint64]*FileEntry
-       fileHeader FileHeader
+       // File handle
    }
    ```
 
-3. Implement methods for reading and accessing UOP files - streamlined for efficiency:
-
-   - `NewReader(filename string) (*Reader, error)` - Open and fully initialize a UOP reader (reading header and parsing entries in one step)
-   - `EntryByHash(hash uint64) (*FileEntry, error)` - Retrieve an entry by its hash
-   - `EntryByName(name string) (*FileEntry, error)` - Hash a name and retrieve the entry
-   - `Read(entry *FileEntry) ([]byte, error)` - Read raw (compressed) data for a specific entry
-   - `Close() error` - Close the file handle and clean up resources
-
-4. Implement iterator methods using Go 1.22+ `iter.Seq` for file entries:
+3. Implement methods for accessing MUL file data that complies to the following interface:
 
    ```go
-   // Entries returns an iterator over all file entries in the UOP file
-   func (r *Reader) Entries() iter.Seq[*FileEntry] {
-       // Implementation for iterating over all entries
-   }
+    // Entry3D (offset, length, extra)
+    type Entry3D = [3]uint32
 
-   // EntriesWithNames returns an iterator that yields both the entry and its name (if it can be resolved)
-   func (r *Reader) EntriesWithNames() iter.Seq2[string, *FileEntry] {
-       // Implementation for iterating over entries with names
+    type Reader interface {
+
+        // EntryAt retrieves entry information by its logical index
+        EntryAt(index int) (Entry3D, error)
+
+        // ReadAt reads data from a specific offset and length
+        ReadAt(offset int64, length int) ([]byte, error)
+
+        // ReadEntry reads the data for a specific entry
+        Read(index int) ([]byte, error)
+
+        // Entries returns an iterator over available entries
+        Entries() iter.Seq[Entry3D]
+
+        // Close releases resources
+        Close() error
    }
    ```
 
-5. Implement hash calculation functions:
+4. Implement hash calculation functions:
 
-   - `HashFileName(name string) uint64` - Calculate UOP file hash from a name
+   - `hashFileName(name string) uint64` - Calculate UOP file hash from a name
 
-6. Write comprehensive unit tests in `uop_test.go`:
+5. Write comprehensive unit tests in `uop_test.go`:
    - Test initialization and parsing of UOP files
    - Test hash calculation against known values
    - Test extracting specific entries by hash and name
