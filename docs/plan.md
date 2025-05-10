@@ -118,6 +118,3 @@ Follow these steps sequentially. Each step involves translating the correspondin
     - Define `Multi`, `MultiItem`. Implement loading for `multi.idx`, `multi.mul`.
     - Integrate `MultiHelpers.cs` logic.
     - _Sub-task: Write tests for loading multis and verifying structure._
-24. **[❌] Port General C# Helper Extensions (`internal/utils` or integrate):**
-    - Identify and port general-purpose helpers from `Helpers/Extensions.cs`.
-    - _Sub-task: Write unit tests for these helper functions._
