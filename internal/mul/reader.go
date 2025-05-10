@@ -43,25 +43,26 @@ type Reader interface {
 
 // Entry3D represents an entry in MUL index files
 type Entry3D struct {
-	LookupOffset uint32 // Offset where the entry data begins
-	DataLength   uint32 // Size of the entry data
-	ExtraInfo    uint32 // Extra data (can be split into Extra1/Extra2)
+	offset uint32 // Offset where the entry data begins
+	length uint32 // Size of the entry data
+	extra  uint32 // Extra data (can be split into Extra1/Extra2)
 }
 
-// Implementation of Entry interface methods for Entry3D
-
+// Lookup returns the offset in the file where the entry data begins
 func (e *Entry3D) Lookup() int {
-	return int(e.LookupOffset)
+	return int(e.offset)
 }
 
+// Length returns the size of the entry data
 func (e *Entry3D) Length() int {
-	return int(e.DataLength)
+	return int(e.length)
 }
 
+// Extra returns additional data associated with the entry
+// In standard MUL files, Extra is just a single value
+// We just return it as the first value and 0 as the second
 func (e *Entry3D) Extra() (int, int) {
-	// In standard MUL files, Extra is just a single value
-	// We just return it as the first value and 0 as the second
-	return int(e.ExtraInfo), 0
+	return int(e.extra), 0
 }
 
 func (e *Entry3D) Zip() (int, byte) {
@@ -159,9 +160,9 @@ func (r *MulReader) cacheIndexEntries() error {
 	// Parse entries
 	for i := 0; i < entryCount; i++ {
 		offset := i * r.entrySize
-		r.idxEntries[i].LookupOffset = binary.LittleEndian.Uint32(data[offset : offset+4])
-		r.idxEntries[i].DataLength = binary.LittleEndian.Uint32(data[offset+4 : offset+8])
-		r.idxEntries[i].ExtraInfo = binary.LittleEndian.Uint32(data[offset+8 : offset+12])
+		r.idxEntries[i].offset = binary.LittleEndian.Uint32(data[offset : offset+4])
+		r.idxEntries[i].length = binary.LittleEndian.Uint32(data[offset+4 : offset+8])
+		r.idxEntries[i].extra = binary.LittleEndian.Uint32(data[offset+8 : offset+12])
 	}
 
 	return nil
