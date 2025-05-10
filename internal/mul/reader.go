@@ -24,17 +24,13 @@ type Reader struct {
 	closed     bool         // Flag to track if reader is closed
 }
 
-// ErrReaderClosed is returned when attempting to use a closed reader
-var ErrReaderClosed = errors.New("mul reader is closed")
-
-// ErrOutOfBounds is returned when attempting to read beyond the bounds of a file
-var ErrOutOfBounds = errors.New("read operation would exceed file bounds")
-
-// ErrInvalidIndex is returned when the requested index is invalid
-var ErrInvalidIndex = errors.New("invalid index")
-
-// ErrInvalidOffset is returned when the requested offset is invalid
-var ErrInvalidOffset = errors.New("invalid offset")
+// Errors
+var (
+	ErrReaderClosed  = errors.New("mul reader is closed")
+	ErrOutOfBounds   = errors.New("read operation would exceed file bounds")
+	ErrInvalidIndex  = errors.New("invalid index")
+	ErrInvalidOffset = errors.New("invalid offset")
+)
 
 // NewReader creates and initializes a new MUL reader
 func NewReader(filename string) (*Reader, error) {

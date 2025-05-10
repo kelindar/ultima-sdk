@@ -6,18 +6,29 @@ Create a specialized package for reading MUL (Multi-User Land) file formats, whi
 
 ## C# Reference Implementation Analysis
 
-The primary reference is `BinaryExtensions.cs`, which provides extension methods for BinaryReader to facilitate reading UO-specific data types. The C# implementation relies heavily on .NET's BinaryReader and uses extension methods for additional functionality.
+The primary reference is `BinaryExtensions.cs`, which provides extension methods for BinaryReader to facilitate reading UO-specific data types. Also relevant is the `MulFileAccessor` class in `FileIndex.cs` which defines the `Entry3D` structure specific to MUL files.
 
 ## Work Items
 
 1. Create an `internal/mul` package directory.
-2. Define a `Reader` struct that provides efficient access to MUL file data:
+
+2. Define an `Entry3D` type specifically for MUL file entries:
+
+   ```go
+   // Entry3D represents an entry in MUL index files
+   type Entry3D struct{
+      Lookup  uint32 // Offset where the entry data begins
+      Length  uint32 // Size of the entry data
+      Extra   uint32 // Extra data (can be split into Extra1/Extra2)
+   }
+   ```
+
+3. Define a `Reader` struct that provides efficient access to MUL file data:
 
    ```go
    type Reader struct {
         // File handle
    }
-
 
    // NewReader creates and initializes a new MUL reader
    func NewReader(filename string) (*Reader, error) {
@@ -27,32 +38,40 @@ The primary reference is `BinaryExtensions.cs`, which provides extension methods
    }
    ```
 
-3. Implement methods for accessing MUL file data that complies to the following interface:
+4. Implement methods for accessing MUL file data that complies to the following interface:
 
    ```go
-    // Entry3D (offset, length, extra)
-    type Entry3D = [3]uint32
+    type Entry interface {
+      // Lookup returns the offset in the file where the entry data begins
+      Lookup() int
+
+      // Length returns the size of the entry data
+      Length() int
+
+      // Extra returns additional data associated with the entry (extra1, extra2)
+      Extra() (int, int)
+
+      // Zip returns the size after decompression and compression flag (0=none, 1=zlib, 2=mythic)
+      Zip() (int, byte)
+    }
 
     type Reader interface {
 
-        // EntryAt retrieves entry information by its logical index
-        EntryAt(index int) (Entry3D, error)
+        // EntryAt retrieves entry information by its logical index/hash
+        EntryAt(uint64) (Entry, error)
 
-        // ReadAt reads data from a specific offset and length
-        ReadAt(offset int64, length int) ([]byte, error)
-
-        // ReadEntry reads the data for a specific entry
-        Read(index int) ([]byte, error)
+        // Read reads data from a specific offset and length
+        Read(entry Entry) ([]byte, error)
 
         // Entries returns an iterator over available entries
-        Entries() iter.Seq[Entry3D]
+        Entries() iter.Seq[Entry]
 
         // Close releases resources
         Close() error
    }
    ```
 
-4. Implement methods for reading primitive data types from a byte slice:
+5. Implement methods for reading primitive data types from a byte slice:
 
    ```go
    // Helper methods that operate on byte slices for data parsing
@@ -65,7 +84,7 @@ The primary reference is `BinaryExtensions.cs`, which provides extension methods
    func ReadString(data []byte, offset, fixedLength int) (string, int, error)
    ```
 
-5. Write comprehensive unit tests in `reader_test.go`:
+6. Write comprehensive unit tests in `reader_test.go`:
    - Test initialization of the reader with various MUL files
    - Test reading data at specific offsets
    - Test accessing entries by index
@@ -75,6 +94,7 @@ The primary reference is `BinaryExtensions.cs`, which provides extension methods
 
 ## Key Considerations
 
+- The `Entry3D` structure matches the C# reference implementation for MUL files
 - Design the Reader to work efficiently with both standalone MUL files and MUL files with separate index files (.idx)
 - Optimize for performance by using appropriate buffer sizes and minimizing allocations
 - Use idiomatic Go error handling instead of exceptions
