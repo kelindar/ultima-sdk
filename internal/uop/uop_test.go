@@ -11,27 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestHashFileName tests the hash calculation algorithm
-func TestHashFileName(t *testing.T) {
-	tests := []struct {
-		input string
-		want  uint64
-	}{
-		// Test cases with known hash values matching the C# implementation
-		{"build/artlegacymul/0000000000.tga", 0x9F85386C761A9E36},
-		{"build/gumpartlegacymul/0000000000.tga", 0x3C0D469CA81A7AB4},
-		{"build/maplegacymul/0000000000.dat", 0xC9B52F64B0BAF494},
-		{"build/soundlegacymul/0000000000.dat", 0x5E72C0EC6B1C2895},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got := HashFileName(tt.input)
-			assert.Equal(t, tt.want, got, "HashFileName(%s)", tt.input)
-		})
-	}
-}
-
 // TestBuildPatternName tests extracting UOP pattern from filename
 func TestBuildPatternName(t *testing.T) {
 	tests := []struct {

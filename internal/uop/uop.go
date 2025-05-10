@@ -94,26 +94,27 @@ func (r *Reader) parseFile() error {
 	r.entryCount = int(entryCount)
 
 	// Prepare to read block structure
-	blockData := make([]byte, 8)
 	for nextBlock != 0 {
-		// Read block header
-		if _, err := r.file.ReadAt(blockData, nextBlock); err != nil {
+		// Read block header (filesCount + nextBlock)
+		blockHeader := make([]byte, 12)
+		if _, err := r.file.ReadAt(blockHeader, nextBlock); err != nil {
 			return fmt.Errorf("failed to read block header: %w", err)
 		}
 
 		// Get file count and next block
-		fileCount := int(binary.LittleEndian.Uint32(blockData[0:4]))
-		nextBlockOffset := int64(binary.LittleEndian.Uint64(blockData[4:12]))
+		fileCount := int(binary.LittleEndian.Uint32(blockHeader[0:4]))
+		nextBlockOffset := int64(binary.LittleEndian.Uint64(blockHeader[4:12]))
 
 		// Read file entries in this block
-		entryData := make([]byte, fileCount*34) // Each entry is 34 bytes
+		entrySize := 34 // Each entry is 34 bytes
+		entryData := make([]byte, fileCount*entrySize)
 		if _, err := r.file.ReadAt(entryData, nextBlock+12); err != nil && !errors.Is(err, io.EOF) {
 			return fmt.Errorf("failed to read file entries: %w", err)
 		}
 
 		// Parse each entry in the block
 		for i := 0; i < fileCount; i++ {
-			offset := i * 34
+			offset := i * entrySize
 			fileEntry := &FileEntry{
 				Offset:     int64(binary.LittleEndian.Uint64(entryData[offset : offset+8])),
 				HeaderSize: int32(binary.LittleEndian.Uint32(entryData[offset+8 : offset+12])),
@@ -134,9 +135,6 @@ func (r *Reader) parseFile() error {
 		}
 
 		// Move to next block
-		if nextBlockOffset == 0 {
-			break
-		}
 		nextBlock = nextBlockOffset
 	}
 
@@ -313,7 +311,7 @@ func HashFileName(s string) uint64 {
 	edi = ebx
 
 	i := 0
-	for i+12 < len(s) {
+	for i+12 <= len(s) {
 		edi += (uint32(s[i+7]) << 24) | (uint32(s[i+6]) << 16) | (uint32(s[i+5]) << 8) | uint32(s[i+4])
 		esi += (uint32(s[i+11]) << 24) | (uint32(s[i+10]) << 16) | (uint32(s[i+9]) << 8) | uint32(s[i+8])
 		edx = (uint32(s[i+3])<<24 | uint32(s[i+2])<<16 | uint32(s[i+1])<<8 | uint32(s[i])) - esi
