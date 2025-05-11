@@ -38,7 +38,7 @@ type File struct {
 	idxPath     string
 	initialized bool
 	closed      bool
-	uopOptions  []uop.Option // Options specific to UOP files
+	opts        []uop.Option // Options specific to UOP files
 	length      int          // Length parameter for the file
 	init        func() error // Function for lazy initialization
 }
@@ -56,14 +56,14 @@ func WithCount(count int) FileOption {
 // WithIndexLength sets the index length for UOP files
 func WithIndexLength(length int) FileOption {
 	return func(f *File) {
-		f.uopOptions = append(f.uopOptions, uop.WithIndexLength(length))
+		f.opts = append(f.opts, uop.WithIndexLength(length))
 	}
 }
 
 // WithExtra sets a flag to indicate if extra data is present in UOP files
 func WithExtra() FileOption {
 	return func(f *File) {
-		f.uopOptions = append(f.uopOptions, uop.WithExtra())
+		f.opts = append(f.opts, uop.WithExtra())
 	}
 }
 
@@ -107,7 +107,7 @@ func detectFormat(f *File, basePath string, fileNames []string) {
 	if uopPath != "" {
 		f.path = uopPath
 		f.init = func() error {
-			reader, err := uop.Open(uopPath, f.length, f.uopOptions...)
+			reader, err := uop.Open(uopPath, f.length, f.opts...)
 			if err != nil {
 				return fmt.Errorf("failed to create UOP reader: %w", err)
 			}
@@ -205,37 +205,13 @@ func (f *File) Read(index uint64) ([]byte, error) {
 	return f.reader.Read(index)
 }
 
-// Entries returns an iterator over available entries, including patched entries
+// Entries returns a sequence of entry indices
 func (f *File) Entries() iter.Seq[uint64] {
-	return func(yield func(uint64) bool) {
-		// Ensure reader is initialized
-		if err := f.ensureInitialized(); err != nil {
-			return
-		}
-
-		f.mu.RLock()
-		defer f.mu.RUnlock()
-
-		if f.closed {
-			return
-		}
-
-		// First collect all entries from the underlying reader
-		entries := make(map[uint64]struct{})
-
-		// Add entries from reader
-		f.reader.Entries()(func(idx uint64) bool {
-			entries[idx] = struct{}{}
-			return true
-		})
-
-		// Yield all unique entries
-		for idx := range entries {
-			if !yield(idx) {
-				return
-			}
-		}
+	if err := f.ensureInitialized(); err != nil {
+		panic(err)
 	}
+
+	return f.Entries()
 }
 
 // Close releases all resources associated with the file
@@ -254,25 +230,4 @@ func (f *File) Close() error {
 	}
 
 	return nil
-}
-
-// Path returns the file path
-func (f *File) Path() string {
-	f.mu.RLock()
-	defer f.mu.RUnlock()
-
-	return f.path
-}
-
-// IndexPath returns the index file path for MUL files
-func (f *File) IndexPath() string {
-	f.mu.RLock()
-	defer f.mu.RUnlock()
-
-	return f.idxPath
-}
-
-// Open tries to open and initialize the file reader
-func (f *File) Open() error {
-	return f.ensureInitialized()
 }
