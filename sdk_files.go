@@ -16,6 +16,13 @@ func (s *SDK) loadHues() (*uofile.File, error) {
 	}, 3000, uofile.WithChunkSize(708))
 }
 
+// loadRadarcol loads the radar colors file
+func (s *SDK) loadRadarcol() (*uofile.File, error) {
+	return s.load([]string{
+		"radarcol.mul",
+	}, 0, uofile.WithChunkSize(radarChunkSize))
+}
+
 // loadArt loads the art files (art.mul, artidx.mul or their UOP equivalent)
 func (s *SDK) loadArt() (*uofile.File, error) {
 	return s.load([]string{
@@ -126,13 +133,6 @@ func (s *SDK) loadUnicodeFonts() (*uofile.File, error) {
 func (s *SDK) loadCliloc(language string) (*uofile.File, error) {
 	return s.load([]string{
 		fmt.Sprintf("cliloc.%s", language),
-	}, 0, uofile.WithIndexLength(12))
-}
-
-// loadRadarcol loads the radar colors file
-func (s *SDK) loadRadarcol() (*uofile.File, error) {
-	return s.load([]string{
-		"radarcol.mul",
 	}, 0, uofile.WithIndexLength(12))
 }
 
