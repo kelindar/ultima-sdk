@@ -23,6 +23,21 @@ func (s *SDK) loadRadarcol() (*uofile.File, error) {
 	}, totalRadarColors)
 }
 
+// loadSkills loads the skills file
+func (s *SDK) loadSkills() (*uofile.File, error) {
+	return s.load([]string{
+		"skills.mul",
+		"skills.idx",
+	}, 0, uofile.WithIndexLength(16))
+}
+
+// loadSkillGroups loads the skill groups file
+func (s *SDK) loadSkillGroups() (*uofile.File, error) {
+	return s.load([]string{
+		"skillgrp.mul",
+	}, 0)
+}
+
 // loadArt loads the art files (art.mul, artidx.mul or their UOP equivalent)
 func (s *SDK) loadArt() (*uofile.File, error) {
 	return s.load([]string{
@@ -102,14 +117,6 @@ func (s *SDK) loadMulti() (*uofile.File, error) {
 func (s *SDK) loadVerdata() (*uofile.File, error) {
 	return s.load([]string{
 		"verdata.mul",
-	}, 0, uofile.WithIndexLength(12))
-}
-
-// loadSkills loads the skills file
-func (s *SDK) loadSkills() (*uofile.File, error) {
-	return s.load([]string{
-		"skills.mul",
-		"skills.idx",
 	}, 0, uofile.WithIndexLength(12))
 }
 

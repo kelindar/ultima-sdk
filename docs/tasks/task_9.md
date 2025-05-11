@@ -31,14 +31,9 @@ These files contain information about all character skills, whether they're acti
 
    ```go
    type SkillGroup struct {
-       ID    int
-       Name  string
-       skills []int // IDs of skills in this group
-   }
-
-   // Skills returns an iterator over the skills belonging to this skill group
-   func (sg *SkillGroup) Skills(sdk *SDK) iter.Seq[*Skill] {
-       // Implementation for iterating over skills in the group
+       ID     int
+       Name   string
+       Skills []int
    }
    ```
 
@@ -66,27 +61,11 @@ These files contain information about all character skills, whether they're acti
    }
    ```
 
-5. Implement the internal loading mechanisms:
-
-   ```go
-   // Internal function to load skill data
-   func (s *SDK) loadSkills() error {
-       // Implementation for loading skill data from skills.idx and skills.mul
-   }
-
-   // Internal function to load skill groups
-   func (s *SDK) loadSkillGroups() error {
-       // Implementation for loading skill group data from skillgrp.mul
-   }
-   ```
-
-6. Write comprehensive unit tests in `skill_test.go`:
+5. Write comprehensive unit tests in `skill_test.go`:
    - Test loading skill data
    - Test loading skill group data
    - Test accessing skills by ID
    - Test accessing skill groups by ID
-   - Test iterating over all skills and skill groups
-   - Test retrieving skills within a specific group
 
 ## Key Considerations
 
