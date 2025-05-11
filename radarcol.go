@@ -24,14 +24,9 @@ const (
 
 	// radarColorStaticOffset is the offset for static tile colors (0x4000)
 	radarColorStaticOffset = 0x4000
-
-	// radarChunkSize is the size of chunks to read (512 entries = 1024 bytes)
-	radarChunkSize = 512
 )
 
 // RadarColor retrieves the radar color for a given tile ID
-// If staticTileID is true, the ID is treated as a static tile ID (offsetting by 0x4000)
-// Otherwise, it's treated as a land tile ID
 func (s *SDK) RadarColor(tileID int) (uint16, error) {
 	// Validate the tile ID
 	if tileID < 0 || tileID >= radarColorEntries {
@@ -44,29 +39,27 @@ func (s *SDK) RadarColor(tileID int) (uint16, error) {
 		return 0, fmt.Errorf("failed to load radar colors: %w", err)
 	}
 
-	// Calculate chunk and offset
-	chunkIndex := tileID / radarChunkSize
-	offset := tileID % radarChunkSize
-
-	// Since we're using a chunk size that's smaller than the total file,
-	// we need to read the appropriate chunk
-	chunkData, err := file.Read(uint64(chunkIndex))
+	// Since the entire file is now a single entry, we can read it with index 0
+	// and the result will be cached automatically
+	data, err := file.Read(0)
 	if err != nil {
-		return 0, fmt.Errorf("failed to read radar color chunk: %w", err)
+		return 0, fmt.Errorf("failed to read radar color data: %w", err)
 	}
 
+	// Check if we have enough data for this tile ID
 	// Each color is 2 bytes (uint16)
-	if offset*2+2 > len(chunkData) {
-		return 0, fmt.Errorf("invalid radar color data: chunk %d too small", chunkIndex)
+	bytePos := tileID * 2
+	if bytePos+2 > len(data) {
+		return 0, fmt.Errorf("invalid radar color data: file too small for tile ID %d", tileID)
 	}
 
 	// Extract the color value (little-endian)
-	return binary.LittleEndian.Uint16(chunkData[offset*2:]), nil
+	return binary.LittleEndian.Uint16(data[bytePos:]), nil
 }
 
 // RadarColorStatic retrieves the radar color for a given static tile ID
 func (s *SDK) RadarColorStatic(tileID int) (uint16, error) {
-	// We just use the same index in the second half of the file
+	// Validate the tile ID
 	if tileID < 0 || tileID >= radarColorEntries {
 		return 0, fmt.Errorf("%w: %d (must be between 0 and 0x3FFF)", ErrInvalidRadarColorIndex, tileID)
 	}
@@ -74,29 +67,28 @@ func (s *SDK) RadarColorStatic(tileID int) (uint16, error) {
 	// Calculate the adjusted tile ID (add offset for static tiles)
 	adjustedID := tileID + radarColorStaticOffset
 
-	// Calculate chunk and offset
-	chunkIndex := adjustedID / radarChunkSize
-	offset := adjustedID % radarChunkSize
-
 	// Load the radar color file
 	file, err := s.loadRadarcol()
 	if err != nil {
 		return 0, fmt.Errorf("failed to load radar colors: %w", err)
 	}
 
-	// Read the appropriate chunk
-	chunkData, err := file.Read(uint64(chunkIndex))
+	// Since the entire file is now a single entry, we can read it with index 0
+	// and the result will be cached automatically
+	data, err := file.Read(0)
 	if err != nil {
-		return 0, fmt.Errorf("failed to read radar color chunk: %w", err)
+		return 0, fmt.Errorf("failed to read radar color data: %w", err)
 	}
 
+	// Check if we have enough data for this tile ID
 	// Each color is 2 bytes (uint16)
-	if offset*2+2 > len(chunkData) {
-		return 0, fmt.Errorf("invalid radar color data: chunk %d too small", chunkIndex)
+	bytePos := adjustedID * 2
+	if bytePos+2 > len(data) {
+		return 0, fmt.Errorf("invalid radar color data: file too small for static tile ID %d", tileID)
 	}
 
 	// Extract the color value (little-endian)
-	return binary.LittleEndian.Uint16(chunkData[offset*2:]), nil
+	return binary.LittleEndian.Uint16(data[bytePos:]), nil
 }
 
 // RadarColors returns an iterator over all defined radar color mappings
@@ -108,27 +100,25 @@ func (s *SDK) RadarColors() iter.Seq2[int, uint16] {
 			return // Can't iterate if we can't load the file
 		}
 
-		// Iterate through all possible indices
-		for i := 0; i < totalRadarColors; i++ {
-			// Calculate which chunk this index falls into
-			chunkIndex := i / radarChunkSize
-			offset := i % radarChunkSize
+		// Get the entire file data - will be cached automatically
+		data, err := file.Read(0)
+		if err != nil {
+			return // Can't iterate if we can't read the file
+		}
 
-			// Read the chunk
-			chunkData, err := file.Read(uint64(chunkIndex))
-			if err != nil {
-				continue // Skip this entry if we can't read it
-			}
+		// Calculate how many full color entries we can extract
+		// Each entry is a uint16 (2 bytes)
+		entryCount := len(data) / 2
+		if entryCount > totalRadarColors {
+			entryCount = totalRadarColors
+		}
 
-			// Make sure we have enough data
-			if offset*2+2 > len(chunkData) {
-				continue // Skip this entry if the chunk is too small
-			}
+		// Iterate over all color entries
+		for i := 0; i < entryCount; i++ {
+			// Extract color value (little-endian)
+			color := binary.LittleEndian.Uint16(data[i*2:])
 
-			// Extract the color value (little-endian)
-			color := binary.LittleEndian.Uint16(chunkData[offset*2:])
-
-			// The i value is the global index, but we want to yield the logical tile ID
+			// Calculate the logical tile ID
 			// For land tiles (i < 0x4000), the ID is just i
 			// For static tiles (i >= 0x4000), the ID is i - 0x4000
 			tileID := i
@@ -153,25 +143,22 @@ func (s *SDK) RadarColorsLand() iter.Seq2[int, uint16] {
 			return // Can't iterate if we can't load the file
 		}
 
-		// Iterate through all land tile indices (0 to 0x3FFF)
-		for i := 0; i < radarColorEntries; i++ {
-			// Calculate which chunk this index falls into
-			chunkIndex := i / radarChunkSize
-			offset := i % radarChunkSize
+		// Get the entire file data - will be cached automatically
+		data, err := file.Read(0)
+		if err != nil {
+			return // Can't iterate if we can't read the file
+		}
 
-			// Read the chunk
-			chunkData, err := file.Read(uint64(chunkIndex))
-			if err != nil {
-				continue // Skip this entry if we can't read it
-			}
+		// Calculate how many land color entries we can extract
+		entryCount := len(data) / 2
+		if entryCount > radarColorEntries {
+			entryCount = radarColorEntries
+		}
 
-			// Make sure we have enough data
-			if offset*2+2 > len(chunkData) {
-				continue // Skip this entry if the chunk is too small
-			}
-
-			// Extract the color value (little-endian)
-			color := binary.LittleEndian.Uint16(chunkData[offset*2:])
+		// Iterate over land tile entries (first half of the file)
+		for i := 0; i < entryCount; i++ {
+			// Extract color value (little-endian)
+			color := binary.LittleEndian.Uint16(data[i*2:])
 
 			// Yield the tile ID and color
 			if !yield(i, color) {
@@ -190,30 +177,33 @@ func (s *SDK) RadarColorsStatic() iter.Seq2[int, uint16] {
 			return // Can't iterate if we can't load the file
 		}
 
-		// Iterate through all static tile indices (0x4000 to 0x7FFF)
-		for i := 0; i < radarColorEntries; i++ {
-			// Calculate the adjusted tile ID (add offset for static tiles)
-			adjustedID := i + radarColorStaticOffset
+		// Get the entire file data - will be cached automatically
+		data, err := file.Read(0)
+		if err != nil {
+			return // Can't iterate if we can't read the file
+		}
 
-			// Calculate which chunk this index falls into
-			chunkIndex := adjustedID / radarChunkSize
-			offset := adjustedID % radarChunkSize
+		// Calculate how many static entries we can extract
+		entryCount := len(data) / 2
+		if entryCount <= radarColorStaticOffset {
+			return // No static entries in this file
+		}
 
-			// Read the chunk
-			chunkData, err := file.Read(uint64(chunkIndex))
-			if err != nil {
-				continue // Skip this entry if we can't read it
-			}
+		// Cap at maximum number of static entries
+		staticEntryCount := entryCount - radarColorStaticOffset
+		if staticEntryCount > radarColorEntries {
+			staticEntryCount = radarColorEntries
+		}
 
-			// Make sure we have enough data
-			if offset*2+2 > len(chunkData) {
-				continue // Skip this entry if the chunk is too small
-			}
+		// Iterate over static tile entries (second half of the file)
+		for i := 0; i < staticEntryCount; i++ {
+			// Get position in file (offset by radarColorStaticOffset)
+			pos := (i + radarColorStaticOffset) * 2
 
-			// Extract the color value (little-endian)
-			color := binary.LittleEndian.Uint16(chunkData[offset*2:])
+			// Extract color value (little-endian)
+			color := binary.LittleEndian.Uint16(data[pos:])
 
-			// Yield the tile ID and color (without the offset)
+			// Yield the tile ID and color
 			if !yield(i, color) {
 				break
 			}
