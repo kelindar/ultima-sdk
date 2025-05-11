@@ -19,7 +19,7 @@ To create an idiomatic Go library that provides the same functionality as the or
 3.  **Mark for Review:** Once a task and its tests are complete, change its status from ❌ to ❓.
 4.  **Wait for Review:** Do not proceed to the next task until the current one marked with ❓ has been manually reviewed and marked as ✅ (Done) or reverted to ❌ (Needs Rework).
 5.  **Ask for Clarification:** If a task description is unclear, ambiguous, or seems too large/complex for a single step, ask for clarification before proceeding.
-6.  **Use the Test Data and `TestWith` Helper:** All unit tests that require an initialized SDK instance **must** use the provided `TestWith(t *testing.T, testFn func(*testing.T, *SDK))` helper function located in `testing.go`. This function ensures the SDK is correctly initialized with the test data from `d:\Workspace\Go\src\github.com\kelindar\ultima-sdk-testdata\`. This is crucial for verifying the correctness of the ported code by comparing outputs or behavior with the C# reference.
+6.  **Use the Test Data and `runWith` Helper:** All unit tests that require an initialized SDK instance **must** use the provided `runWith(t, func(sdk *SDK) ` helper function located in `sdk_test.go`. This function ensures the SDK is correctly initialized with the test data from `d:\Workspace\Go\src\github.com\kelindar\ultima-sdk-testdata\`. This is crucial for verifying the correctness of the ported code by comparing outputs or behavior with the C# reference.
 
 ## Porting Instructions & Checklist
 

@@ -17,27 +17,15 @@ func (s *SDK) loadArt() (*uofile.File, error) {
 	return s.load([]string{
 		"artLegacyMUL.uop",
 		"art.mul",
+		"artidx.mul",
 	}, 0x10000, uofile.WithIndexLength(12)) // Art has 0x10000 (65536) entries
 }
 
-// loadArtIdx loads the art index file
-func (s *SDK) loadArtIdx() (*uofile.File, error) {
-	return s.load([]string{
-		"artidx.mul",
-	}, 0x10000, uofile.WithIndexLength(12))
-}
-
 // loadGumpart loads the gump files (gumpart.mul or UOP equivalent)
-func (s *SDK) loadGumpart() (*uofile.File, error) {
+func (s *SDK) loadGump() (*uofile.File, error) {
 	return s.load([]string{
 		"gumpartLegacyMUL.uop",
 		"gumpart.mul",
-	}, 0xFFFF, uofile.WithIndexLength(12)) // Gumps have 0xFFFF (65535) entries maximum
-}
-
-// loadGumpIdx loads the gump index file
-func (s *SDK) loadGumpIdx() (*uofile.File, error) {
-	return s.load([]string{
 		"gumpidx.mul",
 	}, 0xFFFF, uofile.WithIndexLength(12))
 }
@@ -54,12 +42,6 @@ func (s *SDK) loadMap(mapID int) (*uofile.File, error) {
 func (s *SDK) loadStatics(mapID int) (*uofile.File, error) {
 	return s.load([]string{
 		fmt.Sprintf("statics%d.mul", mapID),
-	}, 0, uofile.WithIndexLength(12))
-}
-
-// loadStaIdx loads the statics index files for a specific map ID
-func (s *SDK) loadStaIdx(mapID int) (*uofile.File, error) {
-	return s.load([]string{
 		fmt.Sprintf("staidx%d.mul", mapID),
 	}, 0, uofile.WithIndexLength(12))
 }
@@ -76,12 +58,6 @@ func (s *SDK) loadSound() (*uofile.File, error) {
 	return s.load([]string{
 		"soundLegacyMUL.uop",
 		"sound.mul",
-	}, 0, uofile.WithIndexLength(12))
-}
-
-// loadSoundIdx loads the sound index file
-func (s *SDK) loadSoundIdx() (*uofile.File, error) {
-	return s.load([]string{
 		"soundidx.mul",
 	}, 0, uofile.WithIndexLength(12))
 }
@@ -93,30 +69,18 @@ func (s *SDK) loadTiledata() (*uofile.File, error) {
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// loadTexmaps loads the texture files
-func (s *SDK) loadTexmaps() (*uofile.File, error) {
+// loadTextures loads the texture files
+func (s *SDK) loadTextures() (*uofile.File, error) {
 	return s.load([]string{
 		"texmaps.mul",
-	}, 0x4000, uofile.WithIndexLength(12)) // 0x4000 (16384) entries
-}
-
-// loadTexIdx loads the texture index file
-func (s *SDK) loadTexIdx() (*uofile.File, error) {
-	return s.load([]string{
 		"texidx.mul",
 	}, 0x4000, uofile.WithIndexLength(12))
 }
 
-// loadLight loads the light files
-func (s *SDK) loadLight() (*uofile.File, error) {
+// loadLights loads the light files
+func (s *SDK) loadLights() (*uofile.File, error) {
 	return s.load([]string{
 		"light.mul",
-	}, 0, uofile.WithIndexLength(12))
-}
-
-// loadLightIdx loads the light index file
-func (s *SDK) loadLightIdx() (*uofile.File, error) {
-	return s.load([]string{
 		"lightidx.mul",
 	}, 0, uofile.WithIndexLength(12))
 }
@@ -126,12 +90,6 @@ func (s *SDK) loadMulti() (*uofile.File, error) {
 	return s.load([]string{
 		"housing.bin", // UOP format
 		"multi.mul",   // MUL format
-	}, 0, uofile.WithIndexLength(12))
-}
-
-// loadMultiIdx loads the multi index file
-func (s *SDK) loadMultiIdx() (*uofile.File, error) {
-	return s.load([]string{
 		"multi.idx",
 	}, 0, uofile.WithIndexLength(12))
 }
@@ -147,12 +105,6 @@ func (s *SDK) loadVerdata() (*uofile.File, error) {
 func (s *SDK) loadSkills() (*uofile.File, error) {
 	return s.load([]string{
 		"skills.mul",
-	}, 0, uofile.WithIndexLength(12))
-}
-
-// loadSkillsIdx loads the skills index file
-func (s *SDK) loadSkillsIdx() (*uofile.File, error) {
-	return s.load([]string{
 		"skills.idx",
 	}, 0, uofile.WithIndexLength(12))
 }
@@ -162,13 +114,6 @@ func (s *SDK) loadSkillsIdx() (*uofile.File, error) {
 func (s *SDK) loadAnim(fileType int) (*uofile.File, error) {
 	return s.load([]string{
 		fmt.Sprintf("anim%d.mul", fileType),
-	}, 0, uofile.WithIndexLength(12))
-}
-
-// loadAnimIdx loads the animation index files for a specific file type
-// fileType can be 1 for anim.idx, 2 for anim2.idx, etc.
-func (s *SDK) loadAnimIdx(fileType int) (*uofile.File, error) {
-	return s.load([]string{
 		fmt.Sprintf("anim%d.idx", fileType),
 	}, 0, uofile.WithIndexLength(12))
 }
