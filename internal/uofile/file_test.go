@@ -35,7 +35,7 @@ func TestFile_WithRealMUL(t *testing.T) {
 	defer file.Close()
 
 	// Test initialization
-	err := file.ensureInitialized()
+	err := file.open()
 	assert.NoError(t, err, "Failed to initialize with real files")
 
 	// Test reading entries

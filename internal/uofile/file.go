@@ -8,6 +8,7 @@ import (
 	"iter"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 
@@ -173,8 +174,8 @@ func detectFormat(f *File, basePath string, fileNames []string) {
 	}
 }
 
-// ensureInitialized initializes the reader if it hasn't been already
-func (f *File) ensureInitialized() error {
+// open initializes the reader if it hasn't been already
+func (f *File) open() error {
 	switch {
 	case f.state.Load() == stateReady:
 		return nil
@@ -190,6 +191,8 @@ func (f *File) ensureInitialized() error {
 			f.state.Store(stateNew)
 			return fmt.Errorf("failed to initialize file %s: %w", f.path, err)
 		}
+	} else {
+		runtime.Gosched()
 	}
 
 	return nil
@@ -197,8 +200,13 @@ func (f *File) ensureInitialized() error {
 
 // Read reads data from a specific entry, applying any patches if available
 func (f *File) Read(index uint64) ([]byte, error) {
-	if err := f.ensureInitialized(); err != nil {
+	if err := f.open(); err != nil {
 		return nil, err
+	}
+
+	// Double-check reader is not nil after initialization
+	if f.reader == nil {
+		return nil, fmt.Errorf("reader not initialized for %s", f.path)
 	}
 
 	return f.reader.Read(index)
@@ -206,7 +214,7 @@ func (f *File) Read(index uint64) ([]byte, error) {
 
 // Entries returns a sequence of entry indices
 func (f *File) Entries() iter.Seq[uint64] {
-	if err := f.ensureInitialized(); err != nil {
+	if err := f.open(); err != nil {
 		panic(err)
 	}
 
