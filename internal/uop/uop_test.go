@@ -29,7 +29,7 @@ func TestNewReader(t *testing.T) {
 	t.Logf("Testing with UOP file: %s", testUOP)
 
 	// Test file opening
-	reader, err := NewReader(testUOP, 10)
+	reader, err := Open(testUOP, 10)
 	require.NoError(t, err, "Failed to create reader")
 	require.NotNil(t, reader, "Reader should not be nil")
 
@@ -40,7 +40,7 @@ func TestNewReader(t *testing.T) {
 func TestEntryOperations(t *testing.T) {
 	testUOP := filepath.Join(uotest.Path(), "artLegacyMUL.uop")
 
-	reader, err := NewReader(testUOP, 0x14000, WithExtension(".tga"), WithIndexLength(0x13FDC))
+	reader, err := Open(testUOP, 0x14000, WithExtension(".tga"), WithIndexLength(0x13FDC))
 	require.NoError(t, err)
 	defer reader.Close()
 
@@ -89,7 +89,7 @@ func TestReaderInterface(t *testing.T) {
 	testUOP := uopFiles[0]
 
 	// Create a reader
-	reader, err := NewReader(testUOP, 10)
+	reader, err := Open(testUOP, 10)
 	require.NoError(t, err)
 	defer reader.Close()
 

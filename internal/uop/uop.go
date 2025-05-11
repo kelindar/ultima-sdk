@@ -79,8 +79,8 @@ func WithIndexLength(length int) Option {
 	}
 }
 
-// NewReader creates a new UOP file reader
-func NewReader(filename string, length int, options ...Option) (*Reader, error) {
+// Open creates a new UOP file reader
+func Open(filename string, length int, options ...Option) (*Reader, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open UOP file: %w", err)

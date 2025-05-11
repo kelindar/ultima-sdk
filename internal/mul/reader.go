@@ -50,8 +50,8 @@ var (
 	ErrInvalidEntry  = errors.New("invalid entry")
 )
 
-// NewReader creates and initializes a new MUL reader
-func NewReader(filename string) (*MulReader, error) {
+// Open creates and initializes a new MUL reader
+func Open(filename string) (*MulReader, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open MUL file: %w", err)
@@ -63,8 +63,8 @@ func NewReader(filename string) (*MulReader, error) {
 	}, nil
 }
 
-// NewReaderWithIndex creates a new MUL reader with a separate index file
-func NewReaderWithIndex(mulFilename, idxFilename string) (*MulReader, error) {
+// OpenWithIndex creates a new MUL reader with a separate index file
+func OpenWithIndex(mulFilename, idxFilename string) (*MulReader, error) {
 	// Open MUL file
 	file, err := os.Open(mulFilename)
 	if err != nil {
