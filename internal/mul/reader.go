@@ -36,7 +36,9 @@ type MulReader struct {
 	file       *os.File     // File handle for the MUL file
 	idxFile    *os.File     // Optional index file handle
 	idxEntries []Entry3D    // Cached index entries
-	entrySize  int          // Size of each index entry (typically 12 bytes for 3 uint32s)
+	entrySize  int          // Size of each entry in the index file
+	entryCount int          // Number of entries per block (for structured files)
+	chunkSize  int          // Size of a fixed chunk to divide the file (for files with fixed-size chunks)
 	mu         sync.RWMutex // Mutex for thread safety
 	closed     bool         // Flag to track if reader is closed
 }
@@ -50,21 +52,54 @@ var (
 	ErrInvalidEntry  = errors.New("invalid entry")
 )
 
+// Option represents a configuration option for MulReader
+type Option func(*MulReader)
+
+// WithChunkSize configures the reader to handle files with fixed-size chunks
+// This is useful for files like hues.mul where data is stored in fixed-size blocks
+func WithChunkSize(chunkSize int) Option {
+	return func(r *MulReader) {
+		r.chunkSize = chunkSize
+	}
+}
+
+// WithEntrySize sets the size of each entry in the index file
+func WithEntrySize(size int) Option {
+	return func(r *MulReader) {
+		r.entrySize = size
+	}
+}
+
 // OpenOne creates and initializes a new MUL reader
-func OpenOne(filename string) (*MulReader, error) {
+func OpenOne(filename string, options ...Option) (*MulReader, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open MUL file: %w", err)
 	}
 
-	return &MulReader{
+	reader := &MulReader{
 		file:      file,
-		entrySize: 12, // Default entry size is 12 bytes (3 uint32s)
-	}, nil
+		entrySize: 12,
+	}
+
+	// Apply options
+	for _, option := range options {
+		option(reader)
+	}
+
+	// Create virtual entries for chunked files
+	if reader.chunkSize > 0 {
+		if err := reader.createChunkEntries(); err != nil {
+			reader.Close()
+			return nil, err
+		}
+	}
+
+	return reader, nil
 }
 
 // Open creates a new MUL reader with a separate index file
-func Open(mulFilename, idxFilename string) (*MulReader, error) {
+func Open(mulFilename, idxFilename string, options ...Option) (*MulReader, error) {
 	// Open MUL file
 	file, err := os.Open(mulFilename)
 	if err != nil {
@@ -82,6 +117,11 @@ func Open(mulFilename, idxFilename string) (*MulReader, error) {
 		file:      file,
 		idxFile:   idxFile,
 		entrySize: 12, // Default entry size is 12 bytes (3 uint32s)
+	}
+
+	// Apply options
+	for _, option := range options {
+		option(reader)
 	}
 
 	// Cache index entries
@@ -124,6 +164,36 @@ func (r *MulReader) cacheIndexEntries() error {
 		r.idxEntries[i].offset = binary.LittleEndian.Uint32(data[offset : offset+4])
 		r.idxEntries[i].length = binary.LittleEndian.Uint32(data[offset+4 : offset+8])
 		r.idxEntries[i].extra = binary.LittleEndian.Uint32(data[offset+8 : offset+12])
+	}
+
+	return nil
+}
+
+// createChunkEntries divides the file into fixed-size chunks and creates virtual index entries
+func (r *MulReader) createChunkEntries() error {
+	info, err := r.file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to get file stats: %w", err)
+	}
+
+	fileSize := info.Size()
+	if r.chunkSize <= 0 {
+		return fmt.Errorf("invalid chunk size: %d", r.chunkSize)
+	}
+
+	chunkCount := int(fileSize / int64(r.chunkSize))
+	if chunkCount == 0 {
+		return fmt.Errorf("file too small for chunk format")
+	}
+
+	// Create a virtual index entry for each chunk
+	r.idxEntries = make([]Entry3D, chunkCount)
+	for i := 0; i < chunkCount; i++ {
+		r.idxEntries[i] = Entry3D{
+			offset: uint32(i * r.chunkSize),
+			length: uint32(r.chunkSize),
+			extra:  0,
+		}
 	}
 
 	return nil

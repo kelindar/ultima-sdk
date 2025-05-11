@@ -77,21 +77,15 @@ func (s *SDK) HueAt(index int) (*Hue, error) {
 		return nil, fmt.Errorf("failed to load hues: %w", err)
 	}
 
-	// Calculate the block index and the offset within the block
-	blockIndex := index / 8
-	entryOffset := index % 8
-
-	// Read the block header and data
-	blockData, err := file.Read(uint64(blockIndex))
+	// Read the hue data directly - WithChunkSize option has created virtual entries
+	// that map each index to its 88-byte chunk in the file
+	entryData, err := file.Read(uint64(index))
 	if err != nil {
-		return nil, fmt.Errorf("failed to read hue block: %w", err)
+		return nil, fmt.Errorf("failed to read hue data: %w", err)
 	}
 
-	// A block has a 4-byte header followed by 8 hue entries.
-	// Each hue entry is 64 bytes (32 uint16 colors + uint16 tableStart + uint16 tableEnd + 20 bytes name)
-	// Skip the header (4 bytes) and position at the correct entry
-	entrySize := 64 // bytes
-	reader := bytes.NewReader(blockData[4+entrySize*entryOffset:])
+	// Create a reader for parsing the entry
+	reader := bytes.NewReader(entryData)
 
 	// Create a new hue and read the data
 	hue := &Hue{Index: index}

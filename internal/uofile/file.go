@@ -45,7 +45,8 @@ type File struct {
 	idxPath string
 	initFn  func() error // Function for lazy initialization
 	state   atomic.Int32 // File state (new, ready, closed)
-	opts    []uop.Option // Options specific to UOP files
+	uopOpts []uop.Option // Options specific to UOP files
+	mulOpts []mul.Option // Options specific to MUL files
 	length  int          // Length parameter for the file
 }
 
@@ -62,14 +63,22 @@ func WithCount(count int) Option {
 // WithIndexLength sets the index length for UOP files
 func WithIndexLength(length int) Option {
 	return func(f *File) {
-		f.opts = append(f.opts, uop.WithIndexLength(length))
+		f.uopOpts = append(f.uopOpts, uop.WithIndexLength(length))
 	}
 }
 
 // WithExtra sets a flag to indicate if extra data is present in UOP files
 func WithExtra() Option {
 	return func(f *File) {
-		f.opts = append(f.opts, uop.WithExtra())
+		f.uopOpts = append(f.uopOpts, uop.WithExtra())
+	}
+}
+
+// WithChunkSize configures the reader to handle files with fixed-size chunks
+// This is useful for files like hues.mul where data is stored in fixed-size blocks
+func WithChunkSize(chunkSize int) Option {
+	return func(f *File) {
+		f.mulOpts = append(f.mulOpts, mul.WithChunkSize(chunkSize))
 	}
 }
 
@@ -113,7 +122,7 @@ func detectFormat(f *File, basePath string, fileNames []string) {
 	if uopPath != "" {
 		f.path = uopPath
 		f.initFn = func() error {
-			reader, err := uop.Open(uopPath, f.length, f.opts...)
+			reader, err := uop.Open(uopPath, f.length, f.uopOpts...)
 			if err != nil {
 				return fmt.Errorf("failed to create UOP reader: %w", err)
 			}
@@ -143,10 +152,11 @@ func detectFormat(f *File, basePath string, fileNames []string) {
 		f.path = mulPath
 		f.idxPath = idxPath
 		f.initFn = func() error {
-			reader, err := mul.Open(mulPath, idxPath)
+			reader, err := mul.Open(mulPath, idxPath, f.mulOpts...)
 			if err != nil {
 				return fmt.Errorf("failed to create MUL reader: %w", err)
 			}
+
 			f.reader = reader
 			return nil
 		}
@@ -157,10 +167,11 @@ func detectFormat(f *File, basePath string, fileNames []string) {
 	if mulPath != "" {
 		f.path = mulPath
 		f.initFn = func() error {
-			reader, err := mul.OpenOne(mulPath)
+			reader, err := mul.OpenOne(mulPath, f.mulOpts...)
 			if err != nil {
 				return fmt.Errorf("failed to create MUL reader without index: %w", err)
 			}
+
 			f.reader = reader
 			return nil
 		}

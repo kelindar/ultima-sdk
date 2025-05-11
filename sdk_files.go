@@ -48,9 +48,15 @@ func (s *SDK) loadStatics(mapID int) (*uofile.File, error) {
 
 // loadHues loads the hues file
 func (s *SDK) loadHues() (*uofile.File, error) {
+	// Each hue entry in hues.mul is exactly 88 bytes
+	// structure:
+	// - 32 colors (uint16) = 64 bytes
+	// - TableStart (uint16) = 2 bytes
+	// - TableEnd (uint16) = 2 bytes
+	// - Name (20 bytes) = 20 bytes
 	return s.load([]string{
 		"hues.mul",
-	}, 3000, uofile.WithIndexLength(12)) // 3000 hue entries
+	}, 3000, uofile.WithChunkSize(88))
 }
 
 // loadSound loads the sound files

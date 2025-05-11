@@ -188,12 +188,12 @@ func TestFile_Options(t *testing.T) {
 
 	// Test WithIndexLength option
 	file2 := New(tempDir, fileNames, 0, WithIndexLength(500))
-	assert.Len(t, file2.opts, 1) // Should have one option
+	assert.Len(t, file2.uopOpts, 1) // Should have one option
 	file2.Close()
 
 	// Test WithExtra option
 	file3 := New(tempDir, fileNames, 0, WithExtra())
-	assert.Len(t, file3.opts, 1) // Should have one option
+	assert.Len(t, file3.uopOpts, 1) // Should have one option
 	file3.Close()
 
 	// Test multiple options together
@@ -202,7 +202,7 @@ func TestFile_Options(t *testing.T) {
 		WithIndexLength(500),
 		WithExtra())
 	assert.Equal(t, 1000, file4.length)
-	assert.Len(t, file4.opts, 2) // Should have two options
+	assert.Len(t, file4.uopOpts, 2) // Should have two options
 	file4.Close()
 }
 
