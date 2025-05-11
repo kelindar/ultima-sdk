@@ -1,4 +1,4 @@
-# Task 6: Implement Top-Level File Accessors (files.go)
+# Task 6: Implement Top-Level File Accessors
 
 ## Objective
 

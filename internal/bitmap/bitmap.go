@@ -67,13 +67,9 @@ func argb1555Model(c color.Color) color.Color {
 
 // ARGB1555 is an in-memory image whose pixels are ARGB1555Color values.
 type ARGB1555 struct {
-	// Pix holds the image's pixels, as ARGB1555 (uint16) values stored in big-endian format.
-	// The pixel at (x, y) starts at Pix[(y-Rect.Min.Y)*Stride + (x-Rect.Min.X)*2].
-	Pix []byte
-	// Stride is the Pix stride (in bytes) between vertically adjacent pixels.
-	Stride int
-	// Rect is the image's bounds.
-	Rect image.Rectangle
+	Pix    []byte          // Pix holds the image's pixels, as ARGB1555 (uint16) values stored in big-endian format.
+	Stride int             // Stride is the Pix stride (in bytes) between vertically adjacent pixels.
+	Rect   image.Rectangle // Rect is the image's bounds.
 }
 
 // NewARGB1555 returns a new ARGB1555 image with the given bounds.
@@ -105,6 +101,7 @@ func (p *ARGB1555) At(x, y int) color.Color {
 	// Calculate the byte offset for the pixel (x, y)
 	// Each pixel is 2 bytes (uint16)
 	offset := (y-p.Rect.Min.Y)*p.Stride + (x-p.Rect.Min.X)*2
+
 	// Read the 16 bits (2 bytes) in little-endian format
 	// UO files use little-endian for 16-bit colors.
 	pixelValue := uint16(p.Pix[offset]) | uint16(p.Pix[offset+1])<<8
@@ -124,6 +121,7 @@ func (p *ARGB1555) Set(x, y int, c color.Color) {
 	}
 	offset := p.PixOffset(x, y)
 	colorARGB1555 := ARGB1555Model.Convert(c).(ARGB1555Color)
+
 	// Write the 16 bits (2 bytes) in little-endian format
 	p.Pix[offset] = byte(colorARGB1555)
 	p.Pix[offset+1] = byte(colorARGB1555 >> 8)
@@ -133,7 +131,6 @@ func (p *ARGB1555) Set(x, y int, c color.Color) {
 // through r. The returned value shares pixels with the original image.
 func (p *ARGB1555) SubImage(r image.Rectangle) image.Image {
 	r = r.Intersect(p.Rect)
-	// If r does not overlap p.Rect, return an empty image
 	if r.Empty() {
 		return &ARGB1555{}
 	}
@@ -151,11 +148,10 @@ func (p *ARGB1555) Opaque() bool {
 	if p.Rect.Empty() {
 		return true
 	}
+
 	for y := p.Rect.Min.Y; y < p.Rect.Max.Y; y++ {
 		offset := p.PixOffset(p.Rect.Min.X, y)
-		// Check 2 bytes at a time
 		for x := 0; x < p.Rect.Dx(); x++ {
-			// Check the high byte's high bit (alpha bit)
 			if p.Pix[offset+1]&0x80 == 0 {
 				return false
 			}
