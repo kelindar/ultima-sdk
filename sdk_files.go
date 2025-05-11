@@ -20,7 +20,7 @@ func (s *SDK) loadHues() (*uofile.File, error) {
 func (s *SDK) loadRadarcol() (*uofile.File, error) {
 	return s.load([]string{
 		"radarcol.mul",
-	}, 0, uofile.WithChunkSize(radarChunkSize))
+	}, totalRadarColors)
 }
 
 // loadArt loads the art files (art.mul, artidx.mul or their UOP equivalent)

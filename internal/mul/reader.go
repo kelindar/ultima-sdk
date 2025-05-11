@@ -72,6 +72,12 @@ func WithEntrySize(size int) Option {
 
 // OpenOne creates and initializes a new MUL reader
 func OpenOne(filename string, options ...Option) (*MulReader, error) {
+	info, err := os.Stat(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get file stats: %w", err)
+	}
+
+	// Open the file
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open MUL file: %w", err)
@@ -88,11 +94,18 @@ func OpenOne(filename string, options ...Option) (*MulReader, error) {
 	}
 
 	// Create virtual entries for chunked files
-	if reader.chunkSize > 0 {
+	switch {
+	case reader.chunkSize > 0:
 		if err := reader.createChunkEntries(); err != nil {
 			reader.Close()
 			return nil, err
 		}
+	default:
+		reader.idxEntries = []Entry3D{{
+			offset: 0,
+			length: uint32(info.Size()),
+			extra:  0,
+		}}
 	}
 
 	return reader, nil
