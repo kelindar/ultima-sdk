@@ -77,15 +77,35 @@ func (s *SDK) HueAt(index int) (*Hue, error) {
 		return nil, fmt.Errorf("failed to load hues: %w", err)
 	}
 
-	// Read the hue data directly - WithChunkSize option has created virtual entries
-	// that map each index to its 88-byte chunk in the file
-	entryData, err := file.Read(uint64(index))
+	// With the chunk size set to 708 bytes, we need to calculate which block and which
+	// entry within the block contains our hue
+	blockIndex := index / 8
+	entryIndex := index % 8
+
+	// Each block contains 8 hues and starts with a 4-byte header
+	// Each hue entry is (708 - 4) / 8 = 88 bytes:
+	// - 32 colors * 2 bytes = 64 bytes
+	// - TableStart (2 bytes)
+	// - TableEnd (2 bytes)
+	// - Name (20 bytes)
+
+	// Read the entire block
+	blockData, err := file.Read(uint64(blockIndex))
 	if err != nil {
-		return nil, fmt.Errorf("failed to read hue data: %w", err)
+		return nil, fmt.Errorf("failed to read hue block: %w", err)
 	}
 
-	// Create a reader for parsing the entry
-	reader := bytes.NewReader(entryData)
+	// Skip the 4-byte header and go to the correct entry
+	entrySize := 88 // bytes
+	entryOffset := 4 + (entryIndex * entrySize)
+
+	// Create a reader for the entry
+	if entryOffset+entrySize > len(blockData) {
+		return nil, fmt.Errorf("invalid hue data: block %d too small, expected at least %d bytes but got %d",
+			blockIndex, entryOffset+entrySize, len(blockData))
+	}
+
+	reader := bytes.NewReader(blockData[entryOffset:])
 
 	// Create a new hue and read the data
 	hue := &Hue{Index: index}

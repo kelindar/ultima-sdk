@@ -92,7 +92,7 @@ func TestHue_Image(t *testing.T) {
 func TestSDK_HueAt(t *testing.T) {
 	runWith(t, func(sdk *SDK) {
 		// Test retrieving a hue at index 0
-		hue, err := sdk.HueAt(0)
+		hue, err := sdk.HueAt(1337)
 		require.NoError(t, err)
 		assert.Equal(t, 0, hue.Index)
 		assert.NotEmpty(t, hue.Name)

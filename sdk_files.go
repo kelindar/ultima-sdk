@@ -9,8 +9,12 @@ import (
 // cacheKey represents a string key for caching files
 type cacheKey string
 
-// Common file accessor methods for various UO file types
-// These methods follow the pattern of the C# Files class but as methods on the SDK struct
+// loadHues loads the hues file
+func (s *SDK) loadHues() (*uofile.File, error) {
+	return s.load([]string{
+		"hues.mul",
+	}, 3000, uofile.WithChunkSize(708))
+}
 
 // loadArt loads the art files (art.mul, artidx.mul or their UOP equivalent)
 func (s *SDK) loadArt() (*uofile.File, error) {
@@ -44,19 +48,6 @@ func (s *SDK) loadStatics(mapID int) (*uofile.File, error) {
 		fmt.Sprintf("statics%d.mul", mapID),
 		fmt.Sprintf("staidx%d.mul", mapID),
 	}, 0, uofile.WithIndexLength(12))
-}
-
-// loadHues loads the hues file
-func (s *SDK) loadHues() (*uofile.File, error) {
-	// Each hue entry in hues.mul is exactly 88 bytes
-	// structure:
-	// - 32 colors (uint16) = 64 bytes
-	// - TableStart (uint16) = 2 bytes
-	// - TableEnd (uint16) = 2 bytes
-	// - Name (20 bytes) = 20 bytes
-	return s.load([]string{
-		"hues.mul",
-	}, 3000, uofile.WithChunkSize(88))
 }
 
 // loadSound loads the sound files
