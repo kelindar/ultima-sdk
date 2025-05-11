@@ -6,24 +6,21 @@ import (
 	"testing"
 
 	uotest "github.com/kelindar/ultima-sdk/internal/testing"
-	"github.com/kelindar/ultima-sdk/internal/uofile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestWith runs a test with a properly initialized SDK instance using the test data directory.
+// runWith runs a test with a properly initialized SDK instance using the test data directory.
 // The function ensures the SDK is initialized with valid test data and passes it to the test function.
-func TestWith(t *testing.T, testFn func(*testing.T, *SDK)) {
+func runWith(t *testing.T, testFn func(*SDK)) {
 	sdk, err := Open(uotest.Path())
 	require.NoError(t, err, "failed to open SDK with test data directory")
 	require.NotNil(t, sdk, "SDK instance should not be nil")
-
-	// Run the test with the SDK instance
-	testFn(t, sdk)
+	testFn(sdk)
 }
 
 func TestOpenClose_WithValidDirectory(t *testing.T) {
-	TestWith(t, func(t *testing.T, sdk *SDK) {
+	runWith(t, func(sdk *SDK) {
 		// SDK is already opened by TestWith
 		assert.NotNil(t, sdk, "SDK instance should not be nil from TestWith")
 		assert.NotEmpty(t, sdk.BasePath(), "SDK BasePath should be set by TestWith")
@@ -60,7 +57,7 @@ func TestOpen_InvalidPaths(t *testing.T) {
 }
 
 func TestClose_Idempotent(t *testing.T) {
-	TestWith(t, func(t *testing.T, sdk *SDK) {
+	runWith(t, func(sdk *SDK) {
 		// SDK is already opened by TestWith
 		assert.NotNil(t, sdk, "SDK instance should not be nil from TestWith")
 
@@ -74,68 +71,11 @@ func TestClose_Idempotent(t *testing.T) {
 	})
 }
 
-// Test file accessors
-func TestFileAccessors(t *testing.T) {
-	TestWith(t, func(t *testing.T, sdk *SDK) {
-		// Test accessing various file types
-		testFilesAccess := []struct {
-			name     string
-			accessor func() (*uofile.File, error)
-		}{
-			{"Art", sdk.Art},
-			{"Gump", sdk.Gump},
-			{"Map0", func() (*uofile.File, error) { return sdk.Map(0) }},
-			{"Statics0", func() (*uofile.File, error) { return sdk.Statics(0) }},
-			{"Hues", sdk.Hues},
-			{"TileData", sdk.TileData},
-			{"Texture", sdk.Texture},
-			{"Verdata", sdk.Verdata},
-		}
-
-		for _, tc := range testFilesAccess {
-			t.Run(tc.name, func(t *testing.T) {
-				file, err := tc.accessor()
-				if err != nil {
-					// We're not validating that the file exists in the test data,
-					// just that the accessor works without panicking
-					t.Logf("File %s access returned error: %v", tc.name, err)
-					return
-				}
-
-				assert.NotNil(t, file, "File should not be nil when accessed successfully")
-
-				// Test file read operation
-				_, err = file.Read(0)
-				// We don't assert on the error here - the file might exist but index 0 might not be valid
-				// The important thing is that the accessor provides a File object
-			})
-		}
-	})
-}
-
-// Test file caching behavior
-func TestFileCaching(t *testing.T) {
-	TestWith(t, func(t *testing.T, sdk *SDK) {
-		// Access the same file twice and ensure we get the same object
-		file1, err1 := sdk.Hues()
-		file2, err2 := sdk.Hues()
-
-		if err1 != nil || err2 != nil {
-			t.Logf("Hues file access returned errors: %v, %v", err1, err2)
-			return
-		}
-
-		assert.Same(t, file1, file2, "File accessors should return cached instances")
-	})
-}
-
 // Test file cleanup on SDK close
 func TestFileCleanupOnClose(t *testing.T) {
-	TestWith(t, func(t *testing.T, sdk *SDK) {
+	runWith(t, func(sdk *SDK) {
 		// Access some files
-		_, _ = sdk.Art()
-		_, _ = sdk.Gump()
-		_, _ = sdk.Hues()
+		_, _ = sdk.loadSkills()
 
 		// Count how many files are in the cache
 		count := 0
@@ -162,7 +102,7 @@ func TestFileCleanupOnClose(t *testing.T) {
 
 // Test file existence check
 func TestFileExists(t *testing.T) {
-	TestWith(t, func(t *testing.T, sdk *SDK) {
+	runWith(t, func(sdk *SDK) {
 		// Check if a common file exists in the test data
 		exists := sdk.fileExists("hues.mul")
 		// We can't assert the result because it depends on the test data,

@@ -9,151 +9,195 @@ import (
 // cacheKey represents a string key for caching files
 type cacheKey string
 
-// Art loads the art files (art.mul, artidx.mul or their UOP equivalent)
-func (s *SDK) Art() (*uofile.File, error) {
+// Common file accessor methods for various UO file types
+// These methods follow the pattern of the C# Files class but as methods on the SDK struct
+
+// loadArt loads the art files (art.mul, artidx.mul or their UOP equivalent)
+func (s *SDK) loadArt() (*uofile.File, error) {
 	return s.load([]string{
 		"artLegacyMUL.uop",
 		"art.mul",
 	}, 0x10000, uofile.WithIndexLength(12)) // Art has 0x10000 (65536) entries
 }
 
-// Gump loads the gump files (gumpart.mul, gumpidx.mul or their UOP equivalent)
-func (s *SDK) Gump() (*uofile.File, error) {
+// loadArtIdx loads the art index file
+func (s *SDK) loadArtIdx() (*uofile.File, error) {
+	return s.load([]string{
+		"artidx.mul",
+	}, 0x10000, uofile.WithIndexLength(12))
+}
+
+// loadGumpart loads the gump files (gumpart.mul or UOP equivalent)
+func (s *SDK) loadGumpart() (*uofile.File, error) {
 	return s.load([]string{
 		"gumpartLegacyMUL.uop",
 		"gumpart.mul",
 	}, 0xFFFF, uofile.WithIndexLength(12)) // Gumps have 0xFFFF (65535) entries maximum
 }
 
-// Map loads a specific map file (mapX.mul, where X is the map ID)
-func (s *SDK) Map(mapID int) (*uofile.File, error) {
+// loadGumpIdx loads the gump index file
+func (s *SDK) loadGumpIdx() (*uofile.File, error) {
+	return s.load([]string{
+		"gumpidx.mul",
+	}, 0xFFFF, uofile.WithIndexLength(12))
+}
+
+// loadMap loads a specific map file (mapX.mul, where X is the map ID)
+func (s *SDK) loadMap(mapID int) (*uofile.File, error) {
 	return s.load([]string{
 		fmt.Sprintf("map%dLegacyMUL.uop", mapID),
 		fmt.Sprintf("map%d.mul", mapID),
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// Statics loads the statics files for a specific map ID
-func (s *SDK) Statics(mapID int) (*uofile.File, error) {
-	// Statics files come in pairs: statics*.mul and staidx*.mul
+// loadStatics loads the statics files for a specific map ID
+func (s *SDK) loadStatics(mapID int) (*uofile.File, error) {
 	return s.load([]string{
 		fmt.Sprintf("statics%d.mul", mapID),
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// StaticsIndex loads the statics index files for a specific map ID
-func (s *SDK) StaticsIndex(mapID int) (*uofile.File, error) {
+// loadStaIdx loads the statics index files for a specific map ID
+func (s *SDK) loadStaIdx(mapID int) (*uofile.File, error) {
 	return s.load([]string{
 		fmt.Sprintf("staidx%d.mul", mapID),
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// Hues loads the hues file
-func (s *SDK) Hues() (*uofile.File, error) {
+// loadHues loads the hues file
+func (s *SDK) loadHues() (*uofile.File, error) {
 	return s.load([]string{
 		"hues.mul",
 	}, 3000, uofile.WithIndexLength(12)) // 3000 hue entries
 }
 
-// Sound loads the sound files
-func (s *SDK) Sound() (*uofile.File, error) {
+// loadSound loads the sound files
+func (s *SDK) loadSound() (*uofile.File, error) {
 	return s.load([]string{
 		"soundLegacyMUL.uop",
 		"sound.mul",
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// SoundIndex loads the sound index file
-func (s *SDK) SoundIndex() (*uofile.File, error) {
+// loadSoundIdx loads the sound index file
+func (s *SDK) loadSoundIdx() (*uofile.File, error) {
 	return s.load([]string{
 		"soundidx.mul",
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// TileData loads the tiledata file
-func (s *SDK) TileData() (*uofile.File, error) {
+// loadTiledata loads the tiledata file
+func (s *SDK) loadTiledata() (*uofile.File, error) {
 	return s.load([]string{
 		"tiledata.mul",
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// Texture loads the texture files
-func (s *SDK) Texture() (*uofile.File, error) {
+// loadTexmaps loads the texture files
+func (s *SDK) loadTexmaps() (*uofile.File, error) {
 	return s.load([]string{
 		"texmaps.mul",
 	}, 0x4000, uofile.WithIndexLength(12)) // 0x4000 (16384) entries
 }
 
-// TextureIndex loads the texture index file
-func (s *SDK) TextureIndex() (*uofile.File, error) {
+// loadTexIdx loads the texture index file
+func (s *SDK) loadTexIdx() (*uofile.File, error) {
 	return s.load([]string{
 		"texidx.mul",
 	}, 0x4000, uofile.WithIndexLength(12))
 }
 
-// Light loads the light files
-func (s *SDK) Light() (*uofile.File, error) {
+// loadLight loads the light files
+func (s *SDK) loadLight() (*uofile.File, error) {
 	return s.load([]string{
 		"light.mul",
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// LightIndex loads the light index file
-func (s *SDK) LightIndex() (*uofile.File, error) {
+// loadLightIdx loads the light index file
+func (s *SDK) loadLightIdx() (*uofile.File, error) {
 	return s.load([]string{
 		"lightidx.mul",
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// Multi loads the multi files
-func (s *SDK) Multi() (*uofile.File, error) {
+// loadMulti loads the multi files
+func (s *SDK) loadMulti() (*uofile.File, error) {
 	return s.load([]string{
 		"housing.bin", // UOP format
 		"multi.mul",   // MUL format
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// MultiIndex loads the multi index file
-func (s *SDK) MultiIndex() (*uofile.File, error) {
+// loadMultiIdx loads the multi index file
+func (s *SDK) loadMultiIdx() (*uofile.File, error) {
 	return s.load([]string{
 		"multi.idx",
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// Verdata loads the verdata file which contains patches
-func (s *SDK) Verdata() (*uofile.File, error) {
+// loadVerdata loads the verdata file which contains patches
+func (s *SDK) loadVerdata() (*uofile.File, error) {
 	return s.load([]string{
 		"verdata.mul",
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// Skills loads the skills file
-func (s *SDK) Skills() (*uofile.File, error) {
+// loadSkills loads the skills file
+func (s *SDK) loadSkills() (*uofile.File, error) {
 	return s.load([]string{
 		"skills.mul",
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// SkillsIndex loads the skills index file
-func (s *SDK) SkillsIndex() (*uofile.File, error) {
+// loadSkillsIdx loads the skills index file
+func (s *SDK) loadSkillsIdx() (*uofile.File, error) {
 	return s.load([]string{
 		"skills.idx",
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// Animation loads the animation files for a specific file type
+// loadAnim loads the animation files for a specific file type
 // fileType can be 1 for anim.mul, 2 for anim2.mul, etc.
-func (s *SDK) Animation(fileType int) (*uofile.File, error) {
+func (s *SDK) loadAnim(fileType int) (*uofile.File, error) {
 	return s.load([]string{
 		fmt.Sprintf("anim%d.mul", fileType),
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// AnimationIndex loads the animation index files for a specific file type
+// loadAnimIdx loads the animation index files for a specific file type
 // fileType can be 1 for anim.idx, 2 for anim2.idx, etc.
-func (s *SDK) AnimationIndex(fileType int) (*uofile.File, error) {
+func (s *SDK) loadAnimIdx(fileType int) (*uofile.File, error) {
 	return s.load([]string{
 		fmt.Sprintf("anim%d.idx", fileType),
+	}, 0, uofile.WithIndexLength(12))
+}
+
+// loadUnicodeFonts loads the Unicode fonts file
+func (s *SDK) loadUnicodeFonts() (*uofile.File, error) {
+	return s.load([]string{
+		"fonts.mul",
+	}, 0, uofile.WithIndexLength(12))
+}
+
+// loadCliloc loads the client localization file for a specific language
+func (s *SDK) loadCliloc(language string) (*uofile.File, error) {
+	return s.load([]string{
+		fmt.Sprintf("cliloc.%s", language),
+	}, 0, uofile.WithIndexLength(12))
+}
+
+// loadRadarcol loads the radar colors file
+func (s *SDK) loadRadarcol() (*uofile.File, error) {
+	return s.load([]string{
+		"radarcol.mul",
+	}, 0, uofile.WithIndexLength(12))
+}
+
+// loadSpeech loads the speech file
+func (s *SDK) loadSpeech() (*uofile.File, error) {
+	return s.load([]string{
+		"speech.mul",
 	}, 0, uofile.WithIndexLength(12))
 }
 
