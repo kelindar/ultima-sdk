@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"codeberg.org/go-mmap/mmap"
 )
@@ -24,6 +23,7 @@ var (
 	ErrInvalidIndex  = errors.New("invalid index")
 	ErrReaderClosed  = errors.New("uop reader is closed")
 	ErrEntryNotFound = errors.New("entry not found")
+	ErrInvalidEntry  = errors.New("invalid entry")
 )
 
 // CompressionType represents the compression method used for a UOP entry
@@ -47,15 +47,14 @@ type Entry6D struct {
 
 // Reader implements the interface for reading UOP files
 type Reader struct {
-	file      *mmap.File   // File handle
-	info      os.FileInfo  // File information
-	entries   []Entry6D    // Map of entries by logical index or hash
-	mu        sync.RWMutex // Mutex for thread safety
-	length    int          // Length of the file
-	idxLength int          // Length of the index
-	ext       string       // File extension
-	closed    bool         // Flag to track if reader is closed
-	hasextra  bool         // Flag to indicate if extra data is present
+	file      *mmap.File  // File handle
+	info      os.FileInfo // File information
+	entries   []Entry6D   // Map of entries by logical index or hash
+	length    int         // Length of the file
+	idxLength int         // Length of the index
+	ext       string      // File extension
+	closed    bool        // Flag to track if reader is closed
+	hasextra  bool        // Flag to indicate if extra data is present
 }
 
 // Option defines a function that configures a Reader.
@@ -221,39 +220,9 @@ func (r *Reader) parseFile() error {
 	return nil
 }
 
-// Read reads data from a specific index
-func (r *Reader) Read(index uint64) ([]byte, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	switch {
-	case index >= uint64(len(r.entries)):
-		return nil, ErrInvalidIndex
-	case r.closed:
-		return nil, ErrReaderClosed
-	}
-
-	entry := &r.entries[index]
-	if entry.length == 0 {
-		return nil, ErrEntryNotFound
-	}
-
-	// Read the raw data
-	rawData, err := r.readAt(int64(entry.offset), int(entry.length))
-	if err != nil {
-		return nil, err
-	}
-
-	// Decompress the data
-	return decode(rawData, CompressionType(entry.typ))
-}
-
 // Entries returns an iterator over available entry indices
 func (r *Reader) Entries() iter.Seq[uint64] {
 	return func(yield func(uint64) bool) {
-		r.mu.RLock()
-		defer r.mu.RUnlock()
-
 		if r.closed {
 			return
 		}
@@ -272,9 +241,6 @@ func (r *Reader) Entries() iter.Seq[uint64] {
 
 // Close releases resources
 func (r *Reader) Close() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	if r.closed {
 		return nil
 	}
@@ -284,131 +250,67 @@ func (r *Reader) Close() error {
 	return r.file.Close()
 }
 
-// readAt reads data from a specific offset and length
-func (r *Reader) readAt(offset int64, length int) ([]byte, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	if r.closed {
-		return nil, ErrReaderClosed
+// Read reads data from the file at the specified index
+func (r *Reader) Read(index uint64) (out []byte, err error) {
+	entry, err := r.entryAt(index)
+	switch {
+	case err != nil:
+		return nil, err
+	case entry == nil:
+		return nil, ErrInvalidEntry
+	case entry.offset == 0xFFFFFFFF: // Skip invalid entries (offset == 0xFFFFFFFF or length == 0)
+		return nil, nil
+	case entry.length == 0:
+		return nil, nil
 	}
 
-	// Check if the offset is valid
-	fileInfo, err := r.file.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get file stats: %w", err)
-	}
+	out = make([]byte, entry.length)
+	err = r.ReadAt(out, index)
 
-	fileSize := fileInfo.Size()
-	if offset < 0 || offset >= fileSize {
-		return nil, fmt.Errorf("offset %d is out of range for file size %d", offset, fileSize)
-	}
-
-	// Adjust length if it would read beyond the end of the file
-	if offset+int64(length) > fileSize {
-		length = int(fileSize - offset)
-	}
-
-	data := make([]byte, length)
-	n, err := r.file.ReadAt(data, offset)
-	if err != nil && !errors.Is(err, io.EOF) {
-		return nil, fmt.Errorf("failed to read data: %w", err)
-	}
-
-	// Adjust slice if we didn't read the full amount (e.g., EOF)
-	if n < length {
-		data = data[:n]
-	}
-
-	return data, nil
+	// Decompress the data
+	return decode(out, CompressionType(entry.typ))
 }
 
-// hashFileName calculates a hash for a filename as used in UOP files
-// This is a direct port of the C# algorithm
-func hashFileName(s string) uint64 {
-	var eax, ecx, edx, ebx, esi, edi uint32
-
-	eax = 0
-	ecx = 0
-	edx = 0
-	ebx = uint32(len(s)) + 0xDEADBEEF
-	esi = ebx
-	edi = ebx
-
-	i := 0
-	for i+12 <= len(s) {
-		edi += (uint32(s[i+7]) << 24) | (uint32(s[i+6]) << 16) | (uint32(s[i+5]) << 8) | uint32(s[i+4])
-		esi += (uint32(s[i+11]) << 24) | (uint32(s[i+10]) << 16) | (uint32(s[i+9]) << 8) | uint32(s[i+8])
-		edx = (uint32(s[i+3])<<24 | uint32(s[i+2])<<16 | uint32(s[i+1])<<8 | uint32(s[i])) - esi
-
-		edx = (edx + ebx) ^ (esi >> 28) ^ (esi << 4)
-		esi += edi
-		edi = (edi - edx) ^ (edx >> 26) ^ (edx << 6)
-		edx += esi
-		esi = (esi - edi) ^ (edi >> 24) ^ (edi << 8)
-		edi += edx
-		ebx = (edx - esi) ^ (esi >> 16) ^ (esi << 16)
-		esi += edi
-		edi = (edi - ebx) ^ (ebx >> 13) ^ (ebx << 19)
-		ebx += esi
-		esi = (esi - edi) ^ (edi >> 28) ^ (edi << 4)
-		edi += ebx
-
-		i += 12
+// ReadAt reads data from the file at the specified index
+func (r *Reader) ReadAt(p []byte, index uint64) error {
+	entry, err := r.entryAt(index)
+	switch {
+	case err != nil:
+		return err
+	case entry == nil:
+		return ErrInvalidEntry
+	case entry.offset == 0xFFFFFFFF: // Skip invalid entries (offset == 0xFFFFFFFF or length == 0)
+		return nil
+	case entry.length == 0:
+		return nil
 	}
 
-	if len(s)-i > 0 {
-		remLen := len(s) - i
-
-		// Process remaining bytes
-		switch remLen {
-		case 12:
-			esi += uint32(s[i+11]) << 24
-			fallthrough
-		case 11:
-			esi += uint32(s[i+10]) << 16
-			fallthrough
-		case 10:
-			esi += uint32(s[i+9]) << 8
-			fallthrough
-		case 9:
-			esi += uint32(s[i+8])
-			fallthrough
-		case 8:
-			edi += uint32(s[i+7]) << 24
-			fallthrough
-		case 7:
-			edi += uint32(s[i+6]) << 16
-			fallthrough
-		case 6:
-			edi += uint32(s[i+5]) << 8
-			fallthrough
-		case 5:
-			edi += uint32(s[i+4])
-			fallthrough
-		case 4:
-			ebx += uint32(s[i+3]) << 24
-			fallthrough
-		case 3:
-			ebx += uint32(s[i+2]) << 16
-			fallthrough
-		case 2:
-			ebx += uint32(s[i+1]) << 8
-			fallthrough
-		case 1:
-			ebx += uint32(s[i])
-		}
-
-		esi = (esi ^ edi) - ((edi >> 18) ^ (edi << 14))
-		ecx = (esi ^ ebx) - ((esi >> 21) ^ (esi << 11))
-		edi = (edi ^ ecx) - ((ecx >> 7) ^ (ecx << 25))
-		esi = (esi ^ edi) - ((edi >> 16) ^ (edi << 16))
-		edx = (esi ^ ecx) - ((esi >> 28) ^ (esi << 4))
-		edi = (edi ^ edx) - ((edx >> 18) ^ (edx << 14))
-		eax = (esi ^ edi) - ((edi >> 8) ^ (edi << 24))
-
-		return (uint64(edi) << 32) | uint64(eax)
+	// Read data from the file at the specified offset
+	_, err = r.file.ReadAt(p, int64(entry.offset))
+	if err != nil {
+		return fmt.Errorf("failed to read data at index %d: %w", index, err)
 	}
 
-	return (uint64(esi) << 32) | uint64(eax)
+	// Check if the read data exceeds the entry length
+	if len(p) > int(entry.length) {
+		return fmt.Errorf("read data exceeds entry length: %d > %d", len(p), entry.length)
+	}
+
+	// If the entry length is less than the requested size, trim the slice
+	if len(p) < int(entry.length) {
+		p = p[:entry.length]
+	}
+	return nil
+}
+
+// entryAt retrieves entry information by its logical index/hash
+func (r *Reader) entryAt(index uint64) (*Entry6D, error) {
+	switch {
+	case r.closed:
+		return nil, ErrReaderClosed
+	case r.entries == nil || int(index) < 0 || int(index) >= len(r.entries):
+		return nil, ErrInvalidIndex
+	default:
+		return &r.entries[index], nil
+	}
 }

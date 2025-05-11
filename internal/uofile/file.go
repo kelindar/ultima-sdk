@@ -34,6 +34,7 @@ var (
 // Reader defines the common interface for both MUL and UOP readers
 type Reader interface {
 	Read(index uint64) ([]byte, error)
+	ReadAt(p []byte, index uint64) error
 	Entries() iter.Seq[uint64]
 	Close() error
 }
@@ -221,6 +222,20 @@ func (f *File) Read(index uint64) ([]byte, error) {
 	}
 
 	return f.reader.Read(index)
+}
+
+// ReadAt reads data from the file at the specified index
+func (f *File) ReadAt(p []byte, index uint64) error {
+	if err := f.open(); err != nil {
+		return err
+	}
+
+	// Double-check reader is not nil after initialization
+	if f.reader == nil {
+		return fmt.Errorf("reader not initialized for %s", f.path)
+	}
+
+	return f.reader.ReadAt(p, index)
 }
 
 // Entries returns a sequence of entry indices

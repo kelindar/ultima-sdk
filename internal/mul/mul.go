@@ -10,19 +10,6 @@ import (
 	"os"
 )
 
-// Reader interface defines methods for accessing MUL file data
-type Reader interface {
-
-	// Read reads data from a specific entry
-	Read(index uint64) ([]byte, error)
-
-	// Entries returns an iterator over available entries
-	Entries() iter.Seq[uint64]
-
-	// Close releases resources
-	Close() error
-}
-
 // Entry3D represents an entry in MUL index files
 type Entry3D struct {
 	offset uint32 // Offset where the entry data begins
@@ -30,11 +17,11 @@ type Entry3D struct {
 	extra  uint32 // Extra data (can be split into Extra1/Extra2)
 }
 
-// MulReader provides access to MUL file data
-type MulReader struct {
+// Reader provides access to MUL file data
+type Reader struct {
 	file       *os.File  // File handle for the MUL file
 	idxFile    *os.File  // Optional index file handle
-	idxEntries []Entry3D // Cached index entries
+	entries    []Entry3D // Cached index entries
 	entrySize  int       // Size of each entry in the index file
 	entryCount int       // Number of entries per block (for structured files)
 	chunkSize  int       // Size of a fixed chunk to divide the file (for files with fixed-size chunks)
@@ -51,25 +38,25 @@ var (
 )
 
 // Option represents a configuration option for MulReader
-type Option func(*MulReader)
+type Option func(*Reader)
 
 // WithChunkSize configures the reader to handle files with fixed-size chunks
 // This is useful for files like hues.mul where data is stored in fixed-size blocks
 func WithChunkSize(chunkSize int) Option {
-	return func(r *MulReader) {
+	return func(r *Reader) {
 		r.chunkSize = chunkSize
 	}
 }
 
 // WithEntrySize sets the size of each entry in the index file
 func WithEntrySize(size int) Option {
-	return func(r *MulReader) {
+	return func(r *Reader) {
 		r.entrySize = size
 	}
 }
 
 // OpenOne creates and initializes a new MUL reader
-func OpenOne(filename string, options ...Option) (*MulReader, error) {
+func OpenOne(filename string, options ...Option) (*Reader, error) {
 	info, err := os.Stat(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file stats: %w", err)
@@ -81,7 +68,7 @@ func OpenOne(filename string, options ...Option) (*MulReader, error) {
 		return nil, fmt.Errorf("failed to open MUL file: %w", err)
 	}
 
-	reader := &MulReader{
+	reader := &Reader{
 		file:      file,
 		entrySize: 12,
 	}
@@ -99,7 +86,7 @@ func OpenOne(filename string, options ...Option) (*MulReader, error) {
 			return nil, err
 		}
 	default:
-		reader.idxEntries = []Entry3D{{
+		reader.entries = []Entry3D{{
 			offset: 0,
 			length: uint32(info.Size()),
 			extra:  0,
@@ -110,7 +97,7 @@ func OpenOne(filename string, options ...Option) (*MulReader, error) {
 }
 
 // Open creates a new MUL reader with a separate index file
-func Open(mulFilename, idxFilename string, options ...Option) (*MulReader, error) {
+func Open(mulFilename, idxFilename string, options ...Option) (*Reader, error) {
 	// Open MUL file
 	file, err := os.Open(mulFilename)
 	if err != nil {
@@ -124,7 +111,7 @@ func Open(mulFilename, idxFilename string, options ...Option) (*MulReader, error
 		return nil, fmt.Errorf("failed to open IDX file: %w", err)
 	}
 
-	reader := &MulReader{
+	reader := &Reader{
 		file:      file,
 		idxFile:   idxFile,
 		entrySize: 12, // Default entry size is 12 bytes (3 uint32s)
@@ -145,7 +132,7 @@ func Open(mulFilename, idxFilename string, options ...Option) (*MulReader, error
 }
 
 // cacheIndexEntries loads all index entries from the index file into memory
-func (r *MulReader) cacheIndexEntries() error {
+func (r *Reader) cacheIndexEntries() error {
 	if r.idxFile == nil {
 		return errors.New("no index file provided")
 	}
@@ -160,7 +147,7 @@ func (r *MulReader) cacheIndexEntries() error {
 	entryCount := int(fileSize) / r.entrySize
 
 	// Allocate slice for entries
-	r.idxEntries = make([]Entry3D, entryCount)
+	r.entries = make([]Entry3D, entryCount)
 
 	// Read all entries at once
 	data := make([]byte, fileSize)
@@ -172,16 +159,16 @@ func (r *MulReader) cacheIndexEntries() error {
 	// Parse entries
 	for i := 0; i < entryCount; i++ {
 		offset := i * r.entrySize
-		r.idxEntries[i].offset = binary.LittleEndian.Uint32(data[offset : offset+4])
-		r.idxEntries[i].length = binary.LittleEndian.Uint32(data[offset+4 : offset+8])
-		r.idxEntries[i].extra = binary.LittleEndian.Uint32(data[offset+8 : offset+12])
+		r.entries[i].offset = binary.LittleEndian.Uint32(data[offset : offset+4])
+		r.entries[i].length = binary.LittleEndian.Uint32(data[offset+4 : offset+8])
+		r.entries[i].extra = binary.LittleEndian.Uint32(data[offset+8 : offset+12])
 	}
 
 	return nil
 }
 
 // createChunkEntries divides the file into fixed-size chunks and creates virtual index entries
-func (r *MulReader) createChunkEntries() error {
+func (r *Reader) createChunkEntries() error {
 	info, err := r.file.Stat()
 	if err != nil {
 		return fmt.Errorf("failed to get file stats: %w", err)
@@ -198,9 +185,9 @@ func (r *MulReader) createChunkEntries() error {
 	}
 
 	// Create a virtual index entry for each chunk
-	r.idxEntries = make([]Entry3D, chunkCount)
+	r.entries = make([]Entry3D, chunkCount)
 	for i := 0; i < chunkCount; i++ {
-		r.idxEntries[i] = Entry3D{
+		r.entries[i] = Entry3D{
 			offset: uint32(i * r.chunkSize),
 			length: uint32(r.chunkSize),
 			extra:  0,
@@ -211,7 +198,7 @@ func (r *MulReader) createChunkEntries() error {
 }
 
 // Read reads data from the file at the specified index
-func (r *MulReader) Read(index uint64) (out []byte, err error) {
+func (r *Reader) Read(index uint64) (out []byte, err error) {
 	entry, err := r.entryAt(index)
 	switch {
 	case err != nil:
@@ -230,7 +217,7 @@ func (r *MulReader) Read(index uint64) (out []byte, err error) {
 }
 
 // ReadAt reads data from the file at the specified index
-func (r *MulReader) ReadAt(p []byte, index uint64) error {
+func (r *Reader) ReadAt(p []byte, index uint64) error {
 	entry, err := r.entryAt(index)
 	switch {
 	case err != nil:
@@ -263,27 +250,27 @@ func (r *MulReader) ReadAt(p []byte, index uint64) error {
 }
 
 // entryAt retrieves entry information by its logical index/hash
-func (r *MulReader) entryAt(index uint64) (*Entry3D, error) {
+func (r *Reader) entryAt(index uint64) (*Entry3D, error) {
 	switch {
 	case r.closed:
 		return nil, ErrReaderClosed
-	case r.idxEntries == nil || int(index) < 0 || int(index) >= len(r.idxEntries):
+	case r.entries == nil || int(index) < 0 || int(index) >= len(r.entries):
 		return nil, ErrInvalidIndex
 	default:
-		return &r.idxEntries[index], nil
+		return &r.entries[index], nil
 	}
 }
 
 // Entries returns an iterator over available entries
-func (r *MulReader) Entries() iter.Seq[uint64] {
+func (r *Reader) Entries() iter.Seq[uint64] {
 	return func(yield func(uint64) bool) {
 		if r.closed {
 			return
 		}
 
 		// Return entries from cache if available
-		if r.idxEntries != nil {
-			for i, entry := range r.idxEntries {
+		if r.entries != nil {
+			for i, entry := range r.entries {
 				if entry.offset == 0xFFFFFFFF || entry.length == 0 {
 					continue // skip invalid entries
 				}
@@ -298,7 +285,7 @@ func (r *MulReader) Entries() iter.Seq[uint64] {
 }
 
 // Close releases resources
-func (r *MulReader) Close() error {
+func (r *Reader) Close() error {
 	if r.closed {
 		return nil
 	}
@@ -320,7 +307,7 @@ func (r *MulReader) Close() error {
 		r.idxFile = nil
 	}
 
-	r.idxEntries = nil
+	r.entries = nil
 
 	if len(errs) > 0 {
 		return fmt.Errorf("failed to close files: %v", errs)
