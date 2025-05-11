@@ -62,9 +62,17 @@ func TestRead(t *testing.T) {
 	defer reader.Close()
 
 	// Read data for the entry
-	data, err := reader.Read(1)
+	data1, err := reader.Read(1)
 	assert.NoError(t, err)
-	assert.NotNil(t, data)
+	assert.NotNil(t, data1)
+
+	// Read data for the entry (cached)
+	data2, err := reader.Read(1)
+	assert.NoError(t, err)
+	assert.NotNil(t, data2)
+
+	// Check if the data is the same
+	assert.Equal(t, data1, data2)
 }
 
 // TestEntries tests the iterator for entries

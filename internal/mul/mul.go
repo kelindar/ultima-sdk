@@ -8,13 +8,15 @@ import (
 	"io"
 	"iter"
 	"os"
+	"sync/atomic"
 )
 
 // Entry3D represents an entry in MUL index files
 type Entry3D struct {
-	offset uint32 // Offset where the entry data begins
-	length uint32 // Size of the entry data
-	extra  uint32 // Extra data (can be split into Extra1/Extra2)
+	offset uint32       // Offset where the entry data begins
+	length uint32       // Size of the entry data
+	extra  uint32       // Extra data (can be split into Extra1/Extra2)
+	cache  atomic.Value // Cached data for the entry
 }
 
 // Reader provides access to MUL file data
@@ -211,8 +213,20 @@ func (r *Reader) Read(index uint64) (out []byte, err error) {
 		return nil, nil
 	}
 
+	// Check if the entry is cached
+	if cached := entry.cache.Load(); cached != nil {
+		return cached.([]byte), nil
+	}
+
+	// Read data from the file at the specified offset
 	out = make([]byte, entry.length)
 	err = r.ReadAt(out, index)
+
+	// Write the data to the cache
+	if err == nil {
+		entry.cache.Store(out)
+	}
+
 	return out, err
 }
 

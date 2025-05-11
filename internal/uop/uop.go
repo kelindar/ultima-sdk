@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	"codeberg.org/go-mmap/mmap"
 )
@@ -38,11 +39,12 @@ const (
 
 // Entry6D represents an entry in UOP files with 6 components including compression info
 type Entry6D struct {
-	offset uint32    // Offset where the entry data begins
-	length uint32    // Size of the entry data (compressed)
-	rawLen uint32    // Size after decompression
-	extra  [2]uint32 // Extra data
-	typ    byte      // Compression flag (0 = none, 1 = zlib, 2 = mythic)
+	offset uint32       // Offset where the entry data begins
+	length uint32       // Size of the entry data (compressed)
+	rawLen uint32       // Size after decompression
+	extra  [2]uint32    // Extra data
+	typ    byte         // Compression flag (0 = none, 1 = zlib, 2 = mythic)
+	cache  atomic.Value // Cached data for the entry
 }
 
 // Reader implements the interface for reading UOP files
@@ -264,11 +266,22 @@ func (r *Reader) Read(index uint64) (out []byte, err error) {
 		return nil, nil
 	}
 
+	// Check if the entry is cached
+	if cached := entry.cache.Load(); cached != nil {
+		return cached.([]byte), nil
+	}
+
+	// Read data from the file at the specified offset
 	out = make([]byte, entry.length)
 	err = r.ReadAt(out, index)
 
-	// Decompress the data
-	return decode(out, CompressionType(entry.typ))
+	// Decompress the data, write it to the cache if needed
+	dec, err := decode(out, CompressionType(entry.typ))
+	if err == nil {
+		entry.cache.Store(out)
+	}
+
+	return dec, err
 }
 
 // ReadAt reads data from the file at the specified index
