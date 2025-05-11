@@ -94,7 +94,7 @@ func TestSDK_HueAt(t *testing.T) {
 		// Test retrieving a hue at index 0
 		hue, err := sdk.HueAt(1337)
 		require.NoError(t, err)
-		assert.Equal(t, 0, hue.Index)
+		assert.Equal(t, 1337, hue.Index)
 		assert.NotEmpty(t, hue.Name)
 
 		// Check that the hue has valid colors
