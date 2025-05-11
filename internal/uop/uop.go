@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"codeberg.org/go-mmap/mmap"
 )
 
 // Magic number for UOP file format - "MYP\0" in ASCII
@@ -45,7 +47,8 @@ type Entry6D struct {
 
 // Reader implements the interface for reading UOP files
 type Reader struct {
-	file      *os.File     // File handle
+	file      *mmap.File   // File handle
+	info      os.FileInfo  // File information
 	entries   []Entry6D    // Map of entries by logical index or hash
 	mu        sync.RWMutex // Mutex for thread safety
 	length    int          // Length of the file
@@ -81,13 +84,19 @@ func WithIndexLength(length int) Option {
 
 // Open creates a new UOP file reader
 func Open(filename string, length int, options ...Option) (*Reader, error) {
-	file, err := os.Open(filename)
+	info, err := os.Stat(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	file, err := mmap.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open UOP file: %w", err)
 	}
 
 	r := &Reader{
 		file:    file,
+		info:    info,
 		entries: make([]Entry6D, length),
 		ext:     ".dat",
 		length:  length,
@@ -109,7 +118,7 @@ func Open(filename string, length int, options ...Option) (*Reader, error) {
 
 // parseFile reads the UOP file header and builds the entry tables
 func (r *Reader) parseFile() error {
-	uopPattern := strings.ToLower(strings.ReplaceAll(filepath.Base(r.file.Name()), filepath.Ext(r.file.Name()), ""))
+	uopPattern := strings.ToLower(strings.ReplaceAll(filepath.Base(r.info.Name()), filepath.Ext(r.info.Name()), ""))
 
 	// Read and verify the file header
 	header := make([]byte, 28)

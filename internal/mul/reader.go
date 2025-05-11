@@ -9,6 +9,8 @@ import (
 	"iter"
 	"os"
 	"sync"
+
+	"codeberg.org/go-mmap/mmap"
 )
 
 // Reader interface defines methods for accessing MUL file data
@@ -33,8 +35,8 @@ type Entry3D struct {
 
 // MulReader provides access to MUL file data
 type MulReader struct {
-	file       *os.File     // File handle for the MUL file
-	idxFile    *os.File     // Optional index file handle
+	file       *mmap.File   // File handle for the MUL file
+	idxFile    *mmap.File   // Optional index file handle
 	idxEntries []Entry3D    // Cached index entries
 	entrySize  int          // Size of each entry in the index file
 	entryCount int          // Number of entries per block (for structured files)
@@ -78,7 +80,7 @@ func OpenOne(filename string, options ...Option) (*MulReader, error) {
 	}
 
 	// Open the file
-	file, err := os.Open(filename)
+	file, err := mmap.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open MUL file: %w", err)
 	}
@@ -114,13 +116,13 @@ func OpenOne(filename string, options ...Option) (*MulReader, error) {
 // Open creates a new MUL reader with a separate index file
 func Open(mulFilename, idxFilename string, options ...Option) (*MulReader, error) {
 	// Open MUL file
-	file, err := os.Open(mulFilename)
+	file, err := mmap.Open(mulFilename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open MUL file: %w", err)
 	}
 
 	// Open IDX file
-	idxFile, err := os.Open(idxFilename)
+	idxFile, err := mmap.Open(idxFilename)
 	if err != nil {
 		file.Close() // Clean up MUL file handle if IDX file can't be opened
 		return nil, fmt.Errorf("failed to open IDX file: %w", err)
