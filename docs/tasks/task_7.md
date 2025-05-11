@@ -19,7 +19,16 @@ The format of `hues.mul` consists of blocks of data for each hue, including colo
 
 1. Create a new file `hue.go` in the root package.
 
-2. Define the `Hue` struct that represents a single hue entry:
+2. Implement the internal loading mechanism:
+
+   ```go
+   // Internal function to load hue data from hues.mul
+   func (s *SDK) loadHues() (*uofile.File, error ){
+       // should use s.load() to load the file
+   }
+   ```
+
+3. Define the `Hue` struct that represents a single hue entry:
 
    ```go
    type Hue struct {
@@ -31,7 +40,7 @@ The format of `hues.mul` consists of blocks of data for each hue, including colo
    }
    ```
 
-3. Implement methods for the `Hue` struct:
+4. Implement methods for the `Hue` struct:
 
    ```go
    // GetColor returns a standard Go color.Color for a specific entry in the hue's palette
@@ -45,7 +54,7 @@ The format of `hues.mul` consists of blocks of data for each hue, including colo
    }
    ```
 
-4. Add methods to the SDK struct for accessing hues:
+5. Add methods to the SDK struct for accessing hues:
 
    ```go
    // HueAt retrieves a specific hue by its index
@@ -56,15 +65,6 @@ The format of `hues.mul` consists of blocks of data for each hue, including colo
    // Hues returns an iterator over all available hues
    func (s *SDK) Hues() iter.Seq[*Hue] {
        // Implementation for iterating over hues
-   }
-   ```
-
-5. Implement the internal loading mechanism:
-
-   ```go
-   // Internal function to load hue data from hues.mul
-   func (s *SDK) loadHues() error {
-       // Implementation for loading hue data from file
    }
    ```
 

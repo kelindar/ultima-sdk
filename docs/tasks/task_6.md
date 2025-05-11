@@ -17,54 +17,26 @@ Additionally, the implementation handles:
 
 ## Work Items
 
-1. Integrate file path resolution and management into the `SDK` struct (in `files.go` or as part of `sdk.go`):
+1. Integrate file path resolution and management into the `SDK` struct (in `sdk_files.go` or as part of `sdk.go`):
 
    ```go
    // Add to SDK struct
    type SDK struct {
-       directory string
-       files     map[string]string
-       fileCache map[string]*internal.file.File  // Lazily loaded file handles
-       mu        sync.RWMutex  // For thread safety
+       path  string
+       files sync.Map // Lazily loaded file handles (string to *File)
    }
    ```
 
-2. Implement methods for file path resolution:
+2. Implement method for file path resolution:
 
    ```go
-   func (s *SDK) FilePath(filename string) string {
-       // Resolve a file path within the UO directory structure
-   }
-
-   func (s *SDK) FileExists(filename string) bool {
-       // Check if a file exists in the UO directory
+   func (s *SDK) load(fileNames []string, length int, options ...uofile.Option) (*uofile.File, error) {
+    // if not found in cache, open the file and cache it
    }
    ```
 
-3. Implement methods to access specific file types:
-
-   ```go
-   func (s *SDK) GetArtFile() (*internal.file.File, error) {
-       // Get access to art.mul/artidx.mul or artLegacyMul.uop
-   }
-
-   func (s *SDK) GetMapFile(mapID int) (*internal.file.File, error) {
-       // Get access to map{mapID}.mul or map{mapID}LegacyMul.uop
-   }
-
-   // Similar methods for other file types
-   ```
-
-4. Implement internal caching to avoid repeatedly opening the same files:
-
-   ```go
-   func (s *SDK) getFile(key, idxPath, mulPath, uopPath string) (*internal.file.File, error) {
-       // Check cache first, create and cache if not found
-   }
-   ```
-
-5. Write unit tests in `files_test.go`:
-   - Test resolving file paths for different file types
+3. Write unit tests in `sdk_test.go`:
+   - Test resolving file paths for different file types (use testdata as before)
    - Test file existence checks
    - Test accessing different types of game files
    - Test caching behavior
@@ -73,9 +45,6 @@ Additionally, the implementation handles:
 
 - Unlike the C# implementation which uses static methods, follow Go's idiomatic approach with methods on the SDK struct
 - Use lazy loading to avoid opening all files at initialization
-- Implement proper resource management for file handles
-- Consider thread safety for concurrent access
-- Handle fallback paths (e.g., trying UOP first then MUL)
 - Maintain a mapping of canonical file names to their actual paths
 - Keep the API clean and focused on providing access to file resources
 

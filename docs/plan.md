@@ -29,36 +29,35 @@ Follow these steps sequentially. Each step involves translating the correspondin
     - Create the root directory `ultima-sdk-go`.
     - Run `go mod init github.com/kelindar/ultima-sdk-go` (or your preferred module path).
     - Create the `internal/` subdirectory for implementation details.
-2.  **[❓] Implement `SDK` Struct and Lifecycle (`sdk.go`):**
+2.  **[✅] Implement `SDK` Struct and Lifecycle (`sdk.go`):**
     - Define `SDK` struct.
     - Implement `Open(directory string) (*SDK, error)` and `sdk.Close()` methods.
     - _Sub-task: Write basic tests for Open/Close._
     - \_Sub-task: Verify against C# `Ultima.Client` constructor and `Files.Initialize`/`Files.Dispose` patterns for resource management.
-3.  **[❌] Implement MUL File Reading Utilities (`internal/mul`):**
+3.  **[✅] Implement MUL File Reading Utilities (`internal/mul`):**
     - Create `internal/mul` package.
     - Define and expose a `Reader` struct for handling MUL file specific reading logic.
     - Port relevant functionality from `C# BinaryExtensions.cs` for reading primitive types and structures from MUL files.
     - _Sub-task: Write unit tests for `mul.Reader` methods._
     - _Sub-task: Verify against C# `BinaryReader` extensions in the context of MUL file parsing._
-4.  **[❌] Implement UOP File Handling (`internal/uop`):**
+4.  **[✅] Implement UOP File Handling (`internal/uop`):**
     - Create `internal/uop` package.
     - Define and expose a `Reader` struct for handling UOP file format parsing.
     - Port UOP file format parsing logic from `C# Helpers/UopUtils.cs`.
     - Implement functions to extract specific file entries from UOP archives (compression will be handled by `internal/file`).
     - _Sub-task: Write tests for parsing UOP files and `uop.Reader` methods._
     - _Sub-task: Verify UOP parsing logic against C# implementation._
-5.  **[❌] Implement Unified File Access Logic (`internal/file`):**
-    - Create `internal/file` package.
+5.  **[❌] Implement Unified File Access Logic (`internal/uofile`):**
+    - Create `internal/uofile` package.
     - Define a `Reader` interface that `internal/mul.Reader` and `internal/uop.Reader` will implement.
     - Define and expose a `File` struct that uses the `Reader` interface for accessing file data.
     - Port `C# FileIndex.cs` logic for representing file entries (MUL/IDX, UOP), loading index files (`*.idx`), and providing unified access through the `File` struct.
-    - Implement compression utilities (e.g., Zlib decompression from `C# Helpers/MythicDecompress.cs`) within this package (e.g., in `internal/file/compression.go`). The `File` struct will use these utilities when accessing compressed data via its `Reader`.
     - `internal/file` will depend on `internal/mul` and `internal/uop` for their respective `Reader` implementations.
     - _Sub-task: Write unit tests for `File` struct methods, index loading, and compression utilities._
     - _Sub-task: Verify against C# `FileIndex` behavior and Zlib decompression results._
-6.  **[❌] Implement Top-Level File Accessors (`files.go` or integrate into `sdk.go`):**
-    - Port C# `Files` class concept: methods on `SDK` to get access to specific game files (e.g., `sdk.Art()`) using the `File` struct from `internal/file`.
-    - _Sub-task: Write tests for correct file stream retrieval using the new `internal/file` structure._
+6.  **[❌] Implement Top-Level File Accessors (integrate into `sdk.go`):**
+    - Port C# `Files` class concept: methods on `SDK` to get access to specific game files (e.g., `sdk.Art()`) using the `File` struct from `internal/uofile`.
+    - Make sure it is done using lazy loading to avoid opening too many or unused files at once.
     - _Sub-task: Verify correct file sources (MUL/UOP) are accessed via `internal/file.File`._
 7.  **[❌] Port `Hues.cs` -> `hue.go`:**
     - Define `Hue` struct. Implement loading for `hues.mul`.
