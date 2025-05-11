@@ -8,9 +8,6 @@ import (
 	"io"
 	"iter"
 	"os"
-	"sync"
-
-	"codeberg.org/go-mmap/mmap"
 )
 
 // Reader interface defines methods for accessing MUL file data
@@ -35,14 +32,13 @@ type Entry3D struct {
 
 // MulReader provides access to MUL file data
 type MulReader struct {
-	file       *mmap.File   // File handle for the MUL file
-	idxFile    *mmap.File   // Optional index file handle
-	idxEntries []Entry3D    // Cached index entries
-	entrySize  int          // Size of each entry in the index file
-	entryCount int          // Number of entries per block (for structured files)
-	chunkSize  int          // Size of a fixed chunk to divide the file (for files with fixed-size chunks)
-	mu         sync.RWMutex // Mutex for thread safety
-	closed     bool         // Flag to track if reader is closed
+	file       *os.File  // File handle for the MUL file
+	idxFile    *os.File  // Optional index file handle
+	idxEntries []Entry3D // Cached index entries
+	entrySize  int       // Size of each entry in the index file
+	entryCount int       // Number of entries per block (for structured files)
+	chunkSize  int       // Size of a fixed chunk to divide the file (for files with fixed-size chunks)
+	closed     bool      // Flag to track if reader is closed
 }
 
 // Errors
@@ -80,7 +76,7 @@ func OpenOne(filename string, options ...Option) (*MulReader, error) {
 	}
 
 	// Open the file
-	file, err := mmap.Open(filename)
+	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open MUL file: %w", err)
 	}
@@ -116,13 +112,13 @@ func OpenOne(filename string, options ...Option) (*MulReader, error) {
 // Open creates a new MUL reader with a separate index file
 func Open(mulFilename, idxFilename string, options ...Option) (*MulReader, error) {
 	// Open MUL file
-	file, err := mmap.Open(mulFilename)
+	file, err := os.Open(mulFilename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open MUL file: %w", err)
 	}
 
 	// Open IDX file
-	idxFile, err := mmap.Open(idxFilename)
+	idxFile, err := os.Open(idxFilename)
 	if err != nil {
 		file.Close() // Clean up MUL file handle if IDX file can't be opened
 		return nil, fmt.Errorf("failed to open IDX file: %w", err)
@@ -214,8 +210,8 @@ func (r *MulReader) createChunkEntries() error {
 	return nil
 }
 
-// Read reads the data for a specific entry
-func (r *MulReader) Read(index uint64) ([]byte, error) {
+// Read reads data from the file at the specified index
+func (r *MulReader) Read(index uint64) (out []byte, err error) {
 	entry, err := r.entryAt(index)
 	switch {
 	case err != nil:
@@ -228,80 +224,59 @@ func (r *MulReader) Read(index uint64) ([]byte, error) {
 		return nil, nil
 	}
 
-	return r.ReadAt(int64(entry.offset), int(entry.length))
+	out = make([]byte, entry.length)
+	err = r.ReadAt(out, index)
+	return out, err
+}
+
+// ReadAt reads data from the file at the specified index
+func (r *MulReader) ReadAt(p []byte, index uint64) error {
+	entry, err := r.entryAt(index)
+	switch {
+	case err != nil:
+		return err
+	case entry == nil:
+		return ErrInvalidEntry
+	case entry.offset == 0xFFFFFFFF: // Skip invalid entries (offset == 0xFFFFFFFF or length == 0)
+		return nil
+	case entry.length == 0:
+		return nil
+	}
+
+	// Read data from the file at the specified offset
+	_, err = r.file.ReadAt(p, int64(entry.offset))
+	if err != nil {
+		return fmt.Errorf("failed to read data at index %d: %w", index, err)
+	}
+
+	// Check if the read data exceeds the entry length
+	if len(p) > int(entry.length) {
+		return fmt.Errorf("read data exceeds entry length: %d > %d", len(p), entry.length)
+	}
+
+	// If the entry length is less than the requested size, trim the slice
+	if len(p) < int(entry.length) {
+		p = p[:entry.length]
+	}
+
+	return nil
 }
 
 // entryAt retrieves entry information by its logical index/hash
 func (r *MulReader) entryAt(index uint64) (*Entry3D, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	if r.closed {
+	switch {
+	case r.closed:
 		return nil, ErrReaderClosed
-	}
-
-	// If we have cached index entries, retrieve from cache
-	if r.idxEntries != nil {
-		if int(index) < 0 || int(index) >= len(r.idxEntries) {
-			return nil, ErrInvalidIndex
-		}
+	case r.idxEntries == nil || int(index) < 0 || int(index) >= len(r.idxEntries):
+		return nil, ErrInvalidIndex
+	default:
 		return &r.idxEntries[index], nil
 	}
-
-	// If we don't have an index file, we can't retrieve by index
-	return nil, errors.New("index file not provided")
-}
-
-// ReadAt reads data from a specific offset and length
-func (r *MulReader) ReadAt(offset int64, length int) ([]byte, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	if r.closed {
-		return nil, ErrReaderClosed
-	}
-
-	if offset < 0 {
-		return nil, ErrInvalidOffset
-	}
-
-	// Check file size to ensure the offset is valid
-	info, err := r.file.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get file stats: %w", err)
-	}
-
-	// Check if the offset is beyond the file size
-	fileSize := info.Size()
-	if offset >= fileSize {
-		return nil, ErrOutOfBounds
-	}
-
-	// Adjust length if it would read beyond the end of the file
-	if offset+int64(length) > fileSize {
-		length = int(fileSize - offset)
-	}
-
-	data := make([]byte, length)
-	n, err := r.file.ReadAt(data, offset)
-	if err != nil && !errors.Is(err, io.EOF) {
-		return nil, fmt.Errorf("failed to read data: %w", err)
-	}
-
-	// Adjust slice if we didn't read the full amount (e.g., EOF)
-	if n < length {
-		data = data[:n]
-	}
-
-	return data, nil
 }
 
 // Entries returns an iterator over available entries
 func (r *MulReader) Entries() iter.Seq[uint64] {
 	return func(yield func(uint64) bool) {
-		r.mu.RLock()
-		defer r.mu.RUnlock()
-
 		if r.closed {
 			return
 		}
@@ -324,9 +299,6 @@ func (r *MulReader) Entries() iter.Seq[uint64] {
 
 // Close releases resources
 func (r *MulReader) Close() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	if r.closed {
 		return nil
 	}

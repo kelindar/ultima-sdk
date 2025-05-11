@@ -100,7 +100,7 @@ func TestClose(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Attempt operations after closing
-	_, err = reader.ReadAt(0, 10)
+	_, err = reader.Read(0)
 	assert.Error(t, err)
 	assert.Equal(t, ErrReaderClosed, err)
 }
