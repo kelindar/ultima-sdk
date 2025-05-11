@@ -49,25 +49,25 @@ type File struct {
 	length  int          // Length parameter for the file
 }
 
-// FileOption is a function that configures a File instance
-type FileOption func(*File)
+// Option is a function that configures a File instance
+type Option func(*File)
 
 // WithCount sets the entry count for UOP files
-func WithCount(count int) FileOption {
+func WithCount(count int) Option {
 	return func(f *File) {
 		f.length = count
 	}
 }
 
 // WithIndexLength sets the index length for UOP files
-func WithIndexLength(length int) FileOption {
+func WithIndexLength(length int) Option {
 	return func(f *File) {
 		f.opts = append(f.opts, uop.WithIndexLength(length))
 	}
 }
 
 // WithExtra sets a flag to indicate if extra data is present in UOP files
-func WithExtra() FileOption {
+func WithExtra() Option {
 	return func(f *File) {
 		f.opts = append(f.opts, uop.WithExtra())
 	}
@@ -75,7 +75,7 @@ func WithExtra() FileOption {
 
 // New creates a new File instance with automatic format detection
 // It takes a base path, file names to check for, and options
-func New(basePath string, fileNames []string, length int, options ...FileOption) *File {
+func New(basePath string, fileNames []string, length int, options ...Option) *File {
 	f := &File{
 		length: length,
 	}

@@ -3,14 +3,15 @@ package ultima
 import (
 	"fmt"
 	"os"
+	"sync"
 )
 
 // SDK represents the main entry point for accessing Ultima Online game files.
-// It holds the necessary state, such as the base path to the game files.
+// It holds the necessary state, such as the base path to the game files and
+// a cache of opened file handles.
 type SDK struct {
-	basePath string
-	// In future tasks, this struct will be expanded to include handles
-	// to indexed game files (e.g., art, map, gumps, sounds).
+	basePath string   // Path to the Ultima Online client directory
+	files    sync.Map // Lazily loaded file handles (cacheKey to *uofile.File)
 }
 
 // Open initializes a new SDK instance for the specified Ultima Online client directory.
@@ -44,11 +45,13 @@ func Open(directory string) (*SDK, error) {
 // Close releases any resources held by the SDK instance.
 // This is analogous to C#'s `Files.Dispose()` and should be called when the SDK
 // is no longer needed to free up file handles or other resources.
-// Currently, it's a placeholder as no persistent resources are held beyond the basePath.
 func (s *SDK) Close() error {
-	// In future tasks, this will close file handles and release other resources.
-	s.basePath = "" // Indicate that the SDK is "closed" by clearing its path.
-	// Add more cleanup logic here as resources are added to the SDK struct.
+	// Close all open file handles
+	s.closeAllFiles()
+
+	// Clear the base path to indicate the SDK is "closed"
+	s.basePath = ""
+
 	return nil
 }
 
