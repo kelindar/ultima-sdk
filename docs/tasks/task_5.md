@@ -8,8 +8,6 @@ Create a package that provides a unified interface for accessing both MUL and UO
 
 The primary reference is `FileIndex.cs`, which manages file access across different formats. In the C# implementation, the `FileIndex` class uses the `IFileAccessor` interface with implementations for both MUL and UOP formats. It also defines an `IEntry` interface that unifies `Entry3D` (MUL) and `Entry6D` (UOP) structures. The class also handles Verdata patches by overriding file data with patch content when applicable.
 
-Additionally, `Helpers/MythicDecompress.cs` provides the decompression utilities for UOP files using zlib.
-
 ## Work Items
 
 1. Create an `internal/uofile` package directory.
@@ -18,9 +16,9 @@ Additionally, `Helpers/MythicDecompress.cs` provides the decompression utilities
 
    ```go
    type File struct {
-       Path    string
-       Reader  Reader
        mu      sync.RWMutex  // For thread safety
+       Reader  Reader
+      // ...
    }
    ```
 
@@ -57,11 +55,10 @@ Additionally, `Helpers/MythicDecompress.cs` provides the decompression utilities
 - Consider implementing a cache for frequently accessed data
 - The File struct should be usable by higher-level components without knowledge of the underlying format
 - Ensure the adaptation between specific readers and the unified interface preserves all necessary metadata
-- Decompression should happen automatically when reading data unless specifically requested otherwise
 
 ## Expected Output
 
-A robust `file` package that provides uniform access to UO data files regardless of their format, with support for verdata patching and compression handling. The package should present a consistent interface that hides the underlying format differences while preserving all the necessary functionality of both formats.
+A robust `uofile` package that provides uniform access to UO data files regardless of their format, with support for verdata patching and compression handling. The package should present a consistent interface that hides the underlying format differences while preserving all the necessary functionality of both formats.
 
 ## Verification
 

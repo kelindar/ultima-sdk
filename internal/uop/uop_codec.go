@@ -9,7 +9,7 @@ import (
 )
 
 // decode decompresses data based on the compression flag
-func decode(data []byte, flag CompressionFlag) ([]byte, error) {
+func decode(data []byte, flag CompressionType) ([]byte, error) {
 	switch flag {
 	case CompressionNone:
 		return data, nil

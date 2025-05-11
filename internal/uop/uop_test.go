@@ -1,6 +1,8 @@
 package uop
 
 import (
+	"bytes"
+	"compress/zlib"
 	"iter"
 	"path/filepath"
 	"testing"
@@ -97,4 +99,42 @@ func TestReaderInterface(t *testing.T) {
 		Entries() iter.Seq[uint64]
 		Close() error
 	} = reader
+}
+
+// TestCompression tests the compression/decompression functionality
+func TestCompression(t *testing.T) {
+	// Test zlib compression
+	t.Run("Zlib", func(t *testing.T) {
+		originalData := []byte("This is a test for zlib compression")
+
+		// Compress the data using zlib
+		var compressedBuf bytes.Buffer
+		zlibWriter := zlib.NewWriter(&compressedBuf)
+		_, err := zlibWriter.Write(originalData)
+		require.NoError(t, err)
+		zlibWriter.Close()
+		compressedData := compressedBuf.Bytes()
+
+		// Decompress using our function
+		decompressedData, err := decodeZlib(compressedData)
+		require.NoError(t, err)
+
+		// Verify the decompressed data matches the original
+		assert.Equal(t, originalData, decompressedData)
+	})
+
+	// Test error cases
+	t.Run("Errors", func(t *testing.T) {
+		// Test invalid compression flag
+		_, err := decode([]byte("test"), CompressionType(99))
+		assert.Error(t, err)
+
+		// Test corrupted zlib data
+		_, err = decodeZlib([]byte("not zlib data"))
+		assert.Error(t, err)
+
+		// Test mythic decompression with invalid data
+		_, err = decodeMythic([]byte{0, 0, 0}) // Too short
+		assert.Error(t, err)
+	})
 }

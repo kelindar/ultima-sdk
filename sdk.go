@@ -18,10 +18,6 @@ type SDK struct {
 //
 // The 'directory' parameter should be the path to the root of the Ultima Online
 // installation directory where files like 'art.mul', 'map0.mul', etc., are located.
-//
-// This function corresponds to the initialization phase of the C# SDK's `Client`
-// and `Files.Initialize()`. Actual file loading will be handled by subsequent
-// methods and internal components.
 func Open(directory string) (*SDK, error) {
 	info, err := os.Stat(directory)
 	if err != nil {

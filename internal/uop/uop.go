@@ -24,14 +24,14 @@ var (
 	ErrEntryNotFound = errors.New("entry not found")
 )
 
-// CompressionFlag represents the compression method used for a UOP entry
-type CompressionFlag int16
+// CompressionType represents the compression method used for a UOP entry
+type CompressionType int16
 
 // Compression flag constants
 const (
-	CompressionNone   CompressionFlag = 0
-	CompressionZlib   CompressionFlag = 1
-	CompressionMythic CompressionFlag = 2
+	CompressionNone   CompressionType = 0
+	CompressionZlib   CompressionType = 1
+	CompressionMythic CompressionType = 2
 )
 
 // Entry6D represents an entry in UOP files with 6 components including compression info
@@ -229,7 +229,14 @@ func (r *Reader) Read(index uint64) ([]byte, error) {
 		return nil, ErrEntryNotFound
 	}
 
-	return r.readAt(int64(entry.offset), int(entry.length))
+	// Read the raw data
+	rawData, err := r.readAt(int64(entry.offset), int(entry.length))
+	if err != nil {
+		return nil, err
+	}
+
+	// Decompress the data
+	return decode(rawData, CompressionType(entry.typ))
 }
 
 // Entries returns an iterator over available entry indices
