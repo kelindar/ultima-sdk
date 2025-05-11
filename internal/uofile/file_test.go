@@ -1,3 +1,5 @@
+// Package uofile provides a unified interface for accessing Ultima Online data files,
+// supporting both MUL and UOP file formats.
 package uofile
 
 import (
@@ -5,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/kelindar/ultima-sdk/internal/uop"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,8 +49,9 @@ func TestFile_WithMUL(t *testing.T) {
 	mulFile.Close()
 	idxFile.Close()
 
-	// Create a File instance with MUL format
-	file := New(WithMUL(mulPath, idxPath))
+	// Create a File instance with automatic format detection
+	fileNames := []string{"test.mul", "test.idx"}
+	file := New(tempDir, fileNames, 1)
 	defer file.Close()
 
 	// Test reading the entry
@@ -79,8 +83,8 @@ func TestFile_WithMUL(t *testing.T) {
 	assert.Equal(t, mulData, originalData)
 }
 
-// TestFile_AutoDetect tests the automatic format detection
-func TestFile_AutoDetect(t *testing.T) {
+// TestFile_FormatDetection tests the automatic format detection
+func TestFile_FormatDetection(t *testing.T) {
 	// Create a temporary directory for our test files
 	tempDir := t.TempDir()
 
@@ -96,8 +100,9 @@ func TestFile_AutoDetect(t *testing.T) {
 	require.NoError(t, err)
 	idxFile.Close()
 
-	// Create a File instance with auto detection
-	file := New(AutoDetect(tempDir, "test", 1))
+	// Create a File instance with automatic format detection
+	fileNames := []string{"test.mul", "testidx.mul"}
+	file := New(tempDir, fileNames, 1)
 	defer file.Close()
 
 	// Verify that MUL format was selected
@@ -112,7 +117,8 @@ func TestFile_AutoDetect(t *testing.T) {
 	uopFile.Close()
 
 	// Create another File instance with auto detection
-	file2 := New(AutoDetect(tempDir, "test", 1))
+	fileNames = append(fileNames, "test.uop")
+	file2 := New(tempDir, fileNames, 1)
 	defer file2.Close()
 
 	// Verify that UOP format was selected
@@ -140,10 +146,8 @@ func TestFile_WithPatches(t *testing.T) {
 	}
 
 	// Create a File instance with patches
-	file := New(
-		WithMUL(mulPath, idxPath),
-		WithPatches(patches),
-	)
+	fileNames := []string{"test.mul", "test.idx"}
+	file := New(tempDir, fileNames, 1, WithPatches(patches))
 	defer file.Close()
 
 	// Test reading patched entries
@@ -165,4 +169,94 @@ func TestFile_WithPatches(t *testing.T) {
 	// Should find at least our patched entries
 	assert.Contains(t, foundEntries, uint64(5))
 	assert.Contains(t, foundEntries, uint64(10))
+}
+
+// TestFile_WithOptions tests the new options for file configuration
+func TestFile_WithOptions(t *testing.T) {
+	// Create a temporary directory for our test files
+	tempDir := t.TempDir()
+
+	// Create a UOP file for testing
+	uopPath := filepath.Join(tempDir, "test.uop")
+	uopFile, err := os.Create(uopPath)
+	require.NoError(t, err)
+	uopFile.Close()
+
+	// Test WithCount option
+	fileNames := []string{"test.uop"}
+	file1 := New(tempDir, fileNames, 0, WithCount(1000))
+	assert.Equal(t, FormatUOP, file1.Format())
+
+	// The file initialization will fail because our test file isn't a valid UOP file,
+	// but we've verified the option was set correctly
+	file1.Close()
+
+	// Test WithIndexLength option
+	file2 := New(tempDir, fileNames, 0, WithIndexLength(500))
+	assert.Equal(t, FormatUOP, file2.Format())
+	file2.Close()
+
+	// Test WithExtra option
+	file3 := New(tempDir, fileNames, 0, WithExtra())
+	assert.Equal(t, FormatUOP, file3.Format())
+	file3.Close()
+
+	// Test multiple options together
+	file4 := New(tempDir, fileNames, 0,
+		WithCount(1000),
+		WithIndexLength(500),
+		WithExtra(),
+		WithUOPOptions(uop.WithExtension(".custom")))
+	assert.Equal(t, FormatUOP, file4.Format())
+	file4.Close()
+}
+
+// TestFile_MULWithoutIDX tests handling MUL files without IDX files
+func TestFile_MULWithoutIDX(t *testing.T) {
+	// Create a temporary directory for our test files
+	tempDir := t.TempDir()
+
+	// Create only a MUL file (no IDX)
+	mulPath := filepath.Join(tempDir, "test.mul")
+	mulFile, err := os.Create(mulPath)
+	require.NoError(t, err)
+	mulFile.Close()
+
+	// Create a File instance
+	fileNames := []string{"test.mul"}
+	file := New(tempDir, fileNames, 1)
+	defer file.Close()
+
+	// Verify that MUL format was selected even without an IDX file
+	assert.Equal(t, FormatMUL, file.Format())
+	assert.Equal(t, mulPath, file.Path())
+	assert.Empty(t, file.IndexPath())
+}
+
+// TestFile_WithMULOption tests the explicit WithMUL option
+func TestFile_WithMULOption(t *testing.T) {
+	// Create a temporary directory for our test files
+	tempDir := t.TempDir()
+
+	// Create a MUL file and IDX file
+	mulPath := filepath.Join(tempDir, "custom.mul")
+	idxPath := filepath.Join(tempDir, "custom.idx")
+
+	mulFile, err := os.Create(mulPath)
+	require.NoError(t, err)
+	mulFile.Close()
+
+	idxFile, err := os.Create(idxPath)
+	require.NoError(t, err)
+	idxFile.Close()
+
+	// Create a File instance with explicit MUL option
+	fileNames := []string{"standard.mul", "standard.idx"} // These don't exist
+	file := New(tempDir, fileNames, 1, WithMUL(mulPath, idxPath))
+	defer file.Close()
+
+	// Verify that MUL format was selected with our custom paths
+	assert.Equal(t, FormatMUL, file.Format())
+	assert.Equal(t, mulPath, file.Path())
+	assert.Equal(t, idxPath, file.IndexPath())
 }

@@ -14,7 +14,7 @@ func TestNewReader(t *testing.T) {
 	// Test with tiledata.mul which is a standalone MUL file (no idx file)
 	filePath := filepath.Join(uotest.Path(), "tiledata.mul")
 
-	reader, err := Open(filePath)
+	reader, err := OpenOne(filePath)
 	require.NoError(t, err, "Failed to create reader")
 	require.NotNil(t, reader, "Reader should not be nil")
 
@@ -26,7 +26,7 @@ func TestNewReaderWithIndex(t *testing.T) {
 	mulPath := filepath.Join(uotest.Path(), "skills.mul")
 	idxPath := filepath.Join(uotest.Path(), "skills.idx")
 
-	reader, err := OpenWithIndex(mulPath, idxPath)
+	reader, err := Open(mulPath, idxPath)
 	require.NoError(t, err, "Failed to create reader with index")
 	require.NotNil(t, reader, "Reader with index should not be nil")
 
@@ -38,7 +38,7 @@ func TestEntryAt(t *testing.T) {
 	mulPath := filepath.Join(uotest.Path(), "skills.mul")
 	idxPath := filepath.Join(uotest.Path(), "skills.idx")
 
-	reader, err := OpenWithIndex(mulPath, idxPath)
+	reader, err := Open(mulPath, idxPath)
 	require.NoError(t, err)
 	defer reader.Close()
 
@@ -57,7 +57,7 @@ func TestRead(t *testing.T) {
 	mulPath := filepath.Join(uotest.Path(), "skills.mul")
 	idxPath := filepath.Join(uotest.Path(), "skills.idx")
 
-	reader, err := OpenWithIndex(mulPath, idxPath)
+	reader, err := Open(mulPath, idxPath)
 	require.NoError(t, err)
 	defer reader.Close()
 
@@ -72,7 +72,7 @@ func TestEntries(t *testing.T) {
 	mulPath := filepath.Join(uotest.Path(), "skills.mul")
 	idxPath := filepath.Join(uotest.Path(), "skills.idx")
 
-	reader, err := OpenWithIndex(mulPath, idxPath)
+	reader, err := Open(mulPath, idxPath)
 	require.NoError(t, err)
 	defer reader.Close()
 
@@ -92,7 +92,7 @@ func TestEntries(t *testing.T) {
 
 // TestClose tests proper resource cleanup
 func TestClose(t *testing.T) {
-	reader, err := Open(filepath.Join(uotest.Path(), "tiledata.mul"))
+	reader, err := OpenOne(filepath.Join(uotest.Path(), "tiledata.mul"))
 	require.NoError(t, err)
 
 	// Close the reader
