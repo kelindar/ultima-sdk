@@ -31,17 +31,7 @@ The cliloc files use a specific binary format with headers and entries containin
    }
    ```
 
-3. Implement the internal loading mechanism:
-
-   ```go
-   // Internal function to load string data from cliloc files
-   func (s *SDK) loadStrings(language string) error {
-       // Implementation for loading string data from a specific language file
-   }
-   ```
-
-4. Write comprehensive unit tests in `cliloc_test.go`:
-   - Test loading string data from cliloc files
+3. Write comprehensive unit tests in `cliloc_test.go`:
    - Test accessing strings by ID
    - Test iterating over all strings
    - Test handling of string formatting and special characters

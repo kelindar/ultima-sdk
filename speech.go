@@ -18,8 +18,6 @@ var (
 )
 
 const (
-	// maxSpeechTextLength defines the maximum length of speech text we'll read
-	// This matches the C# implementation, which caps at 128 bytes
 	maxSpeechTextLength = 128
 )
 

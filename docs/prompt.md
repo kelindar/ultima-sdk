@@ -1,7 +1,7 @@
-1. Read the C# reference implementation #folder:csharp
-2. Read the existing go code structure and files in the project
-3. Follow the #file:coding-standards.md guidelines for the Go code.
-4. Follow the #file:api.md guidelines for the public API.
-5. Follow the #file:plan.md guidelines for the porting plan.
-6. Be consistent with the existing code style, structure, architecture, patterns, and thinking.
-7. Implement the task, follow the #file:tasks/task_10.md to carry it out.
+1. Consult the C# reference implementation located in `#folder:csharp` to understand the original logic and data structures relevant to the current task.
+2. Thoroughly examine the existing Go code structure, files, and architectural patterns within the current project workspace.
+3. Strictly adhere to the Go coding guidelines outlined in `#file:coding-standards.md`.
+4. Ensure the public API of any new or modified Go code conforms to the guidelines in `#file:api.md`.
+5. Align the implementation with the overall porting strategy described in `#file:plan.md`.
+6. Maintain consistency with the established code style, architectural decisions, and common patterns prevalent throughout the existing Go codebase.
+7. Implement the specific requirements detailed in the task definition file: `#file:task11.md`.
