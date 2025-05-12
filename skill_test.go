@@ -83,10 +83,14 @@ func TestSkillGroups(t *testing.T) {
 		groups := make([]SkillGroup, 0)
 		for group := range sdk.SkillGroups() {
 			groups = append(groups, *group)
+			for _, skillID := range group.Skills {
+				_, err := sdk.Skill(skillID)
+				assert.NoError(t, err)
+			}
 		}
 
 		// Should have at least a few groups
-		assert.GreaterOrEqual(t, len(groups), 1)
+		assert.GreaterOrEqual(t, len(groups), 100)
 		assert.Equal(t, miscGroupName, groups[0].Name)
 	})
 }
