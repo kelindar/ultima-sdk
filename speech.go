@@ -10,8 +10,6 @@ import (
 	"iter"
 
 	"github.com/kelindar/ultima-sdk/internal/mul"
-	"golang.org/x/text/encoding/charmap"
-	"golang.org/x/text/transform"
 )
 
 var (
@@ -80,10 +78,7 @@ func (s *SDK) SpeechEntries() iter.Seq[Speech] {
 //   - Text (bytes[Length], Windows-1252 encoded)
 func decodeSpeechFile(reader *os.File) ([]mul.Entry3D, error) {
 	entries := make([]mul.Entry3D, 0, 6500)
-
-	// Create a decoder for Windows-1252 text
-	decoder := charmap.Windows1252.NewDecoder()
-	textBuffer := make([]byte, maxSpeechTextLength)
+	buffer := make([]byte, maxSpeechTextLength)
 
 	// Read entries until EOF
 	for {
@@ -112,18 +107,12 @@ func decodeSpeechFile(reader *os.File) ([]mul.Entry3D, error) {
 
 		var text string
 		if textLength > 0 {
-			// Read text bytes (limited to textLength)
-			n, err := io.ReadFull(reader, textBuffer[:textLength])
+			n, err := io.ReadFull(reader, buffer[:textLength])
 			if err != nil && n != textLength {
 				return nil, fmt.Errorf("failed to read text for speech ID %d: %w", id, err)
 			}
 
-			// Decode from Windows-1252 to UTF-8
-			textBytes, _, err := transform.Bytes(decoder, textBuffer[:textLength])
-			if err != nil {
-				return nil, fmt.Errorf("failed to decode text for speech ID %d: %w", id, err)
-			}
-			text = string(textBytes)
+			text = string(buffer[:n])
 		}
 
 		entries = append(entries,
