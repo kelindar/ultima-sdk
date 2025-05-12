@@ -174,175 +174,137 @@ func (s *SDK) SkillGroups() iter.Seq[*SkillGroup] {
 }
 
 // loadSkillGroupData loads all skill group data from skillgrp.mul
-func (s *SDK) loadSkillGroupData() ([]string, map[int]int, error) {
+func (s *SDK) loadSkillGroupData() (groups []string, skillMap map[int]int, err error) {
 	file, err := s.loadSkillGroups()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load skill groups: %w", err)
+		return nil, nil, fmt.Errorf("failed to load skillgrp.mul: %w", err)
 	}
 
-	// Read the entire file content
-	data, err := file.Read(0)
+	data, err := file.Read(0) // Entry 0 is the whole file content
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read skill group data: %w", err)
+		return nil, nil, fmt.Errorf("failed to read data from skillgrp.mul: %w", err)
 	}
 
-	// Create a reader for the data
+	if len(data) == 0 { // Empty file
+		return []string{}, make(map[int]int), nil
+	}
+
 	reader := bytes.NewReader(data)
 
-	// Read the first int to check for Unicode encoding
 	var count int32
-	err = binary.Read(reader, binary.LittleEndian, &count)
+	isUnicode := false
+	initialOffset := 4 // Base offset assuming one int32 is read for count or flag
+
+	var tempRead int32
+	err = binary.Read(reader, binary.LittleEndian, &tempRead)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read skill group count: %w", err)
+		switch {
+		case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
+			return nil, nil, fmt.Errorf("skillgrp.mul data too short for initial read (count/flag): %w", err)
+		default:
+			return nil, nil, fmt.Errorf("failed to read initial data (count/flag) from skillgrp.mul: %w", err)
+		}
 	}
 
-	isUnicode := count == skillUnicodeFlag
-	if isUnicode {
-		// Read the actual count value that follows the Unicode flag
+	switch tempRead {
+	case skillUnicodeFlag:
+		isUnicode = true
+		initialOffset += 4 // Add 4 because skillUnicodeFlag itself is an int32, and count follows
 		err = binary.Read(reader, binary.LittleEndian, &count)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to read Unicode skill group count: %w", err)
+			switch {
+			case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
+				return nil, nil, fmt.Errorf("skillgrp.mul data too short for unicode count: %w", err)
+			default:
+				return nil, nil, fmt.Errorf("failed to read unicode count from skillgrp.mul: %w", err)
+			}
 		}
+	default:
+		count = tempRead // The first value read was the count itself
 	}
 
-	// Calculate the string length and position
-	strLen := 17
-	bytesPerChar := 1
+	if count < 0 {
+		return nil, nil, fmt.Errorf("invalid skill group count %d in skillgrp.mul (after flag processing)", count)
+	}
+	if count == 0 { // No groups defined in the file
+		return []string{}, make(map[int]int), nil
+	}
+
+	parsedGroups := make([]string, count)
+	parsedGroups[0] = miscGroupName // Group 0 is always "Misc"
+
+	nameSlotSize := 17
 	if isUnicode {
-		bytesPerChar = 2
-	}
-	strLen *= bytesPerChar
-
-	// Initialize the groups list with the "Misc" group at index 0
-	groups := make([]string, count)
-	if count > 0 { // Ensure count is at least 1 for Misc group, otherwise behavior is undefined for groups[0]
-		groups[0] = miscGroupName
-	} else if count == 0 { // If file explicitly states 0 groups
-		return []string{}, make(map[int]int), nil // Return empty, no groups, no skills map
-	} else { // Negative count from file is invalid
-		return nil, nil, fmt.Errorf("invalid skill group count: %d", count)
+		nameSlotSize *= 2 // 2 bytes per character for Unicode
 	}
 
-	// Determine the offset from the start of the file to where the first group name string begins.
-	// This is after the 'count' field (4 bytes) and, if unicode, the actual 'count' field (another 4 bytes).
-	offsetToFirstGroupName := 4
-	if isUnicode {
-		offsetToFirstGroupName += 4
-	}
+	numStoredNames := int(count) - 1
 
-	// Read each group name
-	for i := 1; i < int(count); i++ {
-		// Position the reader at the beginning of the (i-1)-th name string in the file data.
-		// Group ID 'i' corresponds to the (i-1)th name string in the file structure (0-indexed).
-		nameIndexInFile := i - 1
-		offset := offsetToFirstGroupName + (nameIndexInFile * strLen)
+	for i := 0; i < numStoredNames; i++ {
+		groupIndexInSlice := i + 1
 
-		if offset >= len(data) {
-			return nil, nil, fmt.Errorf("invalid skill group data: name offset %d for group %d exceeds data length %d", offset, i, len(data))
+		nameDataStart := initialOffset + (i * nameSlotSize)
+		nameDataEnd := nameDataStart + nameSlotSize
+
+		if nameDataEnd > len(data) {
+			return nil, nil, fmt.Errorf("skillgrp.mul data ended prematurely reading name for group %d (expected %d bytes, got %d)", groupIndexInSlice, nameSlotSize, len(data)-nameDataStart)
 		}
 
-		// Seek to the calculated offset for the current group name
-		currentPos, err := reader.Seek(int64(offset), io.SeekStart)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to seek to skill group name for group %d at offset %d: %w", i, offset, err)
-		}
-		if currentPos != int64(offset) {
-			return nil, nil, fmt.Errorf("seek inconsistency for group name %d: expected %d, got %d", i, offset, currentPos)
-		}
-
-		// Read the string
-		name := ""
+		nameBytes := data[nameDataStart:nameDataEnd]
+		var groupName string
 		if isUnicode {
-			var buf [2]byte
-			builder := strings.Builder{}
-			for {
-				_, err := reader.Read(buf[:])
-				if err != nil {
-					return nil, nil, fmt.Errorf("failed to read Unicode skill group name: %w", err)
-				}
-				char := binary.LittleEndian.Uint16(buf[:])
-				if char == 0 {
+			runes := make([]rune, 0, len(nameBytes)/2)
+			for charIdx := 0; charIdx+1 < len(nameBytes); charIdx += 2 {
+				u16char := binary.LittleEndian.Uint16(nameBytes[charIdx : charIdx+2])
+				if u16char == 0 { // Null terminator
 					break
 				}
-				builder.WriteRune(rune(char))
+				runes = append(runes, rune(u16char))
 			}
-			name = builder.String()
+			groupName = string(runes)
 		} else {
-			var buf [1]byte
-			builder := strings.Builder{}
-			for {
-				_, err := reader.Read(buf[:])
-				if err != nil {
-					return nil, nil, fmt.Errorf("failed to read skill group name: %w", err)
-				}
-				if buf[0] == 0 {
-					break
-				}
-				builder.WriteByte(buf[0])
+			nullIdx := bytes.IndexByte(nameBytes, 0)
+			if nullIdx != -1 {
+				groupName = string(nameBytes[:nullIdx])
+			} else {
+				groupName = string(nameBytes) // No null terminator found in slot
 			}
-			name = builder.String()
 		}
-
-		groups[i] = strings.TrimSpace(name)
+		parsedGroups[groupIndexInSlice] = strings.TrimSpace(groupName)
 	}
 
-	// Read the skill to group mappings
-	skillMap := make(map[int]int)
+	parsedSkillMap := make(map[int]int)
+	offsetToSkillMappings := initialOffset + (numStoredNames * nameSlotSize)
 
-	// Position the reader at the beginning of the skill list.
-	// The skill list starts after all the group name entries.
-	// There are 'count-1' group names stored (group 0 "Misc" is not stored if count > 0).
-	// Each name entry takes 'strLen' bytes.
-	// If count is 0 or 1, (int(count)-1) will be -1 or 0 respectively.
-	// If count is 0, we returned earlier. If count is 1 (only "Misc"), numStoredNames is 0.
-	numStoredNames := 0
-	if count > 1 {
-		numStoredNames = int(count) - 1
-	}
-	startOfSkillList := offsetToFirstGroupName + (numStoredNames * strLen)
-
-	if startOfSkillList > len(data) {
-		// This implies an issue with file structure or count, as skill list offset is beyond file.
-		// If it's exactly len(data), it means no skill entries, which is fine.
-		return groups, skillMap, nil
-	}
-	if startOfSkillList < 0 { // Should not happen with valid count and logic
-		return nil, nil, fmt.Errorf("internal error: calculated negative startOfSkillList %d", startOfSkillList)
+	if offsetToSkillMappings > len(data) {
+		return nil, nil, fmt.Errorf("skill map offset %d is beyond data length %d; skillgrp.mul may be corrupt or truncated", offsetToSkillMappings, len(data))
 	}
 
-	_, err = reader.Seek(int64(startOfSkillList), io.SeekStart)
-	if err != nil {
-		// Check if seeking to the exact end of data, which means no skill entries.
-		if startOfSkillList == len(data) { // io.EOF might not be set by Seek alone if at boundary
-			// If reader.ReadByte() after this returns io.EOF, then it's a clean end.
-			// For now, assume seek to len(data) is okay, subsequent reads will handle EOF.
-			return groups, skillMap, nil
-		}
-		return nil, nil, fmt.Errorf("failed to seek to skill group assignments at offset %d: %w", startOfSkillList, err)
+	if _, err = reader.Seek(int64(offsetToSkillMappings), io.SeekStart); err != nil {
+		return nil, nil, fmt.Errorf("unexpected error seeking to skill mappings at offset %d: %w", offsetToSkillMappings, err)
 	}
 
-	// Read all skill group assignments until the end of the file
-	skillID := 0
-
-	// Keep reading until we reach the end of the file
+	currentSkillID := 0
 	for {
-		var groupID int32
-		err = binary.Read(reader, binary.LittleEndian, &groupID)
-
-		// Check if we've reached the end of the file
-		if err != nil {
-			if err == io.EOF {
-				// End of file is expected - just break the loop
+		if reader.Len() < 4 {
+			if reader.Len() == 0 {
 				break
 			}
-			// For any other errors, return the error
-			return nil, nil, fmt.Errorf("failed to read skill group assignment: %w", err)
+			return nil, nil, fmt.Errorf("corrupt skillgrp.mul: partial skill mapping data for skill ID %d (have %d bytes, need 4)", currentSkillID, reader.Len())
 		}
 
-		// Assign this skill to its group
-		skillMap[skillID] = int(groupID)
-		skillID++
+		var groupIDFromFile int32
+		if err = binary.Read(reader, binary.LittleEndian, &groupIDFromFile); err != nil {
+			switch {
+			case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
+				return nil, nil, fmt.Errorf("unexpected EOF/ErrUnexpectedEOF reading group ID for skill %d after length check: %w", currentSkillID, err)
+			default:
+				return nil, nil, fmt.Errorf("error reading group ID for skill %d from skillgrp.mul: %w", currentSkillID, err)
+			}
+		}
+		parsedSkillMap[currentSkillID] = int(groupIDFromFile)
+		currentSkillID++
 	}
 
-	return groups, skillMap, nil
+	return parsedGroups, parsedSkillMap, nil
 }

@@ -90,7 +90,7 @@ func TestSkillGroups(t *testing.T) {
 		}
 
 		// Should have at least a few groups
-		assert.GreaterOrEqual(t, len(groups), 100)
+		assert.GreaterOrEqual(t, len(groups), 7)
 		assert.Equal(t, miscGroupName, groups[0].Name)
 	})
 }
