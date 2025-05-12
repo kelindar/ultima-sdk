@@ -11,31 +11,22 @@ type cacheKey string
 
 // loadHues loads the hues file
 func (s *SDK) loadHues() (*uofile.File, error) {
-	return s.load([]string{
-		"hues.mul",
-	}, 3000, uofile.WithChunkSize(708))
+	return s.load([]string{"hues.mul"}, 3000, uofile.WithChunkSize(708))
 }
 
 // loadRadarcol loads the radar colors file
 func (s *SDK) loadRadarcol() (*uofile.File, error) {
-	return s.load([]string{
-		"radarcol.mul",
-	}, totalRadarColors)
+	return s.load([]string{"radarcol.mul"}, totalRadarColors)
 }
 
 // loadSkills loads the skills file
 func (s *SDK) loadSkills() (*uofile.File, error) {
-	return s.load([]string{
-		"skills.mul",
-		"skills.idx",
-	}, 0, uofile.WithIndexLength(16))
+	return s.load([]string{"skills.mul", "skills.idx"}, 0, uofile.WithIndexLength(16))
 }
 
 // loadSkillGroups loads the skill groups file
 func (s *SDK) loadSkillGroups() (*uofile.File, error) {
-	return s.load([]string{
-		"skillgrp.mul",
-	}, 0)
+	return s.load([]string{"skillgrp.mul"}, 0)
 }
 
 // loadArt loads the art files (art.mul, artidx.mul or their UOP equivalent)
@@ -156,10 +147,7 @@ func (s *SDK) loadSpeech() (*uofile.File, error) {
 // length represents the expected number of entries in the file
 // options are passed to the underlying uofile.File creation
 func (s *SDK) load(fileNames []string, length int, options ...uofile.Option) (*uofile.File, error) {
-	// Create a cache key from the first filename (canonical name)
 	key := cacheKey(fileNames[0])
-
-	// Try to get from cache first
 	if f, ok := s.files.Load(key); ok {
 		return f.(*uofile.File), nil
 	}

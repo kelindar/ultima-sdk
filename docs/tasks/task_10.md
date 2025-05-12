@@ -37,17 +37,7 @@ The file format itself is simple, containing serialized speech entries with thei
    }
    ```
 
-4. Implement the internal loading mechanism:
-
-   ```go
-   // Internal function to load speech data from speech.mul
-   func (s *SDK) loadSpeech() error {
-       // Implementation for loading speech data
-   }
-   ```
-
-5. Write unit tests in `speech_test.go`:
-   - Test loading speech data from the file
+4. Write unit tests in `speech_test.go`:
    - Test accessing speech entries by ID
    - Test iterating over all speech entries
    - Test error handling for invalid or missing entries
