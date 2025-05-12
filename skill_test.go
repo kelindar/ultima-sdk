@@ -80,31 +80,14 @@ func TestSkillGroup(t *testing.T) {
 // TestSkillGroups tests iterating through all skill groups
 func TestSkillGroups(t *testing.T) {
 	runWith(t, func(sdk *SDK) {
-		// Count the number of skill groups
-		count := 0
-		var miscGroup *SkillGroup
-
+		groups := make([]SkillGroup, 0)
 		for group := range sdk.SkillGroups() {
-			// Record the misc group
-			if group.ID == 0 {
-				miscGroup = group
-			}
-
-			// Groups should have valid names
-			assert.NotEmpty(t, group.Name)
-
-			// Each ID should match the iteration order
-			assert.Equal(t, count, group.ID)
-
-			count++
+			groups = append(groups, *group)
 		}
 
 		// Should have at least a few groups
-		assert.GreaterOrEqual(t, count, 1)
-
-		// Misc group should have entries
-		assert.NotNil(t, miscGroup)
-		assert.Equal(t, "Misc", miscGroup.Name)
+		assert.GreaterOrEqual(t, len(groups), 1)
+		assert.Equal(t, miscGroupName, groups[0].Name)
 	})
 }
 

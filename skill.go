@@ -215,21 +215,40 @@ func (s *SDK) loadSkillGroupData() ([]string, map[int]int, error) {
 
 	// Initialize the groups list with the "Misc" group at index 0
 	groups := make([]string, count)
-	groups[0] = miscGroupName
+	if count > 0 { // Ensure count is at least 1 for Misc group, otherwise behavior is undefined for groups[0]
+		groups[0] = miscGroupName
+	} else if count == 0 { // If file explicitly states 0 groups
+		return []string{}, make(map[int]int), nil // Return empty, no groups, no skills map
+	} else { // Negative count from file is invalid
+		return nil, nil, fmt.Errorf("invalid skill group count: %d", count)
+	}
+
+	// Determine the offset from the start of the file to where the first group name string begins.
+	// This is after the 'count' field (4 bytes) and, if unicode, the actual 'count' field (another 4 bytes).
+	offsetToFirstGroupName := 4
+	if isUnicode {
+		offsetToFirstGroupName += 4
+	}
 
 	// Read each group name
 	for i := 1; i < int(count); i++ {
-		// Position the reader at the beginning of the string
-		offset := 4 + (i * strLen)
-		if isUnicode {
-			offset += 4 // For Unicode, add 4 bytes for the extra int32
-		}
+		// Position the reader at the beginning of the (i-1)-th name string in the file data.
+		// Group ID 'i' corresponds to the (i-1)th name string in the file structure (0-indexed).
+		nameIndexInFile := i - 1
+		offset := offsetToFirstGroupName + (nameIndexInFile * strLen)
 
 		if offset >= len(data) {
-			return nil, nil, fmt.Errorf("invalid skill group data: offset %d exceeds data length %d", offset, len(data))
+			return nil, nil, fmt.Errorf("invalid skill group data: name offset %d for group %d exceeds data length %d", offset, i, len(data))
 		}
 
-		reader.Seek(int64(offset), io.SeekStart)
+		// Seek to the calculated offset for the current group name
+		currentPos, err := reader.Seek(int64(offset), io.SeekStart)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to seek to skill group name for group %d at offset %d: %w", i, offset, err)
+		}
+		if currentPos != int64(offset) {
+			return nil, nil, fmt.Errorf("seek inconsistency for group name %d: expected %d, got %d", i, offset, currentPos)
+		}
 
 		// Read the string
 		name := ""
@@ -270,29 +289,53 @@ func (s *SDK) loadSkillGroupData() ([]string, map[int]int, error) {
 	// Read the skill to group mappings
 	skillMap := make(map[int]int)
 
-	// Position the reader at the beginning of the skill list
-	// The skill list starts after all the group name entries
-	startOfSkillList := 4 + (int(count) * strLen)
-	if isUnicode {
-		startOfSkillList += 4 // For Unicode, add 4 bytes for the extra int32
+	// Position the reader at the beginning of the skill list.
+	// The skill list starts after all the group name entries.
+	// There are 'count-1' group names stored (group 0 "Misc" is not stored if count > 0).
+	// Each name entry takes 'strLen' bytes.
+	// If count is 0 or 1, (int(count)-1) will be -1 or 0 respectively.
+	// If count is 0, we returned earlier. If count is 1 (only "Misc"), numStoredNames is 0.
+	numStoredNames := 0
+	if count > 1 {
+		numStoredNames = int(count) - 1
 	}
+	startOfSkillList := offsetToFirstGroupName + (numStoredNames * strLen)
 
-	if startOfSkillList >= len(data) {
-		// If we've reached the end of the data, return what we have so far
+	if startOfSkillList > len(data) {
+		// This implies an issue with file structure or count, as skill list offset is beyond file.
+		// If it's exactly len(data), it means no skill entries, which is fine.
 		return groups, skillMap, nil
 	}
+	if startOfSkillList < 0 { // Should not happen with valid count and logic
+		return nil, nil, fmt.Errorf("internal error: calculated negative startOfSkillList %d", startOfSkillList)
+	}
 
-	reader.Seek(int64(startOfSkillList), io.SeekStart)
+	_, err = reader.Seek(int64(startOfSkillList), io.SeekStart)
+	if err != nil {
+		// Check if seeking to the exact end of data, which means no skill entries.
+		if startOfSkillList == len(data) { // io.EOF might not be set by Seek alone if at boundary
+			// If reader.ReadByte() after this returns io.EOF, then it's a clean end.
+			// For now, assume seek to len(data) is okay, subsequent reads will handle EOF.
+			return groups, skillMap, nil
+		}
+		return nil, nil, fmt.Errorf("failed to seek to skill group assignments at offset %d: %w", startOfSkillList, err)
+	}
 
 	// Read all skill group assignments until the end of the file
 	skillID := 0
+
+	// Keep reading until we reach the end of the file
 	for {
 		var groupID int32
 		err = binary.Read(reader, binary.LittleEndian, &groupID)
+
+		// Check if we've reached the end of the file
 		if err != nil {
 			if err == io.EOF {
+				// End of file is expected - just break the loop
 				break
 			}
+			// For any other errors, return the error
 			return nil, nil, fmt.Errorf("failed to read skill group assignment: %w", err)
 		}
 
