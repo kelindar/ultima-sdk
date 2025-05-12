@@ -19,6 +19,19 @@ type Entry3D struct {
 	cache  atomic.Value // Cached data for the entry
 }
 
+// NewEntry creates a new Entry3D instance
+func NewEntry(offset, length, extra uint32, value []byte) Entry3D {
+	entry := Entry3D{
+		offset: offset,
+		length: length,
+		extra:  extra,
+	}
+	if value != nil {
+		entry.cache.Store(value)
+	}
+	return entry
+}
+
 // Reader provides access to MUL file data
 type Reader struct {
 	file       *os.File  // File handle for the MUL file
@@ -57,6 +70,17 @@ func WithEntrySize(size int) Option {
 	}
 }
 
+// WithDecode sets a custom parser function for the reader
+func WithDecode(fn func(*os.File) ([]Entry3D, error)) Option {
+	return func(r *Reader) {
+		entries, err := fn(r.file)
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse entries: %v", err))
+		}
+		r.entries = entries
+	}
+}
+
 // OpenOne creates and initializes a new MUL reader
 func OpenOne(filename string, options ...Option) (*Reader, error) {
 	info, err := os.Stat(filename)
@@ -87,12 +111,8 @@ func OpenOne(filename string, options ...Option) (*Reader, error) {
 			reader.Close()
 			return nil, err
 		}
-	default:
-		reader.entries = []Entry3D{{
-			offset: 0,
-			length: uint32(info.Size()),
-			extra:  0,
-		}}
+	case len(reader.entries) == 0:
+		reader.entries = []Entry3D{NewEntry(0, uint32(info.Size()), 0, nil)}
 	}
 
 	return reader, nil
@@ -189,11 +209,7 @@ func (r *Reader) createChunkEntries() error {
 	// Create a virtual index entry for each chunk
 	r.entries = make([]Entry3D, chunkCount)
 	for i := 0; i < chunkCount; i++ {
-		r.entries[i] = Entry3D{
-			offset: uint32(i * r.chunkSize),
-			length: uint32(r.chunkSize),
-			extra:  0,
-		}
+		r.entries[i] = NewEntry(uint32(i*r.chunkSize), uint32(r.chunkSize), 0, nil)
 	}
 
 	return nil

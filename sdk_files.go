@@ -134,11 +134,9 @@ func (s *SDK) loadCliloc(language string) (*uofile.File, error) {
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// loadSpeech loads the speech file
+// loadSpeech loads the speech.mul file
 func (s *SDK) loadSpeech() (*uofile.File, error) {
-	return s.load([]string{
-		"speech.mul",
-	}, 0, uofile.WithIndexLength(12))
+	return s.load([]string{"speech.mul"}, 0, uofile.WithDecodeMUL(decodeSpeechFile))
 }
 
 // load loads a file with the given file names and length
