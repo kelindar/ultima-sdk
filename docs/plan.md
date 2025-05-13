@@ -47,7 +47,7 @@ Follow these steps sequentially. Each step involves translating the correspondin
     - Implement functions to extract specific file entries from UOP archives (compression will be handled by `internal/file`).
     - _Sub-task: Write tests for parsing UOP files and `uop.Reader` methods._
     - _Sub-task: Verify UOP parsing logic against C# implementation._
-5.  **[❌] Implement Unified File Access Logic (`internal/uofile`):**
+5.  **[✅] Implement Unified File Access Logic (`internal/uofile`):**
     - Create `internal/uofile` package.
     - Define a `Reader` interface that `internal/mul.Reader` and `internal/uop.Reader` will implement.
     - Define and expose a `File` struct that uses the `Reader` interface for accessing file data.
@@ -55,23 +55,23 @@ Follow these steps sequentially. Each step involves translating the correspondin
     - `internal/file` will depend on `internal/mul` and `internal/uop` for their respective `Reader` implementations.
     - _Sub-task: Write unit tests for `File` struct methods, index loading, and compression utilities._
     - _Sub-task: Verify against C# `FileIndex` behavior and Zlib decompression results._
-6.  **[❌] Implement Top-Level File Accessors (integrate into `sdk.go`):**
+6.  **[✅] Implement Top-Level File Accessors (integrate into `sdk.go`):**
     - Port C# `Files` class concept: methods on `SDK` to get access to specific game files (e.g., `sdk.Art()`) using the `File` struct from `internal/uofile`.
     - Make sure it is done using lazy loading to avoid opening too many or unused files at once.
     - _Sub-task: Verify correct file sources (MUL/UOP) are accessed via `internal/file.File`._
-7.  **[❌] Port `Hues.cs` -> `hue.go`:**
+7.  **[✅] Port `Hues.cs` -> `hue.go`:**
     - Define `Hue` struct. Implement loading for `hues.mul`.
     - _Sub-task: Write tests to load hues and verify data against C# output._
-8.  **[❌] Port `RadarCol.cs` -> `radarcol.go`:**
+8.  **[✅] Port `RadarCol.cs` -> `radarcol.go`:**
     - Implement loading for `radarcol.mul`.
     - _Sub-task: Write tests to load radar colors and verify data._
-9.  **[❌] Port `Skills.cs`, `SkillGroups.cs` -> `skill.go`:**
+9.  **[✅] Port `Skills.cs`, `SkillGroups.cs` -> `skill.go`:**
     - Define `Skill`, `SkillGroup` structs. Implement loading for `skills.idx`, `skills.mul`, `skillgrp.mul`.
     - _Sub-task: Write tests for loading skills/groups and verify data._
-10. **[❌] Port `SpeechList.cs` -> `speech.go`:**
+10. **[✅] Port `SpeechList.cs` -> `speech.go`:**
     - Define `Speech` struct. Implement loading for `speech.mul`.
     - _Sub-task: Write tests for loading speech entries._
-11. **[❌] Port `StringList.cs`, `StringEntry.cs` -> `cliloc.go`:**
+11. **[✅] Port `StringList.cs`, `StringEntry.cs` -> `cliloc.go`:**
     - Implement `Cliloc` loading (e.g., `Cliloc.enu`). Provide `SDK.GetString(id int) string`.
     - _Sub-task: Write tests for loading cliloc files and retrieving strings._
 12. **[✅] Implement Internal Image Handling Utilities (`internal/bitmap`):**

@@ -76,7 +76,7 @@ func (s *SDK) loadSound() (*uofile.File, error) {
 func (s *SDK) loadTiledata() (*uofile.File, error) {
 	return s.load([]string{
 		"tiledata.mul",
-	}, 0, uofile.WithIndexLength(12))
+	}, 0, uofile.WithDecodeMUL(decodeTileDataFile))
 }
 
 // loadTextures loads the texture files

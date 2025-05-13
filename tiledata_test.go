@@ -1,0 +1,217 @@
+package ultima
+
+import (
+	"encoding/binary"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestTileData(t *testing.T) {
+	runWith(t, func(sdk *SDK) {
+		t.Run("LandTile", func(t *testing.T) {
+			// Test retrieving a specific land tile
+			landTile, err := sdk.LandTile(1)
+
+			assert.NoError(t, err)
+			assert.NotEmpty(t, landTile.Name)
+			assert.NotZero(t, landTile.Flags)
+		})
+
+		t.Run("LandTile_InvalidID", func(t *testing.T) {
+			// Test with out of range ID
+			_, err := sdk.LandTile(-1)
+			assert.Error(t, err)
+
+			_, err = sdk.LandTile(0x4000) // 0x4000 is the first static tile
+			assert.Error(t, err)
+		})
+
+		t.Run("StaticTile", func(t *testing.T) {
+			// Test retrieving a specific static tile
+			staticTile, err := sdk.StaticTile(1)
+
+			assert.NoError(t, err)
+			assert.NotEmpty(t, staticTile.Name)
+		})
+
+		t.Run("StaticTile_InvalidID", func(t *testing.T) {
+			// Test with out of range ID
+			_, err := sdk.StaticTile(-1)
+			assert.Error(t, err)
+
+			_, err = sdk.StaticTile(sdk.staticTileCount())
+			assert.Error(t, err)
+		})
+
+		t.Run("LandTiles_Iterator", func(t *testing.T) {
+			// Test iteration over land tiles
+			count := 0
+			for tile := range sdk.LandTiles() {
+				assert.NotEmpty(t, tile.Name, "Land tile name should not be empty for ID %d", count)
+				count++
+				if count >= 10 {
+					break // Just test the first few to avoid long test times
+				}
+			}
+			assert.Greater(t, count, 0, "Should have found at least one land tile")
+		})
+
+		t.Run("StaticTiles_Iterator", func(t *testing.T) {
+			// Test iteration over static tiles
+			count := 0
+			for tile := range sdk.StaticTiles() {
+				assert.NotEmpty(t, tile.Name, "Static tile name should not be empty for ID %d", count)
+				count++
+				if count >= 10 {
+					break // Just test the first few to avoid long test times
+				}
+			}
+			assert.Greater(t, count, 0, "Should have found at least one static tile")
+		})
+
+		t.Run("StaticItemData_Properties", func(t *testing.T) {
+			// Test some properties that are commonly used
+
+			// Find a known bridge tile to test CalcHeight
+			var bridgeTile StaticItemData
+			bridgeFound := false
+
+			for tile := range sdk.StaticTiles() {
+				if tile.Flags&TileFlagBridge != 0 {
+					bridgeTile = tile
+					bridgeFound = true
+					break
+				}
+			}
+
+			if bridgeFound {
+				assert.Equal(t, int(bridgeTile.Height)/2, bridgeTile.CalcHeight())
+			}
+
+			// Test flag helper methods on some tile
+			staticTile, err := sdk.StaticTile(1)
+			require.NoError(t, err)
+
+			assert.Equal(t, staticTile.Flags&TileFlagBackground != 0, staticTile.Background())
+			assert.Equal(t, staticTile.Flags&TileFlagBridge != 0, staticTile.Bridge())
+			assert.Equal(t, staticTile.Flags&TileFlagImpassable != 0, staticTile.Impassable())
+			assert.Equal(t, staticTile.Flags&TileFlagSurface != 0, staticTile.Surface())
+			assert.Equal(t, staticTile.Flags&TileFlagWearable != 0, staticTile.Wearable())
+		})
+
+		t.Run("HeightTable", func(t *testing.T) {
+			// Test retrieving the height table
+			heights, err := sdk.HeightTable()
+
+			assert.NoError(t, err)
+			assert.NotNil(t, heights)
+			assert.Len(t, heights, sdk.staticTileCount())
+		})
+	})
+}
+
+// Test for the helper functions
+func TestTileData_Helpers(t *testing.T) {
+	t.Run("readStringFromBytes", func(t *testing.T) {
+		// Test with null terminator
+		input := []byte{'T', 'e', 's', 't', 0, 'X', 'Y', 'Z'}
+		result := readStringFromBytes(input)
+		assert.Equal(t, "Test", result)
+
+		// Test without null terminator (uses full slice)
+		input = []byte{'T', 'e', 's', 't'}
+		result = readStringFromBytes(input)
+		assert.Equal(t, "Test", result)
+
+		// Test with empty input
+		input = []byte{}
+		result = readStringFromBytes(input)
+		assert.Equal(t, "", result)
+	})
+
+	t.Run("makeLandTileData", func(t *testing.T) {
+		// Test with new format
+		flagsValue := uint64(TileFlagBackground | TileFlagTransparent)
+		textureID := uint16(123)
+		name := "Test Land Tile"
+
+		// Create raw data in the expected format
+		data := make([]byte, 30)
+		// Write flags
+		binary.LittleEndian.PutUint64(data[0:8], flagsValue)
+		// Write textureID
+		binary.LittleEndian.PutUint16(data[8:10], textureID)
+		// Write name
+		copy(data[10:], append([]byte(name), 0))
+
+		result := makeLandTileData(data, true)
+
+		assert.Equal(t, TileFlag(flagsValue), result.Flags)
+		assert.Equal(t, textureID, result.TextureID)
+		assert.Equal(t, name, result.Name)
+	})
+
+	t.Run("makeStaticItemData", func(t *testing.T) {
+		// Test with new format (flags are uint64)
+		isNewFormat := true
+		flagsValue := uint64(TileFlagWearable | TileFlagContainer)
+		weight := byte(10)
+		quality := byte(20)
+		miscData := int16(30)
+		unk2 := byte(40)
+		quantity := byte(50)
+		animation := int16(60)
+		unk3 := byte(70)
+		hue := byte(80)
+		stackingOffset := byte(90)
+		value := byte(100)
+		height := byte(110)
+		name := "Test Static Item"
+
+		// Create raw data in the expected format
+		var data []byte
+		var headerSize int
+		if isNewFormat {
+			headerSize = 8                        // 64-bit flags
+			data = make([]byte, headerSize+13+20) // header + fields + name
+			binary.LittleEndian.PutUint64(data[0:8], flagsValue)
+		} else {
+			headerSize = 4                        // 32-bit flags
+			data = make([]byte, headerSize+13+20) // header + fields + name
+			binary.LittleEndian.PutUint32(data[0:4], uint32(flagsValue))
+		}
+
+		// Write basic fields
+		offset := headerSize
+		data[offset] = weight
+		data[offset+1] = quality
+		binary.LittleEndian.PutUint16(data[offset+2:offset+4], uint16(miscData))
+		data[offset+4] = unk2
+		data[offset+5] = quantity
+		binary.LittleEndian.PutUint16(data[offset+6:offset+8], uint16(animation))
+		data[offset+8] = unk3
+		data[offset+9] = hue
+		data[offset+10] = stackingOffset
+		data[offset+11] = value
+		data[offset+12] = height
+		copy(data[offset+13:], append([]byte(name), 0))
+
+		result := makeStaticItemData(data, isNewFormat)
+
+		assert.Equal(t, TileFlag(flagsValue), result.Flags)
+		assert.Equal(t, weight, result.Weight)
+		assert.Equal(t, quality, result.Quality)
+		assert.Equal(t, miscData, result.MiscData)
+		assert.Equal(t, unk2, result.Unk2)
+		assert.Equal(t, quantity, result.Quantity)
+		assert.Equal(t, animation, result.Animation)
+		assert.Equal(t, unk3, result.Unk3)
+		assert.Equal(t, hue, result.Hue)
+		assert.Equal(t, stackingOffset, result.StackingOffset)
+		assert.Equal(t, value, result.Value)
+		assert.Equal(t, height, result.Height)
+		assert.Equal(t, name, result.Name)
+	})
+}
