@@ -114,6 +114,32 @@ func detectFormat(f *File, basePath string, fileNames []string) {
 	var uopPath string
 	var mulPath string
 	var idxPath string
+	var clilocPath string // Added for cliloc files
+
+	// Special case for cliloc files which don't follow standard naming conventions
+	for _, fileName := range fileNames {
+		if strings.HasPrefix(fileName, "cliloc.") {
+			filePath := filepath.Join(basePath, fileName)
+			if _, err := os.Stat(filePath); err == nil {
+				clilocPath = filePath
+				break
+			}
+		}
+	}
+
+	// If a cliloc file was found, configure it like a MUL file without index
+	if clilocPath != "" {
+		f.path = clilocPath
+		f.initFn = func() error {
+			reader, err := mul.OpenOne(clilocPath, f.mulOpts...)
+			if err != nil {
+				return fmt.Errorf("failed to create reader for cliloc file: %w", err)
+			}
+			f.reader = reader
+			return nil
+		}
+		return
+	}
 
 	// Look for UOP files first (preferred format)
 	for _, fileName := range fileNames {

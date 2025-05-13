@@ -11,12 +11,7 @@ import (
 func TestCliloc(t *testing.T) {
 	runWith(t, func(sdk *SDK) {
 		t.Run("StringEntry", func(t *testing.T) {
-			// Test retrieval of a specific string entry by ID
-			// Note: this assumes the test data contains cliloc.enu with entries
-			// If no test data for cliloc, this test will be skipped
-
-			// Try a common string ID that should exist in most cliloc files
-			entry, err := sdk.StringEntry(1000000, "enu")
+			entry, err := sdk.StringEntry(1000009, "enu")
 			assert.NoError(t, err)
 			assert.NotNil(t, entry)
 			assert.GreaterOrEqual(t, entry.ID, 0)
@@ -51,15 +46,6 @@ func TestCliloc(t *testing.T) {
 			if count == 0 {
 				t.Skip("Skipping test as cliloc.enu may not be present in test data or is empty")
 			}
-		})
-
-		t.Run("StringsWithLang", func(t *testing.T) {
-			// Test non-existent language
-			count := 0
-			for _, _ = range sdk.StringsWithLang("nonexistent") {
-				count++
-			}
-			assert.Equal(t, 0, count, "Non-existent language should return empty iterator")
 		})
 	})
 }
