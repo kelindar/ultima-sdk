@@ -46,7 +46,7 @@ func TestEntryOperations(t *testing.T) {
 
 	// Test Entries iterator with the new interface
 	var count int
-	var indices []uint64
+	var indices []uint32
 
 	// Collect up to 10 entries for further testing
 	for index := range reader.Entries() {
@@ -68,7 +68,7 @@ func TestEntryOperations(t *testing.T) {
 		assert.Greater(t, len(data), 0, "Data should not be empty")
 
 		// Test invalid index
-		_, err = reader.Read(uint64(0xFFFFFFFF))
+		_, err = reader.Read(uint32(0xFFFFFFFF))
 		assert.Error(t, err, "Reading invalid index should return error")
 	}
 }
@@ -95,8 +95,8 @@ func TestReaderInterface(t *testing.T) {
 
 	// Test that we can assign the reader to a variable of the interface type
 	var _ interface {
-		Read(uint64) ([]byte, error)
-		Entries() iter.Seq[uint64]
+		Read(uint32) ([]byte, error)
+		Entries() iter.Seq[uint32]
 		Close() error
 	} = reader
 }

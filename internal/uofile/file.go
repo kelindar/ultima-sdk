@@ -33,9 +33,9 @@ var (
 
 // Reader defines the common interface for both MUL and UOP readers
 type Reader interface {
-	Read(index uint64) ([]byte, error)
-	ReadAt(p []byte, index uint64) error
-	Entries() iter.Seq[uint64]
+	Read(uint32) ([]byte, error)
+	ReadAt(p []byte, index uint32) error
+	Entries() iter.Seq[uint32]
 	Close() error
 }
 
@@ -75,16 +75,16 @@ func WithExtra() Option {
 	}
 }
 
-// WithChunkSize configures the reader to handle files with fixed-size chunks
+// WithChunks configures the reader to handle files with fixed-size chunks
 // This is useful for files like hues.mul where data is stored in fixed-size blocks
-func WithChunkSize(chunkSize int) Option {
+func WithChunks(chunkSize int) Option {
 	return func(f *File) {
-		f.mulOpts = append(f.mulOpts, mul.WithChunkSize(chunkSize))
+		f.mulOpts = append(f.mulOpts, mul.WithChunks(chunkSize))
 	}
 }
 
 // WithDecodeMUL sets a custom function to read from a MUL file
-func WithDecodeMUL(fn func(*os.File) ([]mul.Entry3D, error)) Option {
+func WithDecodeMUL(fn func(file *os.File, add mul.AddFn) error) Option {
 	return func(f *File) {
 		f.mulOpts = append(f.mulOpts, mul.WithDecode(fn))
 	}
@@ -218,7 +218,7 @@ func (f *File) open() error {
 }
 
 // Read reads data from a specific entry, applying any patches if available
-func (f *File) Read(index uint64) ([]byte, error) {
+func (f *File) Read(index uint32) ([]byte, error) {
 	if err := f.open(); err != nil {
 		return nil, err
 	}
@@ -232,7 +232,7 @@ func (f *File) Read(index uint64) ([]byte, error) {
 }
 
 // ReadAt reads data from the file at the specified index
-func (f *File) ReadAt(p []byte, index uint64) error {
+func (f *File) ReadAt(p []byte, index uint32) error {
 	if err := f.open(); err != nil {
 		return err
 	}
@@ -246,7 +246,7 @@ func (f *File) ReadAt(p []byte, index uint64) error {
 }
 
 // Entries returns a sequence of entry indices
-func (f *File) Entries() iter.Seq[uint64] {
+func (f *File) Entries() iter.Seq[uint32] {
 	if err := f.open(); err != nil {
 		panic(err)
 	}

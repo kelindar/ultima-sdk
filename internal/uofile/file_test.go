@@ -39,7 +39,7 @@ func TestFile_WithRealMUL(t *testing.T) {
 	assert.NoError(t, err, "Failed to initialize with real files")
 
 	// Test reading entries
-	for i := uint64(0); i < 10; i++ {
+	for i := uint32(0); i < 10; i++ {
 		data, err := file.Read(i)
 		if err == nil {
 			// If we found an entry, make sure it has some content
@@ -49,7 +49,7 @@ func TestFile_WithRealMUL(t *testing.T) {
 
 	// Test the Entries iterator
 	var count int
-	file.Entries()(func(idx uint64) bool {
+	file.Entries()(func(idx uint32) bool {
 		count++
 		// Just count the first 50 entries max to keep the test quick
 		return count < 50
@@ -116,12 +116,12 @@ func TestFile_WithMUL(t *testing.T) {
 	assert.Equal(t, mulData, data)
 
 	// Test entries iterator
-	var foundEntries []uint64
-	file.Entries()(func(idx uint64) bool {
+	var foundEntries []uint32
+	file.Entries()(func(idx uint32) bool {
 		foundEntries = append(foundEntries, idx)
 		return true
 	})
-	assert.Equal(t, []uint64{0}, foundEntries)
+	assert.Equal(t, []uint32{0}, foundEntries)
 }
 
 // TestFile_InitAndClose tests the initialization and closure state transitions

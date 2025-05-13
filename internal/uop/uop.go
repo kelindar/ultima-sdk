@@ -223,8 +223,8 @@ func (r *Reader) parseFile() error {
 }
 
 // Entries returns an iterator over available entry indices
-func (r *Reader) Entries() iter.Seq[uint64] {
-	return func(yield func(uint64) bool) {
+func (r *Reader) Entries() iter.Seq[uint32] {
+	return func(yield func(uint32) bool) {
 		if r.closed {
 			return
 		}
@@ -234,7 +234,7 @@ func (r *Reader) Entries() iter.Seq[uint64] {
 				continue // skip invalid entries
 			}
 
-			if !yield(uint64(i)) {
+			if !yield(uint32(i)) {
 				return
 			}
 		}
@@ -253,7 +253,7 @@ func (r *Reader) Close() error {
 }
 
 // Read reads data from the file at the specified index
-func (r *Reader) Read(index uint64) (out []byte, err error) {
+func (r *Reader) Read(index uint32) (out []byte, err error) {
 	entry, err := r.entryAt(index)
 	switch {
 	case err != nil:
@@ -285,7 +285,7 @@ func (r *Reader) Read(index uint64) (out []byte, err error) {
 }
 
 // ReadAt reads data from the file at the specified index
-func (r *Reader) ReadAt(p []byte, index uint64) error {
+func (r *Reader) ReadAt(p []byte, index uint32) error {
 	entry, err := r.entryAt(index)
 	switch {
 	case err != nil:
@@ -317,7 +317,7 @@ func (r *Reader) ReadAt(p []byte, index uint64) error {
 }
 
 // entryAt retrieves entry information by its logical index/hash
-func (r *Reader) entryAt(index uint64) (*Entry6D, error) {
+func (r *Reader) entryAt(index uint32) (*Entry6D, error) {
 	switch {
 	case r.closed:
 		return nil, ErrReaderClosed

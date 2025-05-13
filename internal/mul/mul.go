@@ -9,6 +9,8 @@ import (
 	"iter"
 	"os"
 	"sync/atomic"
+
+	"github.com/kelindar/intmap"
 )
 
 // Entry3D represents an entry in MUL index files
@@ -19,28 +21,14 @@ type Entry3D struct {
 	cache  atomic.Value // Cached data for the entry
 }
 
-// NewEntry creates a new Entry3D instance
-func NewEntry(offset, length, extra uint32, value []byte) Entry3D {
-	entry := Entry3D{
-		offset: offset,
-		length: length,
-		extra:  extra,
-	}
-	if value != nil {
-		entry.cache.Store(value)
-	}
-	return entry
-}
-
 // Reader provides access to MUL file data
 type Reader struct {
-	file       *os.File  // File handle for the MUL file
-	idxFile    *os.File  // Optional index file handle
-	entries    []Entry3D // Cached index entries
-	entrySize  int       // Size of each entry in the index file
-	entryCount int       // Number of entries per block (for structured files)
-	chunkSize  int       // Size of a fixed chunk to divide the file (for files with fixed-size chunks)
-	closed     bool      // Flag to track if reader is closed
+	file      *os.File    // File handle for the MUL file
+	index     *os.File    // Optional index file handle
+	entries   []Entry3D   // Cached index entries
+	lookup    *intmap.Map // Lookup table for entry offsets
+	entrySize int         // Size of each entry in the index file
+	closed    bool        // Flag to track if reader is closed
 }
 
 // Errors
@@ -51,35 +39,6 @@ var (
 	ErrInvalidOffset = errors.New("invalid offset")
 	ErrInvalidEntry  = errors.New("invalid entry")
 )
-
-// Option represents a configuration option for MulReader
-type Option func(*Reader)
-
-// WithChunkSize configures the reader to handle files with fixed-size chunks
-// This is useful for files like hues.mul where data is stored in fixed-size blocks
-func WithChunkSize(chunkSize int) Option {
-	return func(r *Reader) {
-		r.chunkSize = chunkSize
-	}
-}
-
-// WithEntrySize sets the size of each entry in the index file
-func WithEntrySize(size int) Option {
-	return func(r *Reader) {
-		r.entrySize = size
-	}
-}
-
-// WithDecode sets a custom parser function for the reader
-func WithDecode(fn func(*os.File) ([]Entry3D, error)) Option {
-	return func(r *Reader) {
-		entries, err := fn(r.file)
-		if err != nil {
-			panic(fmt.Sprintf("failed to parse entries: %v", err))
-		}
-		r.entries = entries
-	}
-}
 
 // OpenOne creates and initializes a new MUL reader
 func OpenOne(filename string, options ...Option) (*Reader, error) {
@@ -94,33 +53,27 @@ func OpenOne(filename string, options ...Option) (*Reader, error) {
 		return nil, fmt.Errorf("failed to open MUL file: %w", err)
 	}
 
-	reader := &Reader{
+	r := &Reader{
 		file:      file,
+		lookup:    intmap.New(128, .95),
 		entrySize: 12,
 	}
 
 	// Apply options
 	for _, option := range options {
-		option(reader)
+		option(r)
 	}
 
-	// Create virtual entries for chunked files
-	switch {
-	case reader.chunkSize > 0:
-		if err := reader.createChunkEntries(); err != nil {
-			reader.Close()
-			return nil, err
-		}
-	case len(reader.entries) == 0:
-		reader.entries = []Entry3D{NewEntry(0, uint32(info.Size()), 0, nil)}
+	// If no index file is provided, we need to create a default entry
+	if len(r.entries) == 0 {
+		r.add(0, 0, uint32(info.Size()), 0, nil)
 	}
 
-	return reader, nil
+	return r, nil
 }
 
 // Open creates a new MUL reader with a separate index file
 func Open(mulFilename, idxFilename string, options ...Option) (*Reader, error) {
-	// Open MUL file
 	file, err := os.Open(mulFilename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open MUL file: %w", err)
@@ -133,47 +86,44 @@ func Open(mulFilename, idxFilename string, options ...Option) (*Reader, error) {
 		return nil, fmt.Errorf("failed to open IDX file: %w", err)
 	}
 
-	reader := &Reader{
+	r := &Reader{
 		file:      file,
-		idxFile:   idxFile,
+		index:     idxFile,
+		lookup:    intmap.New(128, .95),
 		entrySize: 12, // Default entry size is 12 bytes (3 uint32s)
 	}
 
 	// Apply options
 	for _, option := range options {
-		option(reader)
+		option(r)
 	}
 
 	// Cache index entries
-	if err := reader.cacheIndexEntries(); err != nil {
-		reader.Close() // Clean up both file handles if caching fails
+	if err := r.loadIndex(); err != nil {
+		r.Close() // Clean up both file handles if caching fails
 		return nil, fmt.Errorf("failed to cache index entries: %w", err)
 	}
 
-	return reader, nil
+	return r, nil
 }
 
-// cacheIndexEntries loads all index entries from the index file into memory
-func (r *Reader) cacheIndexEntries() error {
-	if r.idxFile == nil {
+// loadIndex loads all index entries from the index file into memory
+func (r *Reader) loadIndex() error {
+	if r.index == nil {
 		return errors.New("no index file provided")
 	}
 
-	// Get file size
-	info, err := r.idxFile.Stat()
+	info, err := r.index.Stat()
 	if err != nil {
 		return fmt.Errorf("failed to get index file stats: %w", err)
 	}
 
-	fileSize := info.Size()
-	entryCount := int(fileSize) / r.entrySize
-
-	// Allocate slice for entries
-	r.entries = make([]Entry3D, entryCount)
+	entryCount := int(info.Size()) / r.entrySize
+	r.entries = make([]Entry3D, 0, entryCount)
 
 	// Read all entries at once
-	data := make([]byte, fileSize)
-	_, err = r.idxFile.ReadAt(data, 0)
+	data := make([]byte, info.Size())
+	_, err = r.index.ReadAt(data, 0)
 	if err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Errorf("failed to read index file: %w", err)
 	}
@@ -181,43 +131,36 @@ func (r *Reader) cacheIndexEntries() error {
 	// Parse entries
 	for i := 0; i < entryCount; i++ {
 		offset := i * r.entrySize
-		r.entries[i].offset = binary.LittleEndian.Uint32(data[offset : offset+4])
-		r.entries[i].length = binary.LittleEndian.Uint32(data[offset+4 : offset+8])
-		r.entries[i].extra = binary.LittleEndian.Uint32(data[offset+8 : offset+12])
+		r.add(uint32(i),
+			binary.LittleEndian.Uint32(data[offset:offset+4]),
+			binary.LittleEndian.Uint32(data[offset+4:offset+8]),
+			binary.LittleEndian.Uint32(data[offset+8:offset+12]),
+			nil,
+		)
 	}
 
 	return nil
 }
 
-// createChunkEntries divides the file into fixed-size chunks and creates virtual index entries
-func (r *Reader) createChunkEntries() error {
-	info, err := r.file.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to get file stats: %w", err)
+// add creates a new entry and adds it to the reader
+func (r *Reader) add(id, offset, length, extra uint32, value []byte) {
+	entry := Entry3D{
+		offset: offset,
+		length: length,
+		extra:  extra,
+	}
+	if value != nil {
+		entry.cache.Store(value)
 	}
 
-	fileSize := info.Size()
-	if r.chunkSize <= 0 {
-		return fmt.Errorf("invalid chunk size: %d", r.chunkSize)
-	}
-
-	chunkCount := int(fileSize / int64(r.chunkSize))
-	if chunkCount == 0 {
-		return fmt.Errorf("file too small for chunk format")
-	}
-
-	// Create a virtual index entry for each chunk
-	r.entries = make([]Entry3D, chunkCount)
-	for i := 0; i < chunkCount; i++ {
-		r.entries[i] = NewEntry(uint32(i*r.chunkSize), uint32(r.chunkSize), 0, nil)
-	}
-
-	return nil
+	index := uint32(len(r.entries))
+	r.entries = append(r.entries, entry)
+	r.lookup.Store(id, index)
 }
 
 // Read reads data from the file at the specified index
-func (r *Reader) Read(index uint64) (out []byte, err error) {
-	entry, err := r.entryAt(index)
+func (r *Reader) Read(key uint32) (out []byte, err error) {
+	entry, err := r.entryAt(key)
 	switch {
 	case err != nil:
 		return nil, err
@@ -236,7 +179,7 @@ func (r *Reader) Read(index uint64) (out []byte, err error) {
 
 	// Read data from the file at the specified offset
 	out = make([]byte, entry.length)
-	err = r.ReadAt(out, index)
+	err = r.ReadAt(out, key)
 
 	// Write the data to the cache
 	if err == nil {
@@ -247,8 +190,8 @@ func (r *Reader) Read(index uint64) (out []byte, err error) {
 }
 
 // ReadAt reads data from the file at the specified index
-func (r *Reader) ReadAt(p []byte, index uint64) error {
-	entry, err := r.entryAt(index)
+func (r *Reader) ReadAt(p []byte, key uint32) error {
+	entry, err := r.entryAt(key)
 	switch {
 	case err != nil:
 		return err
@@ -263,7 +206,7 @@ func (r *Reader) ReadAt(p []byte, index uint64) error {
 	// Read data from the file at the specified offset
 	_, err = r.file.ReadAt(p, int64(entry.offset))
 	if err != nil {
-		return fmt.Errorf("failed to read data at index %d: %w", index, err)
+		return fmt.Errorf("failed to read data at key %d: %w", key, err)
 	}
 
 	// Check if the read data exceeds the entry length
@@ -280,20 +223,25 @@ func (r *Reader) ReadAt(p []byte, index uint64) error {
 }
 
 // entryAt retrieves entry information by its logical index/hash
-func (r *Reader) entryAt(index uint64) (*Entry3D, error) {
+func (r *Reader) entryAt(key uint32) (*Entry3D, error) {
 	switch {
 	case r.closed:
 		return nil, ErrReaderClosed
-	case r.entries == nil || int(index) < 0 || int(index) >= len(r.entries):
+	case r.entries == nil:
 		return nil, ErrInvalidIndex
 	default:
+		index, ok := r.lookup.Load(key)
+		if !ok {
+			return nil, ErrInvalidIndex
+		}
+
 		return &r.entries[index], nil
 	}
 }
 
 // Entries returns an iterator over available entries
-func (r *Reader) Entries() iter.Seq[uint64] {
-	return func(yield func(uint64) bool) {
+func (r *Reader) Entries() iter.Seq[uint32] {
+	return func(yield func(uint32) bool) {
 		if r.closed {
 			return
 		}
@@ -305,7 +253,7 @@ func (r *Reader) Entries() iter.Seq[uint64] {
 					continue // skip invalid entries
 				}
 
-				if !yield(uint64(i)) {
+				if !yield(uint32(i)) {
 					return
 				}
 			}
@@ -330,11 +278,11 @@ func (r *Reader) Close() error {
 		r.file = nil
 	}
 
-	if r.idxFile != nil {
-		if err := r.idxFile.Close(); err != nil {
+	if r.index != nil {
+		if err := r.index.Close(); err != nil {
 			errs = append(errs, err)
 		}
-		r.idxFile = nil
+		r.index = nil
 	}
 
 	r.entries = nil
@@ -344,69 +292,4 @@ func (r *Reader) Close() error {
 	}
 
 	return nil
-}
-
-// ------------------------------- Reader Helper Functions ------------------------------- //
-
-// ReadByte reads a single byte from data at the specified offset
-func ReadByte(data []byte, offset int) (byte, int, error) {
-	if offset < 0 || offset >= len(data) {
-		return 0, offset, ErrOutOfBounds
-	}
-	return data[offset], offset + 1, nil
-}
-
-// ReadInt16 reads an int16 from data at the specified offset
-func ReadInt16(data []byte, offset int) (int16, int, error) {
-	if offset < 0 || offset+2 > len(data) {
-		return 0, offset, ErrOutOfBounds
-	}
-	return int16(binary.LittleEndian.Uint16(data[offset:])), offset + 2, nil
-}
-
-// ReadUint16 reads a uint16 from data at the specified offset
-func ReadUint16(data []byte, offset int) (uint16, int, error) {
-	if offset < 0 || offset+2 > len(data) {
-		return 0, offset, ErrOutOfBounds
-	}
-	return binary.LittleEndian.Uint16(data[offset:]), offset + 2, nil
-}
-
-// ReadInt32 reads an int32 from data at the specified offset
-func ReadInt32(data []byte, offset int) (int32, int, error) {
-	if offset < 0 || offset+4 > len(data) {
-		return 0, offset, ErrOutOfBounds
-	}
-	return int32(binary.LittleEndian.Uint32(data[offset:])), offset + 4, nil
-}
-
-// ReadUint32 reads a uint32 from data at the specified offset
-func ReadUint32(data []byte, offset int) (uint32, int, error) {
-	if offset < 0 || offset+4 > len(data) {
-		return 0, offset, ErrOutOfBounds
-	}
-	return binary.LittleEndian.Uint32(data[offset:]), offset + 4, nil
-}
-
-// ReadBytes reads a slice of bytes from data at the specified offset
-func ReadBytes(data []byte, offset, count int) ([]byte, int, error) {
-	if offset < 0 || offset+count > len(data) {
-		return nil, offset, ErrOutOfBounds
-	}
-	return data[offset : offset+count], offset + count, nil
-}
-
-// ReadString reads a fixed-length string from data at the specified offset
-func ReadString(data []byte, offset, fixedLength int) (string, int, error) {
-	if offset < 0 || offset+fixedLength > len(data) {
-		return "", offset, ErrOutOfBounds
-	}
-
-	// Find null terminator or use the whole length
-	end := offset
-	for end < offset+fixedLength && data[end] != 0 {
-		end++
-	}
-
-	return string(data[offset:end]), offset + fixedLength, nil
 }
