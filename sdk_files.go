@@ -11,7 +11,7 @@ type cacheKey string
 
 // loadHues loads the hues file
 func (s *SDK) loadHues() (*uofile.File, error) {
-	return s.load([]string{"hues.mul"}, 3000, uofile.WithChunkSize(708))
+	return s.load([]string{"hues.mul"}, 3000, uofile.WithChunks(708))
 }
 
 // loadRadarcol loads the radar colors file
@@ -131,7 +131,7 @@ func (s *SDK) loadUnicodeFonts() (*uofile.File, error) {
 func (s *SDK) loadCliloc(language string) (*uofile.File, error) {
 	return s.load([]string{
 		fmt.Sprintf("cliloc.%s", language),
-	}, 0, uofile.WithIndexLength(12))
+	}, 0, uofile.WithDecodeMUL(decodeClilocFile))
 }
 
 // loadSpeech loads the speech.mul file
