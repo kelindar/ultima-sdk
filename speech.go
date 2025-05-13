@@ -17,10 +17,6 @@ var (
 	ErrInvalidSpeechID = errors.New("invalid speech ID")
 )
 
-const (
-	maxSpeechTextLength = 128
-)
-
 // Speech represents a single speech entry from speech.mul
 type Speech struct {
 	ID   int    // ID of the speech entry (from file)
@@ -34,7 +30,7 @@ func (s *SDK) SpeechEntry(id int) (Speech, error) {
 		return Speech{}, err
 	}
 
-	text, err := file.Read(uint64(id))
+	text, err := file.Read(uint32(id))
 	if err != nil {
 		return Speech{}, err
 	}
@@ -50,14 +46,13 @@ func (s *SDK) SpeechEntries() iter.Seq[Speech] {
 	}
 
 	return func(yield func(Speech) bool) {
-		for id := range file.Entries() {
-			text, err := file.Read(uint64(id))
+		for index := range file.Entries() {
+			text, err := file.Read(index)
 			if err != nil {
 				continue
 			}
 
 			if !yield(Speech{
-				ID:   int(id),
 				Text: string(text),
 			}) {
 				break
@@ -73,13 +68,11 @@ func (s *SDK) SpeechEntries() iter.Seq[Speech] {
 // For each entry:
 //   - ID (int16, BigEndian)
 //   - Length (int16, BigEndian)
-//   - Text (bytes[Length], Windows-1252 encoded)
-func decodeSpeechFile(reader *os.File) ([]mul.Entry3D, error) {
-	entries := make([]mul.Entry3D, 0, 6500)
-	buffer := make([]byte, maxSpeechTextLength)
-
-	// Read entries until EOF
-	for {
+//   - Text (bytes[Length], UTF-8 encoded)
+func decodeSpeechFile(reader *os.File, add mul.AddFn) error {
+	const maxlen = 128
+	buffer := make([]byte, maxlen)
+	for index := uint32(0); ; index++ {
 		var id int16
 		var length int16
 
@@ -89,34 +82,32 @@ func decodeSpeechFile(reader *os.File) ([]mul.Entry3D, error) {
 			break // End of file, normal termination
 		}
 		if err != nil {
-			return nil, fmt.Errorf("failed to read speech ID: %w", err)
+			return fmt.Errorf("failed to read speech ID: %w", err)
 		}
 
 		// Read Length (BigEndian)
 		err = binary.Read(reader, binary.BigEndian, &length)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read length for speech ID %d: %w", id, err)
+			return fmt.Errorf("failed to read length for speech ID %d: %w", id, err)
 		}
 
 		textLength := int(length)
-		if textLength > maxSpeechTextLength {
-			textLength = maxSpeechTextLength
+		if textLength > maxlen {
+			textLength = maxlen
 		}
 
 		var text string
 		if textLength > 0 {
 			n, err := io.ReadFull(reader, buffer[:textLength])
 			if err != nil && n != textLength {
-				return nil, fmt.Errorf("failed to read text for speech ID %d: %w", id, err)
+				return fmt.Errorf("failed to read text for speech ID %d: %w", id, err)
 			}
 
 			text = string(buffer[:n])
 		}
 
-		entries = append(entries,
-			mul.NewEntry(uint32(id), uint32(textLength), 0, []byte(text)),
-		)
+		add(index, uint32(id), uint32(textLength), 0, []byte(text))
 	}
 
-	return entries, nil
+	return nil
 }

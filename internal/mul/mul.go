@@ -55,7 +55,7 @@ func OpenOne(filename string, options ...Option) (*Reader, error) {
 
 	r := &Reader{
 		file:      file,
-		lookup:    intmap.New(128, .95),
+		lookup:    intmap.New(8000, .95),
 		entrySize: 12,
 	}
 

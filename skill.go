@@ -38,7 +38,6 @@ type SkillGroup struct {
 
 // Skill retrieves a specific skill by its ID
 func (s *SDK) Skill(id int) (*Skill, error) {
-	// Load the skills file
 	file, err := s.loadSkills()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load skills: %w", err)
@@ -50,7 +49,7 @@ func (s *SDK) Skill(id int) (*Skill, error) {
 	}
 
 	// Read the skill data
-	data, err := file.Read(uint64(id))
+	data, err := file.Read(uint32(id))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %d", ErrInvalidSkillIndex, id)
 	}

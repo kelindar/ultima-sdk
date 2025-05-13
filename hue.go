@@ -90,7 +90,7 @@ func (s *SDK) HueAt(index int) (*Hue, error) {
 	// - Name (20 bytes)
 
 	// Read the entire block
-	blockData, err := file.Read(uint64(blockIndex))
+	blockData, err := file.Read(uint32(blockIndex))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read hue block: %w", err)
 	}
