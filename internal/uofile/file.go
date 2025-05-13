@@ -43,6 +43,7 @@ type Reader interface {
 type File struct {
 	reader  Reader
 	path    string
+	base    string
 	idxPath string
 	initFn  func() error // Function for lazy initialization
 	state   atomic.Int32 // File state (new, ready, closed)
@@ -95,6 +96,7 @@ func WithDecodeMUL(fn func(file *os.File, add mul.AddFn) error) Option {
 func New(basePath string, fileNames []string, length int, options ...Option) *File {
 	f := &File{
 		length: length,
+		base:   basePath,
 	}
 
 	// Try to detect the format and set up the appropriate reader
@@ -111,77 +113,59 @@ func New(basePath string, fileNames []string, length int, options ...Option) *Fi
 // detectFormat tries to determine the file format based on the file names
 // and sets up the appropriate reader in the File struct
 func detectFormat(f *File, basePath string, fileNames []string) {
-	var uopPath string
-	var mulPath string
-	var idxPath string
-	var clilocPath string // Added for cliloc files
+	useOne := func(path string) {
+		f.path = path
+		f.initFn = func() error {
+			reader, err := mul.OpenOne(path, f.mulOpts...)
+			if err != nil {
+				return fmt.Errorf("failed to create reader for %s: %w", path, err)
+			}
+			f.reader = reader
+			return nil
+		}
+	}
 
-	// Special case for cliloc files which don't follow standard naming conventions
+	// 1. Special case for cliloc files (cliloc.*)
 	for _, fileName := range fileNames {
 		if strings.HasPrefix(fileName, "cliloc.") {
-			filePath := filepath.Join(basePath, fileName)
-			if _, err := os.Stat(filePath); err == nil {
-				clilocPath = filePath
-				break
+			if path, ok := f.fileExists(fileName); ok {
+				useOne(path)
+				return
 			}
 		}
 	}
 
-	// If a cliloc file was found, configure it like a MUL file without index
-	if clilocPath != "" {
-		f.path = clilocPath
-		f.initFn = func() error {
-			reader, err := mul.OpenOne(clilocPath, f.mulOpts...)
-			if err != nil {
-				return fmt.Errorf("failed to create reader for cliloc file: %w", err)
-			}
-			f.reader = reader
-			return nil
-		}
-		return
-	}
-
-	// Look for UOP files first (preferred format)
+	// 2. Look for UOP files first (preferred format)
 	for _, fileName := range fileNames {
 		if strings.HasSuffix(fileName, ".uop") {
-			filePath := filepath.Join(basePath, fileName)
-			if _, err := os.Stat(filePath); err == nil {
-				uopPath = filePath
-				break
+			if path, ok := f.fileExists(fileName); ok {
+				f.path = path
+				f.initFn = func() error {
+					reader, err := uop.Open(path, f.length, f.uopOpts...)
+					if err != nil {
+						return fmt.Errorf("failed to create UOP reader: %w", err)
+					}
+					f.reader = reader
+					return nil
+				}
+				return
 			}
 		}
 	}
 
-	// If UOP file was found, configure for UOP
-	if uopPath != "" {
-		f.path = uopPath
-		f.initFn = func() error {
-			reader, err := uop.Open(uopPath, f.length, f.uopOpts...)
-			if err != nil {
-				return fmt.Errorf("failed to create UOP reader: %w", err)
-			}
-			f.reader = reader
-			return nil
-		}
-		return
-	}
-
-	// Otherwise look for MUL and IDX files
+	// 3. Look for MUL and IDX files
+	var mulPath, idxPath string
 	for _, fileName := range fileNames {
-		filePath := filepath.Join(basePath, fileName)
-
-		if strings.HasSuffix(fileName, "idx.mul") || strings.HasSuffix(fileName, ".idx") {
-			if _, err := os.Stat(filePath); err == nil {
-				idxPath = filePath
-			}
-		} else if strings.HasSuffix(fileName, ".mul") && !strings.HasSuffix(fileName, "idx.mul") {
-			if _, err := os.Stat(filePath); err == nil {
-				mulPath = filePath
+		if path, ok := f.fileExists(fileName); ok {
+			if strings.HasSuffix(fileName, "idx.mul") || strings.HasSuffix(fileName, ".idx") {
+				idxPath = path
+			} else if strings.HasSuffix(fileName, ".mul") && !strings.HasSuffix(fileName, "idx.mul") {
+				mulPath = path
 			}
 		}
 	}
 
-	// If we found both needed MUL files, configure for MUL
+	// If we found both MUL and IDX, use them
 	if mulPath != "" && idxPath != "" {
 		f.path = mulPath
 		f.idxPath = idxPath
@@ -190,30 +174,20 @@ func detectFormat(f *File, basePath string, fileNames []string) {
 			if err != nil {
 				return fmt.Errorf("failed to create MUL reader: %w", err)
 			}
-
 			f.reader = reader
 			return nil
 		}
 		return
 	}
 
-	// If we only have a MUL file but no IDX, try to open it without an index
+	// 4. If we only found a MUL file (no index), use just that
 	if mulPath != "" {
-		f.path = mulPath
-		f.initFn = func() error {
-			reader, err := mul.OpenOne(mulPath, f.mulOpts...)
-			if err != nil {
-				return fmt.Errorf("failed to create MUL reader without index: %w", err)
-			}
-
-			f.reader = reader
-			return nil
-		}
+		useOne(mulPath)
 		return
 	}
 
-	// If we couldn't find valid files, set up a default that will fail when used
-	f.path = filepath.Join(basePath, fileNames[0]) // Use first filename as a placeholder
+	// 5. No valid files found, set up a default error handler
+	f.path = filepath.Join(basePath, fileNames[0]) // Use first filename as placeholder
 	f.initFn = func() error {
 		return fmt.Errorf("could not find valid files among %v in %s", fileNames, basePath)
 	}
@@ -290,4 +264,12 @@ func (f *File) Close() error {
 		return f.reader.Close()
 	}
 	return nil
+}
+
+func (f *File) fileExists(fileName string) (string, bool) {
+	filePath := filepath.Join(f.base, fileName)
+	if _, err := os.Stat(filePath); err == nil {
+		return filePath, true
+	}
+	return "", false
 }
