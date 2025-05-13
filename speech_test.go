@@ -16,7 +16,7 @@ func TestSpeech(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.NotNil(t, entry)
-			assert.Equal(t, 1000, entry.ID)
+			assert.Equal(t, 168, entry.ID)
 			assert.NotEmpty(t, entry.Text)
 		})
 

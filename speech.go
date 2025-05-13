@@ -23,6 +23,13 @@ type Speech struct {
 	Text string // Text content of the speech entry
 }
 
+func makeSpeech(data []byte) Speech {
+	return Speech{
+		ID:   int(binary.BigEndian.Uint16(data[0:2])),
+		Text: string(data[2:]),
+	}
+}
+
 // SpeechEntry retrieves a predefined speech entry by its ID
 func (s *SDK) SpeechEntry(id int) (Speech, error) {
 	file, err := s.loadSpeech()
@@ -30,12 +37,12 @@ func (s *SDK) SpeechEntry(id int) (Speech, error) {
 		return Speech{}, err
 	}
 
-	text, err := file.Read(uint32(id))
+	data, err := file.Read(uint32(id))
 	if err != nil {
 		return Speech{}, err
 	}
 
-	return Speech{ID: id, Text: string(text)}, nil
+	return makeSpeech(data), nil
 }
 
 // SpeechEntries returns an iterator over all defined speech entries
@@ -47,18 +54,15 @@ func (s *SDK) SpeechEntries() iter.Seq[Speech] {
 
 	return func(yield func(Speech) bool) {
 		for index := range file.Entries() {
-			text, err := file.Read(index)
+			data, err := file.Read(index)
 			if err != nil {
 				continue
 			}
 
-			if !yield(Speech{
-				Text: string(text),
-			}) {
+			if !yield(makeSpeech(data)) {
 				break
 			}
 		}
-
 	}
 }
 
@@ -73,11 +77,13 @@ func decodeSpeechFile(reader *os.File, add mul.AddFn) error {
 	const maxlen = 128
 	buffer := make([]byte, maxlen)
 	for index := uint32(0); ; index++ {
-		var id int16
-		var length int16
+		head := struct {
+			ID  int16
+			Len int16
+		}{}
 
-		// Read ID (BigEndian)
-		err := binary.Read(reader, binary.BigEndian, &id)
+		// Read header
+		err := binary.Read(reader, binary.BigEndian, &head)
 		if err == io.EOF {
 			break // End of file, normal termination
 		}
@@ -85,28 +91,20 @@ func decodeSpeechFile(reader *os.File, add mul.AddFn) error {
 			return fmt.Errorf("failed to read speech ID: %w", err)
 		}
 
-		// Read Length (BigEndian)
-		err = binary.Read(reader, binary.BigEndian, &length)
-		if err != nil {
-			return fmt.Errorf("failed to read length for speech ID %d: %w", id, err)
-		}
-
-		textLength := int(length)
-		if textLength > maxlen {
-			textLength = maxlen
-		}
-
-		var text string
-		if textLength > 0 {
-			n, err := io.ReadFull(reader, buffer[:textLength])
-			if err != nil && n != textLength {
-				return fmt.Errorf("failed to read text for speech ID %d: %w", id, err)
+		if head.Len = min(maxlen, head.Len); head.Len > 0 {
+			n, err := io.ReadFull(reader, buffer[:head.Len])
+			if err != nil && n != int(head.Len) {
+				return fmt.Errorf("failed to read text for speech ID %d: %w", head.ID, err)
 			}
-
-			text = string(buffer[:n])
 		}
 
-		add(index, uint32(id), uint32(textLength), 0, []byte(text))
+		// Pack the text into a string
+		entry := make([]byte, head.Len+2)
+		binary.BigEndian.PutUint16(entry[0:2], uint16(head.ID))
+		copy(entry[2:], buffer[:head.Len])
+
+		// Add the entry to the index
+		add(index, uint32(head.ID), uint32(head.Len), 0, entry)
 	}
 
 	return nil
