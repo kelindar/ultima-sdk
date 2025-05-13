@@ -10,6 +10,10 @@ import (
 	"github.com/kelindar/ultima-sdk/internal/mul"
 )
 
+const (
+	landOffset = 0xFFFFF
+)
+
 // TileFlag represents individual properties of tiles as bit flags.
 type TileFlag uint64
 
@@ -137,7 +141,7 @@ func (s *SDK) LandTile(id int) (LandTileData, error) {
 		return LandTileData{}, err
 	}
 
-	data, err := file.Read(uint32(id))
+	data, err := file.Read(uint32(landOffset + id))
 	if err != nil {
 		return LandTileData{}, fmt.Errorf("error reading land tile data: %w", err)
 	}
@@ -172,16 +176,12 @@ func (s *SDK) StaticTile(id int) (StaticItemData, error) {
 		return StaticItemData{}, fmt.Errorf("invalid static tile ID: %d", id)
 	}
 
-	// The tiledata.mul file has land tiles first, then static tiles
-	// Need to adjust the ID to read from the correct position
-	adjustedID := 0x4000 + id
-
 	file, err := s.loadTiledata()
 	if err != nil {
 		return StaticItemData{}, err
 	}
 
-	data, err := file.Read(uint32(adjustedID))
+	data, err := file.Read(uint32(id))
 	if err != nil {
 		return StaticItemData{}, fmt.Errorf("error reading static tile data: %w", err)
 	}
@@ -259,7 +259,7 @@ func (s *SDK) LandTiles() iter.Seq[LandTileData] {
 
 	return func(yield func(LandTileData) bool) {
 		for i := 0; i < 0x4000; i++ {
-			data, err := file.Read(uint32(i))
+			data, err := file.Read(uint32(landOffset + i))
 			if err != nil {
 				continue
 			}
@@ -283,8 +283,7 @@ func (s *SDK) StaticTiles() iter.Seq[StaticItemData] {
 
 	return func(yield func(StaticItemData) bool) {
 		for i := 0; i < count; i++ {
-			adjustedID := 0x4000 + i
-			data, err := file.Read(uint32(adjustedID))
+			data, err := file.Read(uint32(i))
 			if err != nil {
 				continue
 			}
@@ -353,7 +352,7 @@ func decodeTileDataFile(file *os.File, add mul.AddFn) error {
 			currentPos += totalSize
 
 			// Add the land tile entry
-			add(uint32(tileID), uint32(tileID), uint32(len(entryData)), 0, entryData)
+			add(uint32(landOffset+tileID), uint32(tileID), uint32(len(entryData)), 0, entryData)
 		}
 	}
 
@@ -366,27 +365,27 @@ func decodeTileDataFile(file *os.File, add mul.AddFn) error {
 		staticEntrySize = 4 + 1 + 1 + 2 + 1 + 1 + 2 + 1 + 1 + 1 + 1 + 1 + 20
 	}
 
-	// Process static tile blocks
-	for currentPos < len(data) {
+	// Process static tiles - each block has a 4-byte header followed by 32 entries
+	// We'll use a sequential index for static tiles, starting at 0
+	staticIndex := uint32(0)
+
+	// Continue reading while we have enough data for at least a header
+	for currentPos+4 <= len(data) {
 		// Skip the 4-byte header for this block
-		if currentPos+4 > len(data) {
-			break
-		}
 		currentPos += 4
 
-		// Read 32 static tiles in this block, unless we reach EOF
+		// Read up to 32 static tiles in this block, or until EOF
 		for i := 0; i < 32 && currentPos+staticEntrySize <= len(data); i++ {
-			// Calculate global tile ID, adjusted by 0x4000 to account for land tiles
-			blockStart := (currentPos - 4 - (i * staticEntrySize)) / (staticEntrySize*32 + 4)
-			tileID := 0x4000 + (blockStart * 32) + i
-
 			// Copy the data for this static tile
 			entryData := make([]byte, staticEntrySize)
 			copy(entryData, data[currentPos:currentPos+staticEntrySize])
 			currentPos += staticEntrySize
 
-			// Add the static tile entry
-			add(uint32(tileID), uint32(tileID), uint32(len(entryData)), 0, entryData)
+			// Add the static tile entry using its sequential index.
+			// The actual tile ID (0x4000 + index) is stored within the entry data itself or can be derived.
+			add(staticIndex, 0x4000+staticIndex, uint32(len(entryData)), 0, entryData)
+
+			staticIndex++
 		}
 	}
 

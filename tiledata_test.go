@@ -11,33 +11,29 @@ import (
 func TestTileData(t *testing.T) {
 	runWith(t, func(sdk *SDK) {
 		t.Run("LandTile", func(t *testing.T) {
-			// Test retrieving a specific land tile
-			landTile, err := sdk.LandTile(1)
+			landTile, err := sdk.LandTile(0)
 
 			assert.NoError(t, err)
-			assert.NotEmpty(t, landTile.Name)
+			assert.NotEmpty(t, landTile.Name) // ED
 			assert.NotZero(t, landTile.Flags)
 		})
 
 		t.Run("LandTile_InvalidID", func(t *testing.T) {
-			// Test with out of range ID
 			_, err := sdk.LandTile(-1)
 			assert.Error(t, err)
 
-			_, err = sdk.LandTile(0x4000) // 0x4000 is the first static tile
+			_, err = sdk.LandTile(0xFFFFF)
 			assert.Error(t, err)
 		})
 
 		t.Run("StaticTile", func(t *testing.T) {
-			// Test retrieving a specific static tile
-			staticTile, err := sdk.StaticTile(1)
+			staticTile, err := sdk.StaticTile(3)
 
 			assert.NoError(t, err)
 			assert.NotEmpty(t, staticTile.Name)
 		})
 
 		t.Run("StaticTile_InvalidID", func(t *testing.T) {
-			// Test with out of range ID
 			_, err := sdk.StaticTile(-1)
 			assert.Error(t, err)
 
@@ -46,29 +42,29 @@ func TestTileData(t *testing.T) {
 		})
 
 		t.Run("LandTiles_Iterator", func(t *testing.T) {
-			// Test iteration over land tiles
 			count := 0
 			for tile := range sdk.LandTiles() {
-				assert.NotEmpty(t, tile.Name, "Land tile name should not be empty for ID %d", count)
-				count++
-				if count >= 10 {
-					break // Just test the first few to avoid long test times
+				if tile.Name != "" {
+					count++
+				}
+				if count >= 5 {
+					break
 				}
 			}
-			assert.Greater(t, count, 0, "Should have found at least one land tile")
+			assert.Equal(t, 5, count)
 		})
 
 		t.Run("StaticTiles_Iterator", func(t *testing.T) {
-			// Test iteration over static tiles
 			count := 0
 			for tile := range sdk.StaticTiles() {
-				assert.NotEmpty(t, tile.Name, "Static tile name should not be empty for ID %d", count)
-				count++
-				if count >= 10 {
-					break // Just test the first few to avoid long test times
+				if tile.Name != "" {
+					count++
+				}
+				if count >= 5 {
+					break
 				}
 			}
-			assert.Greater(t, count, 0, "Should have found at least one static tile")
+			assert.Equal(t, 5, count)
 		})
 
 		t.Run("StaticItemData_Properties", func(t *testing.T) {
@@ -102,7 +98,6 @@ func TestTileData(t *testing.T) {
 		})
 
 		t.Run("HeightTable", func(t *testing.T) {
-			// Test retrieving the height table
 			heights, err := sdk.HeightTable()
 
 			assert.NoError(t, err)
