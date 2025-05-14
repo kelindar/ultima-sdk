@@ -1,16 +1,11 @@
 package ultima
 
 import (
-	"encoding/binary"
 	"fmt"
 	"image"
 	"image/color"
-	"io"
-	"os"
 
 	"iter"
-
-	"github.com/kelindar/ultima-sdk/internal/mul"
 )
 
 // Light represents a light source image.
@@ -139,82 +134,4 @@ func makeLight(id uint32, data []byte, extra uint32) (Light, error) {
 		Height: height,
 		image:  data,
 	}, nil
-}
-
-// decodeLightFile is a wrapper for the internal light decoder that matches the uofile.DecodeFn signature
-func decodeLightFile(file *os.File, add mul.AddFn) error {
-	// We're processing just the idx file, which should be the first arg
-	// We need to find and open the mul file separately
-	idxPath := file.Name()
-	if len(idxPath) < 10 || idxPath[len(idxPath)-10:] != "lightidx.mul" {
-		return fmt.Errorf("expected lightidx.mul, got %s", idxPath)
-	}
-
-	mulPath := idxPath[:len(idxPath)-10] + "light.mul"
-	mulFile, err := os.Open(mulPath)
-	if err != nil {
-		// Can't open the mul file, we'll just process the idx
-		return decodeLightFileInternal(file, nil, add)
-	}
-	defer mulFile.Close()
-
-	return decodeLightFileInternal(file, mulFile, add)
-}
-
-// decodeLightFileInternal is the actual implementation that processes both idx and mul files
-func decodeLightFileInternal(idxFile *os.File, mulFile *os.File, add mul.AddFn) error {
-	idxStat, err := idxFile.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to stat lightidx.mul: %w", err)
-	}
-
-	numEntries := idxStat.Size() / 12 // Each index entry is 12 bytes
-	if numEntries == 0 {
-		return nil // No entries
-	}
-
-	for i := int64(0); i < numEntries; i++ {
-		// Read index entry: lookup, length, extra (width & height)
-		var lookup, length, extra uint32
-
-		if err := binary.Read(idxFile, binary.LittleEndian, &lookup); err != nil {
-			return fmt.Errorf("failed to read lookup for light index entry %d: %w", i, err)
-		}
-
-		if err := binary.Read(idxFile, binary.LittleEndian, &length); err != nil {
-			return fmt.Errorf("failed to read length for light index entry %d: %w", i, err)
-		}
-
-		if err := binary.Read(idxFile, binary.LittleEndian, &extra); err != nil {
-			return fmt.Errorf("failed to read extra data for light index entry %d: %w", i, err)
-		}
-
-		// Skip invalid entries (lookup -1 or length 0)
-		if lookup == 0xFFFFFFFF || length == 0 {
-			add(uint32(i), lookup, length, extra, nil)
-			continue
-		}
-
-		// Read the actual image data from light.mul
-		if mulFile == nil {
-			add(uint32(i), lookup, length, extra, nil)
-			continue
-		}
-
-		// Seek to the position in the mul file
-		if _, err := mulFile.Seek(int64(lookup), io.SeekStart); err != nil {
-			return fmt.Errorf("failed to seek in light.mul for entry %d: %w", i, err)
-		}
-
-		// Read the data
-		data := make([]byte, length)
-		if _, err := io.ReadFull(mulFile, data); err != nil {
-			return fmt.Errorf("failed to read data from light.mul for entry %d: %w", i, err)
-		}
-
-		// Add the entry to the file index
-		add(uint32(i), lookup, length, extra, data)
-	}
-
-	return nil
 }

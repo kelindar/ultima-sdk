@@ -29,6 +29,21 @@ func (s *SDK) loadSkillGroups() (*uofile.File, error) {
 	return s.load([]string{"skillgrp.mul"}, 0)
 }
 
+// loadTiledata loads the tiledata file
+func (s *SDK) loadTiledata() (*uofile.File, error) {
+	return s.load([]string{
+		"tiledata.mul",
+	}, 0, uofile.WithDecodeMUL(decodeTileDataFile))
+}
+
+// loadLights loads the light files
+func (s *SDK) loadLights() (*uofile.File, error) {
+	return s.load([]string{
+		"light.mul",
+		"lightidx.mul",
+	}, 0, uofile.WithIndexLength(12))
+}
+
 // loadArt loads the art files (art.mul, artidx.mul or their UOP equivalent)
 func (s *SDK) loadArt() (*uofile.File, error) {
 	return s.load([]string{
@@ -72,27 +87,12 @@ func (s *SDK) loadSound() (*uofile.File, error) {
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// loadTiledata loads the tiledata file
-func (s *SDK) loadTiledata() (*uofile.File, error) {
-	return s.load([]string{
-		"tiledata.mul",
-	}, 0, uofile.WithDecodeMUL(decodeTileDataFile))
-}
-
 // loadTextures loads the texture files
 func (s *SDK) loadTextures() (*uofile.File, error) {
 	return s.load([]string{
 		"texmaps.mul",
 		"texidx.mul",
 	}, 0x4000, uofile.WithIndexLength(12))
-}
-
-// loadLights loads the light files
-func (s *SDK) loadLights() (*uofile.File, error) {
-	return s.load([]string{
-		"light.mul",
-		"lightidx.mul",
-	}, 0, uofile.WithIndexLength(12))
 }
 
 // loadMulti loads the multi files
