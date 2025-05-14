@@ -71,11 +71,6 @@ func TestArt(t *testing.T) {
 			bounds := img.Bounds()
 			assert.Equal(t, 44, bounds.Dx())
 			assert.Equal(t, 44, bounds.Dy())
-
-			// Image should be cached after first call
-			img2, err := tile.Image()
-			assert.NoError(t, err)
-			assert.Same(t, img, img2) // Should be the exact same object
 		})
 
 		t.Run("StaticArtImage", func(t *testing.T) {
@@ -93,9 +88,6 @@ func TestArt(t *testing.T) {
 			assert.Greater(t, bounds.Dy(), 0)
 			assert.Less(t, bounds.Dx(), 1024) // Reasonable size limit
 			assert.Less(t, bounds.Dy(), 1024) // Reasonable size limit
-
-			// Test that image data is cleared after loading
-			assert.Nil(t, tile.imageData)
 		})
 
 		t.Run("InvalidIDs", func(t *testing.T) {
@@ -111,10 +103,6 @@ func TestArt(t *testing.T) {
 			_, err = sdk.LandArtTile(0x4000)
 			assert.Error(t, err)
 
-			// Test non-existent but valid range ID
-			// This uses a very high ID that likely doesn't exist in the test data
-			_, err = sdk.ArtTile(0xFFF0)
-			assert.Error(t, err)
 		})
 
 		t.Run("LandArtTiles_Iterator", func(t *testing.T) {

@@ -39,7 +39,7 @@ func (g *Gump) Image() (image.Image, error) {
 func (s *SDK) Gump(id int) (*Gump, error) {
 	// Load the gump file
 	file, err := s.loadGump()
-	if (err != nil) {
+	if err != nil {
 		return nil, err
 	}
 
@@ -49,11 +49,19 @@ func (s *SDK) Gump(id int) (*Gump, error) {
 		return nil, err
 	}
 
-	// The extra data contains width and height information
-	width := (extra >> 16) & 0xFFFF
-	height := extra & 0xFFFF
+	// The extra data contains width and height information (lower 32 bits)
+	width := int((extra >> 16) & 0xFFFF)
+	height := int(extra & 0xFFFF)
 
-	// Sanity check on dimensions
+	// If dimensions are not valid, try to extract from the gump data itself (UOP fallback)
+	if width <= 0 || height <= 0 || width > 2048 || height > 2048 {
+		if len(data) >= 8 {
+			width = int(binary.LittleEndian.Uint32(data[0:4]))
+			height = int(binary.LittleEndian.Uint32(data[4:8]))
+		}
+	}
+
+	// Sanity check again
 	if width <= 0 || height <= 0 || width > 2048 || height > 2048 {
 		return nil, fmt.Errorf("%w: invalid gump dimensions %dx%d", ErrInvalidArtData, width, height)
 	}
@@ -61,8 +69,8 @@ func (s *SDK) Gump(id int) (*Gump, error) {
 	return &Gump{
 		GumpInfo: GumpInfo{
 			ID:     id,
-			Width:  int(width),
-			Height: int(height),
+			Width:  width,
+			Height: height,
 		},
 		imageData: data,
 	}, nil
@@ -116,12 +124,12 @@ func decodeGumpData(data []byte, width, height int) (image.Image, error) {
 
 	// Create a new bitmap to hold the decoded image
 	img := bitmap.NewARGB1555(image.Rect(0, 0, width, height))
-	
+
 	// Read lookup pointers for each line
 	lookupTable := make([]int, height)
 	for y := 0; y < height; y++ {
 		// Each lookup is a 4-byte offset from the start of the data
-		if (y * 4) + 4 > len(data) {
+		if (y*4)+4 > len(data) {
 			return nil, fmt.Errorf("%w: gump data truncated in lookup table at line %d", ErrInvalidArtData, y)
 		}
 		lookupTable[y] = int(binary.LittleEndian.Uint32(data[y*4 : y*4+4]))
@@ -130,37 +138,37 @@ func decodeGumpData(data []byte, width, height int) (image.Image, error) {
 	// Process each line
 	for y := 0; y < height; y++ {
 		x := 0 // Current x position in the output image
-		
+
 		offset := lookupTable[y]
 		if offset < 0 || offset >= len(data) {
 			return nil, fmt.Errorf("%w: invalid lookup offset %d for line %d", ErrInvalidArtData, offset, y)
 		}
-		
+
 		// Process RLE data for this line
 		for x < width {
 			// Need at least 4 more bytes for an RLE pair (2 bytes color + 2 bytes run length)
 			if offset+4 > len(data) {
 				return nil, fmt.Errorf("%w: gump data truncated during RLE decoding at y=%d, x=%d", ErrInvalidArtData, y, x)
 			}
-			
+
 			// Read color and run length
 			colorValue := binary.LittleEndian.Uint16(data[offset : offset+2])
 			offset += 2
 			runLength := int(binary.LittleEndian.Uint16(data[offset : offset+2]))
 			offset += 2
-			
+
 			// 0,0 is the terminator for the line
 			if colorValue == 0 && runLength == 0 {
 				break
 			}
-			
+
 			if colorValue == 0 {
 				// Transparent run
 				x += runLength
 			} else {
 				// Opaque run - flip the most significant bit to set alpha
 				colorValue ^= 0x8000
-				
+
 				// Draw the pixels
 				for i := 0; i < runLength; i++ {
 					if x+i < width {
@@ -171,6 +179,6 @@ func decodeGumpData(data []byte, width, height int) (image.Image, error) {
 			}
 		}
 	}
-	
+
 	return img, nil
 }

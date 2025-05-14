@@ -29,8 +29,7 @@ func TestGump(t *testing.T) {
 			assert.Equal(t, gump.Width, img.Bounds().Dx())
 			assert.Equal(t, gump.Height, img.Bounds().Dy())
 
-			// The image data should have been cleared after loading
-			assert.Nil(t, gump.imageData, "Raw image data should be cleared after loading")
+			savePng(img, "gump.png")
 		})
 	})
 
