@@ -1,6 +1,7 @@
 package ultima
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,15 +36,11 @@ func TestGump(t *testing.T) {
 
 	t.Run("GumpInfos", func(t *testing.T) {
 		runWith(t, func(sdk *SDK) {
-			// Test iterating through gump infos
 			count := 0
-			for info := range sdk.GumpInfos() {
-				// Each info should have a valid ID and dimensions
-				assert.GreaterOrEqual(t, info.ID, 0, "Gump ID should be non-negative")
-				assert.Greater(t, info.Width, 0, "Gump width should be greater than 0")
-				assert.Greater(t, info.Height, 0, "Gump height should be greater than 0")
+			for info := range sdk.Gumps() {
+				assert.NotZero(t, info.Height, fmt.Sprintf("Gump height should be non-zero for ID %d", info.ID))
+				assert.NotZero(t, info.Width, fmt.Sprintf("Gump width should be non-zero for ID %d", info.ID))
 
-				// Limit the number of iterations to avoid too long test
 				count++
 				if count >= 100 {
 					break
@@ -57,7 +54,6 @@ func TestGump(t *testing.T) {
 
 	t.Run("InvalidGump", func(t *testing.T) {
 		runWith(t, func(sdk *SDK) {
-			// Test requesting a very high gump ID that shouldn't exist
 			gump, err := sdk.Gump(0xFFFFF) // Very high ID
 			assert.Error(t, err, "Should error on invalid gump ID")
 			assert.Nil(t, gump, "Should not return a gump for invalid ID")

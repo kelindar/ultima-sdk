@@ -9,17 +9,11 @@ import (
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
 )
 
-// GumpInfo contains metadata about a gump, like its ID, width, and height.
-type GumpInfo struct {
-	ID     int // ID of the gump
-	Width  int // Width in pixels
-	Height int // Height in pixels
-}
-
 // Gump represents a UI element or graphic.
-// The Image is loaded lazily.
 type Gump struct {
-	GumpInfo
+	ID        int    // ID of the gump
+	Width     int    // Width in pixels
+	Height    int    // Height in pixels
 	imageData []byte // Raw gump data
 }
 
@@ -49,7 +43,7 @@ func (s *SDK) Gump(id int) (*Gump, error) {
 		return nil, err
 	}
 
-	// The extra data contains width and height information (lower 32 bits)
+	// The extra data contains width and height information
 	width := int(extra & 0xFFFF)
 	height := int((extra >> 32) & 0xFFFF)
 
@@ -59,48 +53,44 @@ func (s *SDK) Gump(id int) (*Gump, error) {
 	}
 
 	return &Gump{
-		GumpInfo: GumpInfo{
-			ID:     id,
-			Width:  width,
-			Height: height,
-		},
+		ID:        id,
+		Width:     width,
+		Height:    height,
 		imageData: data,
 	}, nil
 }
 
-// GumpInfos returns an iterator over metadata (ID, width, height) for all available gumps.
+// Gumps returns an iterator over metadata (ID, width, height) for all available gumps.
 // This is efficient for listing gumps without loading all their pixel data.
-func (s *SDK) GumpInfos() iter.Seq[GumpInfo] {
-	return func(yield func(GumpInfo) bool) {
-		// Load the gump file
+func (s *SDK) Gumps() iter.Seq[*Gump] {
+	return func(yield func(*Gump) bool) {
 		file, err := s.loadGump()
 		if err != nil {
 			return
 		}
 
-		// Iterate through all entries in the file
-		for id := uint32(0); ; id++ {
-			_, extra, err := file.Read(id)
+		for id := range file.Entries() {
+			data, extra, err := file.Read(id)
 			if err != nil {
 				break // End of file or invalid entry
 			}
 
-			// Skip entries with invalid dimensions
-			width := int((extra >> 16) & 0xFFFF)
-			height := int(extra & 0xFFFF)
-			if width <= 0 || height <= 0 {
+			// The extra data contains width and height information
+			width := int(extra & 0xFFFF)
+			height := int((extra >> 32) & 0xFFFF)
+
+			// Sanity check
+			if width <= 0 || height <= 0 || width > 2048 || height > 2048 {
 				continue
 			}
 
-			// Create a GumpInfo with just the metadata
-			info := GumpInfo{
-				ID:     int(id),
-				Width:  width,
-				Height: height,
-			}
-
 			// Yield the info to the iterator
-			if !yield(info) {
+			if !yield(&Gump{
+				ID:        int(id),
+				Width:     width,
+				Height:    height,
+				imageData: data,
+			}) {
 				break
 			}
 		}
