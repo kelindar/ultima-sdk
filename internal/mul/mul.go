@@ -179,7 +179,9 @@ func (r *Reader) Read(key uint32) (out []byte, err error) {
 
 	// Read data from the file at the specified offset
 	out = make([]byte, entry.length)
-	err = r.ReadAt(out, key)
+	if _, err = r.file.ReadAt(out, int64(entry.offset)); err != nil {
+		return nil, fmt.Errorf("failed to read data at index %d: %w", key, err)
+	}
 
 	// Write the data to the cache
 	if err == nil {
