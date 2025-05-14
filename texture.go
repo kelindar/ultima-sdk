@@ -45,12 +45,6 @@ func (s *SDK) Texture(index int) (*Texture, error) {
 	}, nil
 }
 
-// RemoveTexture marks a texture as removed from the cache.
-
-// ReplaceTexture replaces a texture in the cache.
-
-// TestTexture checks if a texture index is valid and not removed.
-
 // Textures returns an iterator over all available textures.
 func (s *SDK) Textures() func(yield func(*Texture) bool) {
 	return func(yield func(*Texture) bool) {
@@ -65,5 +59,3 @@ func (s *SDK) Textures() func(yield func(*Texture) bool) {
 		}
 	}
 }
-
-// Internal: get or initialize the texture cache on the SDK

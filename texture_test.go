@@ -21,3 +21,17 @@ func TestTexture_Load(t *testing.T) {
 		assert.Nil(t, tex)
 	})
 }
+
+func TestTexture_Iterator(t *testing.T) {
+	runWith(t, func(sdk *SDK) {
+		count := 0
+		for tex := range sdk.Textures() {
+			assert.NotNil(t, tex)
+			count++
+			if count >= 10 {
+				break
+			}
+		}
+		assert.Equal(t, 10, count)
+	})
+}

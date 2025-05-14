@@ -92,7 +92,7 @@ Follow these steps sequentially. Each step involves translating the correspondin
 16. **[✅] Port `Gumps.cs` -> `gump.go`:**
     - Define `Gump`, `GumpInfo` structs. Use `internal/bitmap`.
     - _Sub-task: Write tests for loading gumps, verify dimensions/image data._
-17. **[❌] Port `Textures.cs` -> `texture.go`:**
+17. **[✅] Port `Textures.cs` -> `texture.go`:**
     - Define `Texture` struct. Use `internal/bitmap`.
     - _Sub-task: Write tests for loading textures and verify image data._
 18. **[❌] Port `Sound.cs`, `WaveFormat.cs` -> `sound.go`:**
