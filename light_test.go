@@ -1,6 +1,10 @@
 package ultima
 
 import (
+	"fmt"
+	"image"
+	"image/png"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,10 +17,11 @@ func TestLight(t *testing.T) {
 			light, err := sdk.Light(0)
 
 			assert.NoError(t, err, "Light(0) should not return an error")
-			assert.NotNil(t, light.Image, "Light image should not be nil")
 			assert.Greater(t, light.Width, 0, "Light width should be positive")
 			assert.Greater(t, light.Height, 0, "Light height should be positive")
 			assert.Equal(t, 0, light.ID, "Light ID should match requested ID")
+			//assert.NoError(t, savePng(light.Image(), "light.png"), "Failed to save light image")
+			assert.NotNil(t, light.Image())
 		})
 
 		t.Run("Light_InvalidID", func(t *testing.T) {
@@ -57,4 +62,13 @@ func TestLight(t *testing.T) {
 			assert.Greater(t, count, 0, "Should have found at least one light")
 		})
 	})
+}
+
+func savePng(img image.Image, name string) error {
+	file, err := os.Create(name)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer file.Close()
+	return png.Encode(file, img)
 }

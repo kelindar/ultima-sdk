@@ -15,10 +15,36 @@ import (
 
 // Light represents a light source image.
 type Light struct {
-	ID     int         // ID of the light
-	Width  int         // Width of the light image
-	Height int         // Height of the light image
-	Image  image.Image // Image data
+	ID     int    // ID of the light
+	Width  int    // Width of the light image
+	Height int    // Height of the light image
+	image  []byte // Raw image data
+}
+
+// Image returns the light image as a grayscale image.
+func (l *Light) Image() image.Image {
+
+	// The light.mul data contains signed byte values that represent light intensity
+	// In C#, each byte is converted to a 16-bit ARGB1555 value where R=G=B = 0x1F + value
+	img := image.NewGray16(image.Rect(0, 0, l.Width, l.Height))
+
+	for y := 0; y < l.Height; y++ {
+		for x := 0; x < l.Width; x++ {
+			offset := y*l.Width + x
+			if offset >= len(l.image) {
+				break
+			}
+
+			// Convert signed byte to intensity
+			value := int8(l.image[offset])
+			intensity := uint16(0x1F + value)
+
+			// Scale intensity (0-31) to 16-bit grayscale range (0-65535)
+			scaledIntensity := uint16((float64(intensity) / 31.0) * 65535.0)
+			img.SetGray16(x, y, color.Gray16{Y: scaledIntensity})
+		}
+	}
+	return img
 }
 
 // Light retrieves a specific light image by ID.
@@ -107,32 +133,11 @@ func makeLight(id uint32, data []byte, extra uint32) (Light, error) {
 		return Light{}, fmt.Errorf("data length mismatch for light ID %d: expected at least %d, got %d", id, width*height, len(data))
 	}
 
-	// The light.mul data contains signed byte values that represent light intensity
-	// In C#, each byte is converted to a 16-bit ARGB1555 value where R=G=B = 0x1F + value
-	img := image.NewGray16(image.Rect(0, 0, width, height))
-
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			offset := y*width + x
-			if offset >= len(data) {
-				break
-			}
-
-			// Convert signed byte to intensity
-			value := int8(data[offset])
-			intensity := uint16(0x1F + value)
-
-			// Scale intensity (0-31) to 16-bit grayscale range (0-65535)
-			scaledIntensity := uint16((float64(intensity) / 31.0) * 65535.0)
-			img.SetGray16(x, y, color.Gray16{Y: scaledIntensity})
-		}
-	}
-
 	return Light{
 		ID:     int(id),
 		Width:  width,
 		Height: height,
-		Image:  img,
+		image:  data,
 	}, nil
 }
 
