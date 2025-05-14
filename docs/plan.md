@@ -89,7 +89,7 @@ Follow these steps sequentially. Each step involves translating the correspondin
 15. **[✅] Port `Art.cs` -> `art.go`:**
     - Define `ArtTile` struct. Use `internal/bitmap`.
     - _Sub-task: Write tests to load art tiles, verify dimensions/image data._
-16. **[❌] Port `Gumps.cs` -> `gump.go`:**
+16. **[✅] Port `Gumps.cs` -> `gump.go`:**
     - Define `Gump`, `GumpInfo` structs. Use `internal/bitmap`.
     - _Sub-task: Write tests for loading gumps, verify dimensions/image data._
 17. **[❌] Port `Textures.cs` -> `texture.go`:**

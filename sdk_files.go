@@ -29,6 +29,18 @@ func (s *SDK) loadSkillGroups() (*uofile.File, error) {
 	return s.load([]string{"skillgrp.mul"}, 0)
 }
 
+// loadCliloc loads the client localization file for a specific language
+func (s *SDK) loadCliloc(language string) (*uofile.File, error) {
+	return s.load([]string{
+		fmt.Sprintf("cliloc.%s", language),
+	}, 0, uofile.WithDecodeMUL(decodeClilocFile))
+}
+
+// loadSpeech loads the speech.mul file
+func (s *SDK) loadSpeech() (*uofile.File, error) {
+	return s.load([]string{"speech.mul"}, 0, uofile.WithDecodeMUL(decodeSpeechFile))
+}
+
 // loadTiledata loads the tiledata file
 func (s *SDK) loadTiledata() (*uofile.File, error) {
 	return s.load([]string{
@@ -62,6 +74,14 @@ func (s *SDK) loadGump() (*uofile.File, error) {
 	}, 0xFFFF, uofile.WithExtension(".tga"), uofile.WithExtra())
 }
 
+// loadTextures loads the texture files
+func (s *SDK) loadTextures() (*uofile.File, error) {
+	return s.load([]string{
+		"texmaps.mul",
+		"texidx.mul",
+	}, 0x4000, uofile.WithIndexLength(12))
+}
+
 // loadMap loads a specific map file (mapX.mul, where X is the map ID)
 func (s *SDK) loadMap(mapID int) (*uofile.File, error) {
 	return s.load([]string{
@@ -85,14 +105,6 @@ func (s *SDK) loadSound() (*uofile.File, error) {
 		"sound.mul",
 		"soundidx.mul",
 	}, 0, uofile.WithIndexLength(12))
-}
-
-// loadTextures loads the texture files
-func (s *SDK) loadTextures() (*uofile.File, error) {
-	return s.load([]string{
-		"texmaps.mul",
-		"texidx.mul",
-	}, 0x4000, uofile.WithIndexLength(12))
 }
 
 // loadMulti loads the multi files
@@ -125,18 +137,6 @@ func (s *SDK) loadUnicodeFonts() (*uofile.File, error) {
 	return s.load([]string{
 		"fonts.mul",
 	}, 0, uofile.WithIndexLength(12))
-}
-
-// loadCliloc loads the client localization file for a specific language
-func (s *SDK) loadCliloc(language string) (*uofile.File, error) {
-	return s.load([]string{
-		fmt.Sprintf("cliloc.%s", language),
-	}, 0, uofile.WithDecodeMUL(decodeClilocFile))
-}
-
-// loadSpeech loads the speech.mul file
-func (s *SDK) loadSpeech() (*uofile.File, error) {
-	return s.load([]string{"speech.mul"}, 0, uofile.WithDecodeMUL(decodeSpeechFile))
 }
 
 // load loads a file with the given file names and length
