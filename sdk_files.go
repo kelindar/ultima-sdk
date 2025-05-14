@@ -74,6 +74,15 @@ func (s *SDK) loadGump() (*uofile.File, error) {
 	}, 0xFFFF, uofile.WithExtension(".tga"), uofile.WithExtra())
 }
 
+// loadSound loads the sound files
+func (s *SDK) loadSound() (*uofile.File, error) {
+	return s.load([]string{
+		"soundLegacyMUL.uop",
+		"sound.mul",
+		"soundidx.mul",
+	}, 0xFFF)
+}
+
 // loadTextures loads the texture files
 func (s *SDK) loadTextures() (*uofile.File, error) {
 	return s.load([]string{
@@ -95,15 +104,6 @@ func (s *SDK) loadStatics(mapID int) (*uofile.File, error) {
 	return s.load([]string{
 		fmt.Sprintf("statics%d.mul", mapID),
 		fmt.Sprintf("staidx%d.mul", mapID),
-	}, 0, uofile.WithIndexLength(12))
-}
-
-// loadSound loads the sound files
-func (s *SDK) loadSound() (*uofile.File, error) {
-	return s.load([]string{
-		"soundLegacyMUL.uop",
-		"sound.mul",
-		"soundidx.mul",
 	}, 0, uofile.WithIndexLength(12))
 }
 

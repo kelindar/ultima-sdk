@@ -14,6 +14,7 @@ type Texture struct {
 	image []byte // Texture data
 }
 
+// Image returns the image of the texture.
 func (t *Texture) Image() image.Image {
 	img := bitmap.NewARGB1555(image.Rect(0, 0, t.Size, t.Size))
 	img.Pix = t.image
