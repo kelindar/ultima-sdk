@@ -18,22 +18,26 @@ func TestArt(t *testing.T) {
 			assert.True(t, tile.isLand)
 			assert.NotEmpty(t, tile.Name)
 			assert.NotEqual(t, uint64(0), tile.Flags)
+
 			img, err := tile.Image()
 			assert.NoError(t, err)
-
-			assert.NoError(t, savePng(img, "landart.png"))
+			assert.NotNil(t, img)
+			//assert.NoError(t, savePng(img, "land.png"))
 		})
 
 		t.Run("StaticArt", func(t *testing.T) {
-			// Test retrieving a specific static art tile
-			// Using ID 8000 (which will be 0x4000 + 8000 internally)
-			tile, err := sdk.StaticArtTile(8000)
+			tile, err := sdk.StaticArtTile(0x0E3D)
 
 			assert.NoError(t, err)
 			assert.NotNil(t, tile)
-			assert.Equal(t, 8000+0x4000, tile.ID)
+			assert.Equal(t, 0x0E3D+0x4000, tile.ID)
 			assert.False(t, tile.isLand)
 			assert.NotEmpty(t, tile.Name)
+
+			img, err := tile.Image()
+			assert.NoError(t, err)
+			assert.NotNil(t, img)
+			//assert.NoError(t, savePng(img, "static.png"))
 		})
 
 		t.Run("ArtTile_Land", func(t *testing.T) {

@@ -222,11 +222,11 @@ func decodeLandArt(data []byte) (image.Image, error) {
 // Static art has a header with dimensions, followed by a lookup table and
 // run-length encoded pixel data.
 func decodeStaticArt(data []byte) (image.Image, error) {
-	if len(data) < 8 {
+	if len(data) < 8 { // Header (4) + Width (2) + Height (2)
 		return nil, fmt.Errorf("%w: static art data too short for header", ErrInvalidArtData)
 	}
 
-	// Skip the 4 byte header
+	// Skip the 4 byte art entry header
 	offset := 4
 
 	// Read dimensions
@@ -236,76 +236,69 @@ func decodeStaticArt(data []byte) (image.Image, error) {
 	offset += 2
 
 	// Sanity check on dimensions
-	if width <= 0 || height <= 0 || width > 1024 || height > 1024 {
+	if width <= 0 || height <= 0 || width > 2048 || height > 2048 { // Max typical UO art dim is ~512, 2048 is very safe.
 		return nil, fmt.Errorf("%w: invalid dimensions %dx%d", ErrInvalidArtData, width, height)
 	}
 
-	// Read lookup table (array of uint16 offsets, one per line)
-	lookupTable := make([]int, height)
+	// Read lookup table. Each entry is a WORD offset relative to the start of the RLE data block.
+	lookupTableValues := make([]int, height)
+	lookupTableByteSize := height * 2
+	if offset+lookupTableByteSize > len(data) {
+		return nil, fmt.Errorf("%w: static art data too short for lookup table (needs %d bytes, has %d remaining from offset %d, total data %d)", ErrInvalidArtData, lookupTableByteSize, len(data)-offset, offset, len(data))
+	}
 	for i := 0; i < height; i++ {
-		if offset+1 >= len(data) {
-			return nil, fmt.Errorf("%w: static art lookup table truncated", ErrInvalidArtData)
-		}
-		lookupTable[i] = int(binary.LittleEndian.Uint16(data[offset : offset+2]))
+		lookupTableValues[i] = int(binary.LittleEndian.Uint16(data[offset : offset+2]))
 		offset += 2
 	}
 
-	// Create image
+	// 'offset' is now at the start of the RLE data block.
+	// This corresponds to 'start' in the C# reference (UOFiddler Art.cs GetStatic).
+	rleDataBlockStartOffset := offset
+
 	img := bitmap.NewARGB1555(image.Rect(0, 0, width, height))
 
-	// Process each line using the lookup table
 	for y := 0; y < height; y++ {
-		// Get the offset for this line
-		lineOffset := 8 + (height * 2) + lookupTable[y]*2 // Multiply by 2 because offsets are in words
+		// Calculate the starting byte offset for this line's RLE data, relative to the beginning of 'data'.
+		// lookupTableValues[y] is a WORD offset from rleDataBlockStartOffset.
+		lineRleStartOffsetInData := rleDataBlockStartOffset + (lookupTableValues[y] * 2)
+		currentReadOffset := lineRleStartOffsetInData
 
-		if lineOffset >= len(data) {
-			return nil, fmt.Errorf("%w: invalid line offset at y=%d", ErrInvalidArtData, y)
-		}
-
-		// Process the run-length encoded line data
-		x := 0
+		x := 0 // Current horizontal pixel position in the output image for this line
 		for x < width {
-			if lineOffset+1 >= len(data) {
-				return nil, fmt.Errorf("%w: static art data truncated at y=%d, x=%d", ErrInvalidArtData, y, x)
+			// Ensure we can read xPixelOffset (2 bytes) and runLength (2 bytes) for the RLE pair.
+			if currentReadOffset+4 > len(data) {
+				if x < width { // If we still expect pixels on this line.
+					return nil, fmt.Errorf("%w: static art data truncated before RLE pair header at y=%d, x_cursor=%d. Need 4 bytes from readOffset=%d, dataLen=%d", ErrInvalidArtData, y, x, currentReadOffset, len(data))
+				}
+				break // Line ends if x >= width or truncated past expected content.
 			}
 
-			// Read the run header value
-			xOffset := int(binary.LittleEndian.Uint16(data[lineOffset : lineOffset+2]))
-			lineOffset += 2
+			xPixelOffset := int(binary.LittleEndian.Uint16(data[currentReadOffset : currentReadOffset+2]))
+			currentReadOffset += 2
+			runLength := int(binary.LittleEndian.Uint16(data[currentReadOffset : currentReadOffset+2]))
+			currentReadOffset += 2
 
-			if xOffset+x >= width {
-				break // Safety check
+			if xPixelOffset == 0 && runLength == 0 {
+				break // End of line marker
 			}
 
-			x += xOffset // Skip transparent pixels
+			x += xPixelOffset // Advance by transparent pixels
 
-			if lineOffset+1 >= len(data) {
-				return nil, fmt.Errorf("%w: static art data truncated at y=%d, x=%d", ErrInvalidArtData, y, x)
-			}
-
-			// Read the run length
-			runLength := int(binary.LittleEndian.Uint16(data[lineOffset : lineOffset+2]))
-			lineOffset += 2
-
-			if runLength > width-x {
-				runLength = width - x // Safety check
-			}
-
-			// Read the pixel data for this run
 			for i := 0; i < runLength; i++ {
-				if lineOffset+1 >= len(data) {
-					return nil, fmt.Errorf("%w: static art data truncated at y=%d, x=%d", ErrInvalidArtData, y, x+i)
+				// Ensure we can read 2 bytes for color data.
+				if currentReadOffset+2 > len(data) {
+					return nil, fmt.Errorf("%w: static art data truncated during pixel data run at y=%d, x_target_pixel=%d (x_cursor_at_run_start=%d, pixel_in_run=%d). Need 2 bytes from readOffset=%d, dataLen=%d. RunLength was %d", ErrInvalidArtData, y, x+i, x, i, runLength, currentReadOffset, len(data))
 				}
 
-				// Read the color value and set the pixel
-				colorValue := binary.LittleEndian.Uint16(data[lineOffset : lineOffset+2])
-				colorValue ^= 0x8000 // Flip the alpha bit (from 0=transparent to 1=opaque)
+				colorValue := binary.LittleEndian.Uint16(data[currentReadOffset : currentReadOffset+2])
+				colorValue ^= 0x8000 // Flip the alpha bit (UO statics: 0=transparent, 1=opaque for this bit)
+				currentReadOffset += 2
 
-				lineOffset += 2
-				img.Set(x+i, y, bitmap.ARGB1555Color(colorValue))
+				if x+i < width { // Draw only if within image bounds
+					img.Set(x+i, y, bitmap.ARGB1555Color(colorValue))
+				}
 			}
-
-			x += runLength
+			x += runLength // Advance by opaque pixels drawn/skipped
 		}
 	}
 
