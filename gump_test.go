@@ -11,12 +11,12 @@ func TestGump(t *testing.T) {
 	t.Run("LoadGump", func(t *testing.T) {
 		runWith(t, func(sdk *SDK) {
 			// Test loading a specific gump (ID 1, which typically exists in most UO clients)
-			gump, err := sdk.Gump(1)
+			gump, err := sdk.Gump(7)
 			require.NoError(t, err)
 			require.NotNil(t, gump)
 
 			// Check that the gump has valid properties
-			assert.Equal(t, 1, gump.ID)
+			assert.Equal(t, 7, gump.ID)
 			assert.Greater(t, gump.Width, 0, "Gump width should be greater than 0")
 			assert.Greater(t, gump.Height, 0, "Gump height should be greater than 0")
 
@@ -29,7 +29,7 @@ func TestGump(t *testing.T) {
 			assert.Equal(t, gump.Width, img.Bounds().Dx())
 			assert.Equal(t, gump.Height, img.Bounds().Dy())
 
-			savePng(img, "gump.png")
+			//assert.NoError(t, savePng(img, "gump.png")
 		})
 	})
 

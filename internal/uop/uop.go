@@ -170,6 +170,8 @@ func (r *Reader) parseFile() error {
 			return fmt.Errorf("failed to read file entries: %w", err)
 		}
 
+		tmp := make([]byte, 8)
+
 		// Parse each entry in the block
 		for i := 0; i < fileCount; i++ {
 			idx := i * entrySize
@@ -192,14 +194,19 @@ func (r *Reader) parseFile() error {
 				continue
 			}
 			if entryIdx < 0 || entryIdx > r.idxLength {
-				return fmt.Errorf("hashes dictionary and files collection have different count of entries!")
+				return fmt.Errorf("hashes dictionary and files collection have different count of entries")
 			}
 
 			offset += int64(headerSize)
 
-			if r.hasextra && flag != 0 {
-				extra1 := binary.LittleEndian.Uint32(entryData[idx+34 : idx+38])
-				extra2 := binary.LittleEndian.Uint32(entryData[idx+38 : idx+42])
+			if r.hasextra && flag != 3 {
+				if _, err := r.file.ReadAt(tmp, int64(offset)); err != nil {
+					return fmt.Errorf("failed to read data at index %d: %w", entryIdx, err)
+				}
+
+				extra1 := binary.LittleEndian.Uint32(tmp[0:4])
+				extra2 := binary.LittleEndian.Uint32(tmp[4:8])
+
 				r.entries[entryIdx] = Entry6D{
 					offset: uint32(offset + 8),
 					length: uint32(encodedSize - 8),

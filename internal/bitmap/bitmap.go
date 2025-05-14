@@ -10,31 +10,26 @@ import (
 // The next 5 bits are Red, then 5 bits Green, then 5 bits Blue.
 type ARGB1555Color uint16
 
-// RGBA implements the color.Color interface.
-// It converts the ARGB1555 color to the standard color.RGBA format.
-// Note: This conversion involves scaling the 5-bit channels to 8-bit.
+// RGBA converts ARGB-1555 to 32-bit RGBA.
+//
+// UO: bit-15 is unused, colour==0 ⇒ transparent.
 func (c ARGB1555Color) RGBA() (r, g, b, a uint32) {
-	alpha := uint32(c&0x8000) >> 15 // 1 bit alpha (0 or 1)
-	red5 := uint32(c&0x7C00) >> 10  // 5 bits red
-	green5 := uint32(c&0x03E0) >> 5 // 5 bits green
-	blue5 := uint32(c & 0x001F)     // 5 bits blue
-
-	// Scale 5-bit channels (0-31) to 16-bit (0-65535)
-	// Use the more accurate formula: val16 = (val5 * 65535) / 31
-	const max5Bit = 31
-	const max16Bit = 65535
-	r = (red5 * max16Bit) / max5Bit
-	g = (green5 * max16Bit) / max5Bit
-	b = (blue5 * max16Bit) / max5Bit
-
-	// Scale 1-bit alpha (0 or 1) to 16-bit (0 or 65535)
-	if alpha == 1 {
-		a = 0xFFFF
-	} else {
-		a = 0x0000 // Treat 0 alpha bit as fully transparent for RGBA()
+	if c == 0 {
+		return 0, 0, 0, 0 // fully transparent
 	}
+	// colour present → fully opaque
+	red5 := uint32(c>>10) & 0x1F
+	green5 := uint32(c>>5) & 0x1F
+	blue5 := uint32(c) & 0x1F
 
-	return r, g, b, a
+	// exact 5→8-bit upscale with rounding
+	const scale = 255
+	const max5 = 31
+	r = (red5 * scale / max5) << 8
+	g = (green5 * scale / max5) << 8
+	b = (blue5 * scale / max5) << 8
+	a = 0xFFFF
+	return
 }
 
 // ARGB1555Model is the color model for ARGB1555 colors.

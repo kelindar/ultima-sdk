@@ -25,7 +25,7 @@ type Gump struct {
 
 // Image retrieves and decodes the gump's graphical representation.
 func (g *Gump) Image() (image.Image, error) {
-	if g.imageData == nil || len(g.imageData) == 0 {
+	if len(g.imageData) == 0 {
 		return nil, fmt.Errorf("%w: no gump data available", ErrInvalidArtData)
 	}
 
@@ -50,18 +50,10 @@ func (s *SDK) Gump(id int) (*Gump, error) {
 	}
 
 	// The extra data contains width and height information (lower 32 bits)
-	width := int((extra >> 16) & 0xFFFF)
-	height := int(extra & 0xFFFF)
+	width := int(extra & 0xFFFF)
+	height := int((extra >> 32) & 0xFFFF)
 
-	// If dimensions are not valid, try to extract from the gump data itself (UOP fallback)
-	if width <= 0 || height <= 0 || width > 2048 || height > 2048 {
-		if len(data) >= 8 {
-			width = int(binary.LittleEndian.Uint32(data[0:4]))
-			height = int(binary.LittleEndian.Uint32(data[4:8]))
-		}
-	}
-
-	// Sanity check again
+	// Sanity check
 	if width <= 0 || height <= 0 || width > 2048 || height > 2048 {
 		return nil, fmt.Errorf("%w: invalid gump dimensions %dx%d", ErrInvalidArtData, width, height)
 	}
@@ -115,9 +107,51 @@ func (s *SDK) GumpInfos() iter.Seq[GumpInfo] {
 	}
 }
 
+// decodeGumpData converts raw gump data into an image.Image (RGBA8888).
+func decodeGumpData(data []byte, width, height int) (image.Image, error) {
+	need := height * 4
+	if len(data) < need {
+		return nil, fmt.Errorf("data too short for lookup table")
+	}
+
+	// Parse lookup table (height * uint32).
+	lookup := make([]uint32, height)
+	for y := 0; y < height; y++ {
+		lookup[y] = binary.LittleEndian.Uint32(data[y*4:])
+	}
+
+	// Stage-1: decode straight into 1555 buffer.
+	img1555 := bitmap.NewARGB1555(image.Rect(0, 0, width, height))
+
+	for y := 0; y < height; y++ {
+		pos := int(lookup[y]) * 4 // byte offset from table start
+		x := 0
+		for x < width {
+			if pos+3 >= len(data) {
+				return nil, fmt.Errorf("RLE overflow at line %d", y)
+			}
+			color16 := binary.LittleEndian.Uint16(data[pos:])
+			count := int(binary.LittleEndian.Uint16(data[pos+2:]))
+			pos += 4
+
+			for i := 0; i < count && x < width; i++ {
+				off := y*img1555.Stride + x*2
+				img1555.Pix[off] = byte(color16)
+				img1555.Pix[off+1] = byte(color16 >> 8)
+				x++
+			}
+		}
+		if x != width {
+			return nil, fmt.Errorf("scan-line %d decoded %d/%d pixels", y, x, width)
+		}
+	}
+
+	return img1555, nil
+}
+
 // decodeGumpData converts raw gump data to an image.Image.
 // Gumps are stored in a run-length encoded format with 16-bit color values.
-func decodeGumpData(data []byte, width, height int) (image.Image, error) {
+func decodeGumpData2(data []byte, width, height int) (image.Image, error) {
 	if len(data) < 4 {
 		return nil, fmt.Errorf("%w: gump data too short for lookup table", ErrInvalidArtData)
 	}
