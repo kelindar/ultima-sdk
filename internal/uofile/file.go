@@ -33,7 +33,7 @@ var (
 
 // Reader defines the common interface for both MUL and UOP readers
 type Reader interface {
-	Read(uint32) ([]byte, error)
+	Read(uint32) ([]byte, uint64, error)
 	Entries() iter.Seq[uint32]
 	Close() error
 }
@@ -217,14 +217,14 @@ func (f *File) open() error {
 }
 
 // Read reads data from a specific entry, applying any patches if available
-func (f *File) Read(index uint32) ([]byte, error) {
+func (f *File) Read(index uint32) ([]byte, uint64, error) {
 	if err := f.open(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// Double-check reader is not nil after initialization
 	if f.reader == nil {
-		return nil, fmt.Errorf("reader not initialized for %s", f.path)
+		return nil, 0, fmt.Errorf("reader not initialized for %s", f.path)
 	}
 
 	return f.reader.Read(index)

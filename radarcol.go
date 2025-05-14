@@ -72,7 +72,7 @@ func (s *SDK) loadRadarData() ([]byte, error) {
 		return nil, fmt.Errorf("failed to load radar colors: %w", err)
 	}
 
-	data, err := file.Read(0)
+	data, _, err := file.Read(0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read radar color data: %w", err)
 	}

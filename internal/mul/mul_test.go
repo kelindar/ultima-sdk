@@ -62,12 +62,12 @@ func TestRead(t *testing.T) {
 	defer reader.Close()
 
 	// Read data for the entry
-	data1, err := reader.Read(1)
+	data1, _, err := reader.Read(1)
 	assert.NoError(t, err)
 	assert.NotNil(t, data1)
 
 	// Read data for the entry (cached)
-	data2, err := reader.Read(1)
+	data2, _, err := reader.Read(1)
 	assert.NoError(t, err)
 	assert.NotNil(t, data2)
 
@@ -108,7 +108,7 @@ func TestClose(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Attempt operations after closing
-	_, err = reader.Read(0)
+	_, _, err = reader.Read(0)
 	assert.Error(t, err)
 	assert.Equal(t, ErrReaderClosed, err)
 }

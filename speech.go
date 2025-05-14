@@ -37,7 +37,7 @@ func (s *SDK) SpeechEntry(id int) (Speech, error) {
 		return Speech{}, err
 	}
 
-	data, err := file.Read(uint32(id))
+	data, _, err := file.Read(uint32(id))
 	if err != nil {
 		return Speech{}, err
 	}
@@ -54,7 +54,7 @@ func (s *SDK) SpeechEntries() iter.Seq[Speech] {
 
 	return func(yield func(Speech) bool) {
 		for index := range file.Entries() {
-			data, err := file.Read(index)
+			data, _, err := file.Read(index)
 			if err != nil {
 				continue
 			}

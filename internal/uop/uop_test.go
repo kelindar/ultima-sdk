@@ -62,13 +62,13 @@ func TestEntryOperations(t *testing.T) {
 	// Test Read method with the first valid index
 	if len(indices) > 0 {
 		firstIndex := indices[0]
-		data, err := reader.Read(firstIndex)
+		data, _, err := reader.Read(firstIndex)
 		require.NoError(t, err)
 		assert.NotNil(t, data, "Data should not be nil")
 		assert.Greater(t, len(data), 0, "Data should not be empty")
 
 		// Test invalid index
-		_, err = reader.Read(uint32(0xFFFFFFFF))
+		_, _, err = reader.Read(uint32(0xFFFFFFFF))
 		assert.Error(t, err, "Reading invalid index should return error")
 	}
 }
@@ -95,7 +95,7 @@ func TestReaderInterface(t *testing.T) {
 
 	// Test that we can assign the reader to a variable of the interface type
 	var _ interface {
-		Read(uint32) ([]byte, error)
+		Read(uint32) ([]byte, uint64, error)
 		Entries() iter.Seq[uint32]
 		Close() error
 	} = reader

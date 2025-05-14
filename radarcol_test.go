@@ -81,7 +81,7 @@ func TestSDKLoadRadarcol(t *testing.T) {
 		assert.NotNil(t, file, "Radar color file should not be nil")
 
 		// Read a chunk of data to verify we can access the file
-		data, err := file.Read(0)
+		data, _, err := file.Read(0)
 		assert.NoError(t, err, "Should be able to read from the radar color file")
 		assert.NotEmpty(t, data, "Radar color data should not be empty")
 	})

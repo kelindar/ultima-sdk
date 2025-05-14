@@ -62,7 +62,7 @@ func (s *SDK) StringEntry(id int, lang string) (StringEntry, error) {
 		return StringEntry{}, err
 	}
 
-	data, err := file.Read(uint32(id))
+	data, _, err := file.Read(uint32(id))
 	if err != nil {
 		return StringEntry{}, fmt.Errorf("%w: %d", ErrInvalidStringID, id)
 	}
@@ -84,7 +84,7 @@ func (s *SDK) StringsWithLang(lang string) iter.Seq2[int, string] {
 
 	return func(yield func(int, string) bool) {
 		for index := range file.Entries() {
-			data, err := file.Read(index)
+			data, _, err := file.Read(index)
 			if err != nil {
 				continue
 			}

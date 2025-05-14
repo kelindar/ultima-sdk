@@ -49,7 +49,7 @@ func (s *SDK) Skill(id int) (*Skill, error) {
 	}
 
 	// Read the skill data
-	data, err := file.Read(uint32(id))
+	data, _, err := file.Read(uint32(id))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %d", ErrInvalidSkillIndex, id)
 	}
@@ -179,7 +179,7 @@ func (s *SDK) loadSkillGroupData() (groups []string, skillMap map[int]int, err e
 		return nil, nil, fmt.Errorf("failed to load skillgrp.mul: %w", err)
 	}
 
-	data, err := file.Read(0) // Entry 0 is the whole file content
+	data, _, err := file.Read(0) // Entry 0 is the whole file content
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read data from skillgrp.mul: %w", err)
 	}

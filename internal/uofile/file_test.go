@@ -40,7 +40,7 @@ func TestFile_WithRealMUL(t *testing.T) {
 
 	// Test reading entries
 	for i := uint32(0); i < 10; i++ {
-		data, err := file.Read(i)
+		data, _, err := file.Read(i)
 		if err == nil {
 			// If we found an entry, make sure it has some content
 			assert.NotEmpty(t, data, "Entry %d should have content", i)
@@ -111,7 +111,7 @@ func TestFile_WithMUL(t *testing.T) {
 	defer file.Close()
 
 	// Test reading the entry
-	data, err := file.Read(0)
+	data, _, err := file.Read(0)
 	assert.NoError(t, err)
 	assert.Equal(t, mulData, data)
 
@@ -149,7 +149,7 @@ func TestFile_InitAndClose(t *testing.T) {
 	assert.Equal(t, int32(stateNew), file.state.Load())
 
 	// Reading should trigger initialization
-	_, err = file.Read(0)
+	_, _, err = file.Read(0)
 	// We expect an error since our test files are empty, but that's not what we're testing
 	assert.Error(t, err)
 
@@ -161,7 +161,7 @@ func TestFile_InitAndClose(t *testing.T) {
 	assert.Equal(t, int32(stateClosed), file.state.Load())
 
 	// Read after close should return ErrReaderClosed
-	_, err = file.Read(0)
+	_, _, err = file.Read(0)
 	assert.ErrorIs(t, err, ErrReaderClosed)
 
 	// Closing again should be a no-op
@@ -276,7 +276,7 @@ func TestFile_Concurrency(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		go func() {
 			// Try to read (will force initialization)
-			_, _ = file.Read(0)
+			_, _, _ = file.Read(0)
 			done <- true
 		}()
 	}

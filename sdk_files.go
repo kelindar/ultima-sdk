@@ -171,7 +171,7 @@ func (s *SDK) fileExists(fileName string) bool {
 
 	// Try to read entry 0, if it fails with a specific error that
 	// tells us the file doesn't exist, otherwise we assume it exists
-	_, err := file.Read(0)
+	_, _, err := file.Read(0)
 	return err == nil || err != uofile.ErrInvalidFormat
 }
 

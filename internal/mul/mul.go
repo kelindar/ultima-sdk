@@ -159,36 +159,33 @@ func (r *Reader) add(id, offset, length, extra uint32, value []byte) {
 }
 
 // Read reads data from the file at the specified index
-func (r *Reader) Read(key uint32) (out []byte, err error) {
+func (r *Reader) Read(key uint32) (out []byte, extra uint64, err error) {
 	entry, err := r.entryAt(key)
 	switch {
 	case err != nil:
-		return nil, err
+		return nil, 0, err
 	case entry == nil:
-		return nil, ErrInvalidEntry
+		return nil, 0, ErrInvalidEntry
 	case entry.offset == 0xFFFFFFFF: // Skip invalid entries (offset == 0xFFFFFFFF or length == 0)
-		return nil, nil
+		return nil, 0, nil
 	case entry.length == 0:
-		return nil, nil
+		return nil, 0, nil
 	}
 
 	// Check if the entry is cached
 	if cached := entry.cache.Load(); cached != nil {
-		return cached.([]byte), nil
+		return cached.([]byte), uint64(entry.extra), nil
 	}
 
 	// Read data from the file at the specified offset
 	out = make([]byte, entry.length)
 	if _, err = r.file.ReadAt(out, int64(entry.offset)); err != nil {
-		return nil, fmt.Errorf("failed to read data at index %d: %w", key, err)
+		return nil, 0, fmt.Errorf("failed to read data at index %d: %w", key, err)
 	}
 
 	// Write the data to the cache
-	if err == nil {
-		entry.cache.Store(out)
-	}
-
-	return out, err
+	entry.cache.Store(out)
+	return out, uint64(entry.extra), err
 }
 
 // entryAt retrieves entry information by its logical index/hash

@@ -16,7 +16,10 @@ import (
 )
 
 // Magic number for UOP file format - "MYP\0" in ASCII
-const uopMagic = 0x50594D
+const (
+	uopMagic     = 0x50594D
+	invalidExtra = uint64(0x0FFFFFFF) | (uint64(0x0FFFFFFF) << 32)
+)
 
 // Standard UOP format errors
 var (
@@ -42,7 +45,7 @@ type Entry6D struct {
 	offset uint32       // Offset where the entry data begins
 	length uint32       // Size of the entry data (compressed)
 	rawLen uint32       // Size after decompression
-	extra  [2]uint32    // Extra data
+	extra  uint64       // Extra data
 	typ    byte         // Compression flag (0 = none, 1 = zlib, 2 = mythic)
 	cache  atomic.Value // Cached data for the entry
 }
@@ -200,7 +203,7 @@ func (r *Reader) parseFile() error {
 					offset: uint32(offset + 8),
 					length: uint32(encodedSize - 8),
 					rawLen: uint32(decodedSize),
-					extra:  [2]uint32{extra1, extra2},
+					extra:  uint64(extra1) | (uint64(extra2) << 32),
 					typ:    byte(flag),
 				}
 
@@ -209,7 +212,7 @@ func (r *Reader) parseFile() error {
 					offset: uint32(offset),
 					length: uint32(encodedSize),
 					rawLen: uint32(decodedSize),
-					extra:  [2]uint32{0x0FFFFFFF, 0x0FFFFFFF}, // we cant read it right now, but -1 and 0 makes this entry invalid
+					extra:  invalidExtra,
 					typ:    byte(flag),
 				}
 			}
@@ -253,28 +256,28 @@ func (r *Reader) Close() error {
 }
 
 // Read reads data from the file at the specified index
-func (r *Reader) Read(index uint32) (out []byte, err error) {
+func (r *Reader) Read(index uint32) (out []byte, extra uint64, err error) {
 	entry, err := r.entryAt(index)
 	switch {
 	case err != nil:
-		return nil, err
+		return nil, 0, err
 	case entry == nil:
-		return nil, ErrInvalidEntry
+		return nil, 0, ErrInvalidEntry
 	case entry.offset == 0xFFFFFFFF: // Skip invalid entries (offset == 0xFFFFFFFF or length == 0)
-		return nil, nil
+		return nil, 0, nil
 	case entry.length == 0:
-		return nil, nil
+		return nil, 0, nil
 	}
 
 	// Check if the entry is cached
 	if cached := entry.cache.Load(); cached != nil {
-		return cached.([]byte), nil
+		return cached.([]byte), entry.extra, nil
 	}
 
 	// Read data from the file at the specified offset
 	out = make([]byte, entry.length)
 	if _, err = r.file.ReadAt(out, int64(entry.offset)); err != nil {
-		return nil, fmt.Errorf("failed to read data at index %d: %w", index, err)
+		return nil, 0, fmt.Errorf("failed to read data at index %d: %w", index, err)
 	}
 
 	// Decompress the data, write it to the cache if needed
@@ -283,7 +286,7 @@ func (r *Reader) Read(index uint32) (out []byte, err error) {
 		entry.cache.Store(out)
 	}
 
-	return dec, err
+	return dec, entry.extra, err
 }
 
 // entryAt retrieves entry information by its logical index/hash

@@ -141,7 +141,7 @@ func (s *SDK) LandTile(id int) (LandTileData, error) {
 		return LandTileData{}, err
 	}
 
-	data, err := file.Read(uint32(landOffset + id))
+	data, _, err := file.Read(uint32(landOffset + id))
 	if err != nil {
 		return LandTileData{}, fmt.Errorf("error reading land tile data: %w", err)
 	}
@@ -181,7 +181,7 @@ func (s *SDK) StaticTile(id int) (StaticItemData, error) {
 		return StaticItemData{}, err
 	}
 
-	data, err := file.Read(uint32(id))
+	data, _, err := file.Read(uint32(id))
 	if err != nil {
 		return StaticItemData{}, fmt.Errorf("error reading static tile data: %w", err)
 	}
@@ -259,7 +259,7 @@ func (s *SDK) LandTiles() iter.Seq[LandTileData] {
 
 	return func(yield func(LandTileData) bool) {
 		for i := 0; i < 0x4000; i++ {
-			data, err := file.Read(uint32(landOffset + i))
+			data, _, err := file.Read(uint32(landOffset + i))
 			if err != nil {
 				continue
 			}
@@ -283,7 +283,7 @@ func (s *SDK) StaticTiles() iter.Seq[StaticItemData] {
 
 	return func(yield func(StaticItemData) bool) {
 		for i := 0; i < count; i++ {
-			data, err := file.Read(uint32(i))
+			data, _, err := file.Read(uint32(i))
 			if err != nil {
 				continue
 			}
