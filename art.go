@@ -174,12 +174,13 @@ func decodeLandArt(data []byte) (image.Image, error) {
 		// Start at the center-top of the tile and work outward
 		// For the first 22 rows, each row gets 2 more pixels
 		startX := 22 - y - 1
-		for x := 0; x < y*2+2; x++ {
+		pixelsInRow := (y * 2) + 2 // Number of pixels in this row
+		for x := 0; x < pixelsInRow; x++ {
 			if offset+1 >= len(data) {
-				return nil, fmt.Errorf("%w: land art data truncated", ErrInvalidArtData)
+				return nil, fmt.Errorf("%w: land art data truncated in first half", ErrInvalidArtData)
 			}
 
-			// Read 16-bit color value (big-endian)
+			// Read 16-bit color value (little-endian)
 			colorValue := binary.LittleEndian.Uint16(data[offset : offset+2])
 			colorValue |= 0x8000 // Set the alpha bit (make it opaque)
 			offset += 2
@@ -193,13 +194,16 @@ func decodeLandArt(data []byte) (image.Image, error) {
 
 	for y := 0; y < 22; y++ {
 		// For the last 22 rows, each row gets 2 fewer pixels
-		startX := y + 1
-		for x := 0; x < 44-(y*2+2); x++ {
+		// C# xOffset for this part effectively starts at 0 and increments with y_loop.
+		// C# xRun for this part effectively starts at 44 and decrements by 2 with y_loop.
+		startX := y                 // Corrected: C#'s xOffset for this part of the diamond
+		pixelsInRow := 44 - (2 * y) // Corrected: Number of pixels for this row
+		for x := 0; x < pixelsInRow; x++ {
 			if offset+1 >= len(data) {
-				return nil, fmt.Errorf("%w: land art data truncated", ErrInvalidArtData)
+				return nil, fmt.Errorf("%w: land art data truncated in second half", ErrInvalidArtData)
 			}
 
-			// Read 16-bit color value (big-endian)
+			// Read 16-bit color value (little-endian)
 			colorValue := binary.LittleEndian.Uint16(data[offset : offset+2])
 			colorValue |= 0x8000 // Set the alpha bit (make it opaque)
 			offset += 2
