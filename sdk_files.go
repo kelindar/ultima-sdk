@@ -59,7 +59,7 @@ func (s *SDK) loadGump() (*uofile.File, error) {
 		"gumpartLegacyMUL.uop",
 		"gumpart.mul",
 		"gumpidx.mul",
-	}, 0xFFFF, uofile.WithIndexLength(12))
+	}, 0xFFFF, uofile.WithExtension(".tga"), uofile.WithExtra())
 }
 
 // loadMap loads a specific map file (mapX.mul, where X is the map ID)

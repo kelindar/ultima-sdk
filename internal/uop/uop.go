@@ -99,11 +99,12 @@ func Open(filename string, length int, options ...Option) (*Reader, error) {
 	}
 
 	r := &Reader{
-		file:    file,
-		info:    info,
-		entries: make([]Entry6D, length),
-		ext:     ".dat",
-		length:  length,
+		file:      file,
+		info:      info,
+		entries:   make([]Entry6D, length),
+		ext:       ".dat",
+		length:    length,
+		idxLength: 0xFFFFFFFF,
 	}
 
 	// Apply any provided options
