@@ -68,6 +68,13 @@ func WithIndexLength(length int) Option {
 	}
 }
 
+// WithExtension sets the file extension for UOP files
+func WithExtension(ext string) Option {
+	return func(f *File) {
+		f.uopOpts = append(f.uopOpts, uop.WithExtension(ext))
+	}
+}
+
 // WithExtra sets a flag to indicate if extra data is present in UOP files
 func WithExtra() Option {
 	return func(f *File) {

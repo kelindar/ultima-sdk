@@ -44,13 +44,13 @@ func (s *SDK) loadLights() (*uofile.File, error) {
 	}, 0, uofile.WithIndexLength(12))
 }
 
-// loadArt loads the art files (art.mul, artidx.mul or their UOP equivalent)
+// loadArt loads the art.mul/artidx.mul file
 func (s *SDK) loadArt() (*uofile.File, error) {
 	return s.load([]string{
 		"artLegacyMUL.uop",
 		"art.mul",
 		"artidx.mul",
-	}, 0x10000, uofile.WithIndexLength(12)) // Art has 0x10000 (65536) entries
+	}, 0x14000, uofile.WithExtension(".tga"), uofile.WithIndexLength(0x13FDC))
 }
 
 // loadGumpart loads the gump files (gumpart.mul or UOP equivalent)

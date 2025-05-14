@@ -83,37 +83,37 @@ Follow these steps sequentially. Each step involves translating the correspondin
     - Define `LandTileData`, `StaticItemData` structs. Implement loading for `tiledata.mul`.
     - Integrate `TileDataHelpers.cs` logic.
     - _Sub-task: Write tests for loading tile data and verify properties._
-14. **[❌] Port `Light.cs` -> `light.go`:**
+14. **[✅] Port `Light.cs` -> `light.go`:**
     - Define `Light` struct. Implement loading for `light.idx`, `light.mul`.
     - _Sub-task: Write tests for loading light data._
-15. **[❌] Port `Verdata.cs` -> `verdata.go`:**
-    - Define `VerdataPatch` struct. Implement loading for `verdata.mul`.
-    - _Sub-task: Write tests for loading verdata._
-16. **[❌] Port `Art.cs` -> `art.go`:**
-    - Define `ArtTile` struct. Implement loading for `artidx.mul`, `art.mul`. Use `internal/image`.
+15. **[❌] Port `Art.cs` -> `art.go`:**
+    - Define `ArtTile` struct. Use `internal/bitmap`.
     - _Sub-task: Write tests to load art tiles, verify dimensions/image data._
-17. **[❌] Port `Gumps.cs` -> `gump.go`:**
-    - Define `Gump`, `GumpInfo` structs. Implement loading for `gumpidx.mul`, `gump.mul`. Use `internal/image`.
+16. **[❌] Port `Gumps.cs` -> `gump.go`:**
+    - Define `Gump`, `GumpInfo` structs. Use `internal/bitmap`.
     - _Sub-task: Write tests for loading gumps, verify dimensions/image data._
-18. **[❌] Port `Textures.cs` -> `texture.go`:**
-    - Define `Texture` struct. Implement loading for `texidx.mul`, `texmaps.mul`. Use `internal/image`.
+17. **[❌] Port `Textures.cs` -> `texture.go`:**
+    - Define `Texture` struct. Use `internal/bitmap`.
     - _Sub-task: Write tests for loading textures and verify image data._
-19. **[❌] Port `Sound.cs`, `WaveFormat.cs` -> `sound.go`:**
+18. **[❌] Port `Sound.cs`, `WaveFormat.cs` -> `sound.go`:**
     - Define `Sound` struct. Implement loading for `soundidx.mul`, `sound.mul`. Handle WAV/PCM.
     - _Sub-task: Write tests for loading sound entries and verifying data properties._
-20. **[❌] Port `ASCIIFont.cs`, `UnicodeFont.cs` -> `font.go`:**
+19. **[❌] Port `ASCIIFont.cs`, `UnicodeFont.cs` -> `font.go`:**
     - Define `Font` interface, `FontCharacterInfo`. Implement loading for `fonts.mul`.
     - _Sub-task: Write tests for loading fonts and character data._
-21. **[❌] Port `Map.cs` & `Helpers/MapHelper.cs` -> `map.go`:**
+20. **[❌] Port `Map.cs` & `Helpers/MapHelper.cs` -> `map.go`:**
     - Define `GameMap`, `MapTileInfo`, `LandTile`, `StaticTile`. Implement loading for map files, statics, patches.
     - Integrate `MapHelper.cs` logic.
     - _Sub-task: Write extensive tests for map/static reading, including patches._
     - _Sub-task: Verify against C# tile/static details at specific coordinates._
-22. **[❌] Port Animations (`anim.go`, `internal/anim`):**
+21. **[❌] Port Animations (`anim.go`, `internal/anim`):**
     - Define `Animation`, `AnimationFrame`. Port logic from `Animations.cs`, `Animdata.cs`, `BodyConverter.cs`, `BodyTable.cs`.
-    - Read `anim.idx`/`.mul`, `animdata.mul`, `bodyconv.def`, `body.def`. Use `internal/image`.
+    - Read `anim.idx`/`.mul`, `animdata.mul`, `bodyconv.def`, `body.def`. Use `internal/bitmap`.
     - _Sub-task: Write tests for loading animations, verify frame counts/image data._
-23. **[❌] Port `Multis.cs` & `Helpers/MultiHelpers.cs` -> `multi.go`:**
+22. **[❌] Port `Multis.cs` & `Helpers/MultiHelpers.cs` -> `multi.go`:**
     - Define `Multi`, `MultiItem`. Implement loading for `multi.idx`, `multi.mul`.
     - Integrate `MultiHelpers.cs` logic.
     - _Sub-task: Write tests for loading multis and verifying structure._
+23. **[❌] Port `Verdata.cs` -> `verdata.go`:**
+    - Define `VerdataPatch` struct. Implement loading for `verdata.mul`.
+    - _Sub-task: Write tests for loading verdata._
