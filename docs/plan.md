@@ -79,7 +79,7 @@ Follow these steps sequentially. Each step involves translating the correspondin
     - Implement hue application logic.
     - _Sub-task: Write tests for pixel format conversion and hue application._
     - _Sub-task: Verify image output against C# rendering or pixel data._
-13. **[❌] Port `TileData.cs` & `Helpers/TileDataHelpers.cs` -> `tiledata.go`:**
+13. **[✅] Port `TileData.cs` & `Helpers/TileDataHelpers.cs` -> `tiledata.go`:**
     - Define `LandTileData`, `StaticItemData` structs. Implement loading for `tiledata.mul`.
     - Integrate `TileDataHelpers.cs` logic.
     - _Sub-task: Write tests for loading tile data and verify properties._

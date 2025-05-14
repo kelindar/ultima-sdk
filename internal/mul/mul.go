@@ -189,39 +189,6 @@ func (r *Reader) Read(key uint32) (out []byte, err error) {
 	return out, err
 }
 
-// ReadAt reads data from the file at the specified index
-func (r *Reader) ReadAt(p []byte, key uint32) error {
-	entry, err := r.entryAt(key)
-	switch {
-	case err != nil:
-		return err
-	case entry == nil:
-		return ErrInvalidEntry
-	case entry.offset == 0xFFFFFFFF: // Skip invalid entries (offset == 0xFFFFFFFF or length == 0)
-		return nil
-	case entry.length == 0:
-		return nil
-	}
-
-	// Read data from the file at the specified offset
-	_, err = r.file.ReadAt(p, int64(entry.offset))
-	if err != nil {
-		return fmt.Errorf("failed to read data at key %d: %w", key, err)
-	}
-
-	// Check if the read data exceeds the entry length
-	if len(p) > int(entry.length) {
-		return fmt.Errorf("read data exceeds entry length: %d > %d", len(p), entry.length)
-	}
-
-	// If the entry length is less than the requested size, trim the slice
-	if len(p) < int(entry.length) {
-		p = p[:entry.length]
-	}
-
-	return nil
-}
-
 // entryAt retrieves entry information by its logical index/hash
 func (r *Reader) entryAt(key uint32) (*Entry3D, error) {
 	switch {
