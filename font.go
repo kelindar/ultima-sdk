@@ -2,9 +2,8 @@ package ultima
 
 import (
 	"image"
-	"image/color"
-
 	"fmt"
+	"github.com/kelindar/ultima-sdk/internal/bitmap"
 )
 
 // FontCharacterInfo represents a single character's metadata and bitmap.
@@ -82,7 +81,7 @@ func (s *SDK) FontUnicode() (Font, error) {
 
 // decodeUnicodeBitmap decodes Unicode font bitmap (bit-packed)
 func decodeUnicodeBitmap(width, height int, data []byte) image.Image {
-	img := image.NewNRGBA(image.Rect(0, 0, width, height))
+	img := bitmap.NewARGB1555(image.Rect(0, 0, width, height))
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			offset := (x / 8) + (y * ((width + 7) / 8))
@@ -91,9 +90,9 @@ func decodeUnicodeBitmap(width, height int, data []byte) image.Image {
 			}
 			bit := (data[offset] & (1 << (7 - (x % 8)))) != 0
 			if bit {
-				img.SetNRGBA(x, y, color.NRGBA{R: 0, G: 0, B: 0, A: 0xFF})
-			} else {
-				img.SetNRGBA(x, y, color.NRGBA{R: 0, G: 0, B: 0, A: 0x00})
+				o := img.PixOffset(x, y)
+				img.Pix[o] = 0x00
+				img.Pix[o+1] = 0x80 // 0x8000 in little-endian (ARGB1555 opaque black)
 			}
 		}
 	}
@@ -158,26 +157,11 @@ func (s *SDK) Font() ([]Font, error) {
 	return out, nil
 }
 
-// decodeARGB1555 converts ARGB1555 bytes to image.NRGBA
+// decodeARGB1555 converts ARGB1555 bytes to a bitmap.ARGB1555 image
 func decodeARGB1555(width, height int, data []byte) image.Image {
-	img := image.NewNRGBA(image.Rect(0, 0, width, height))
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			off := 2 * (y*width + x)
-			if off+1 >= len(data) {
-				continue
-			}
-			pix := uint16(data[off]) | uint16(data[off+1])<<8
-			// ARGB1555: A(1), R(5), G(5), B(5)
-			a := uint8(0xFF)
-			if (pix & 0x8000) == 0 {
-				a = 0x00
-			}
-			r := uint8((pix>>10)&0x1F) << 3
-			g := uint8((pix>>5)&0x1F) << 3
-			b := uint8(pix&0x1F) << 3
-			img.SetNRGBA(x, y, color.NRGBA{R: r, G: g, B: b, A: a})
-		}
+	img := bitmap.NewARGB1555(image.Rect(0, 0, width, height))
+	if len(data) == len(img.Pix) {
+		copy(img.Pix, data)
 	}
 	return img
 }
