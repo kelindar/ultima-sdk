@@ -1,4 +1,4 @@
-package anim
+package ultima
 
 import (
 	"bytes"

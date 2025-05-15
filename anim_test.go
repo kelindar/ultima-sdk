@@ -1,7 +1,6 @@
 package ultima
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,14 +28,18 @@ func testLoadAnimation(t *testing.T, body, action, direction int) {
 		anim, err := sdk.LoadAnimation(body, action, direction, 0, false, false)
 		assert.NoError(t, err, "LoadAnimation should succeed")
 		assert.NotNil(t, anim, "Animation should not be nil")
-		assert.NotEmpty(t, anim.Frames, "Expected non-empty frames")
+		called := false
 
-		for i, frame := range anim.Frames {
-			assert.NotNil(t, frame.Bitmap, "Frame %d bitmap should not be nil", i)
-			assert.NotZero(t, frame.Bitmap.Bounds().Dx(), "Frame %d width should not be zero", i)
-			assert.NotZero(t, frame.Bitmap.Bounds().Dy(), "Frame %d height should not be zero", i)
-			savePng(frame.Bitmap, fmt.Sprintf("frame_%d.png", i))
+		for frame := range anim.Frames() {
+			img, err := frame.Image()
+			assert.NoError(t, err, "Frame.Image() should succeed")
+			assert.NotNil(t, img, "Frame image should not be nil")
+			bounds := img.Bounds()
+			assert.NotZero(t, bounds.Dx(), "Frame width should not be zero")
+			assert.NotZero(t, bounds.Dy(), "Frame height should not be zero")
+			called = true
 			break
 		}
+		assert.True(t, called, "Expected at least one frame")
 	})
 }

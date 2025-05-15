@@ -1,4 +1,4 @@
-package anim
+package ultima
 
 import (
 	"encoding/binary"
@@ -7,9 +7,9 @@ import (
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
 )
 
-// DecodeFrame decodes a single animation frame from a binary slice using the provided palette.
+// decodeFrame decodes a single animation frame from a binary slice using the provided palette.
 // Returns center (image.Point), ARGB1555 image, and error if any.
-func DecodeFrame(palette []uint16, data []byte, flip bool) (image.Point, *bitmap.ARGB1555, error) {
+func decodeFrame(palette []uint16, data []byte, flip bool) (image.Point, *bitmap.ARGB1555, error) {
 	if len(data) < 8 {
 		return image.Point{}, nil, nil // Not enough data for header
 	}

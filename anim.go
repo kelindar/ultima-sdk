@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"image"
+	"iter"
 
-	"github.com/kelindar/ultima-sdk/internal/anim"
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
 )
 
@@ -15,9 +15,33 @@ type AnimationFrame struct {
 	Bitmap *bitmap.ARGB1555 // Frame image (ARGB1555), nil if not present
 }
 
-// Animation contains all frames for a body/action/direction animation.
+// Image retrieves and returns the frame's image.
+func (af AnimationFrame) Image() (image.Image, error) {
+	return af.Bitmap, nil
+}
+
+// Animation contains a sequence of frames for a body/action/direction animation.
+// Use Frames() to iterate through AnimationFrame instances.
+// Metadata returns the animation metadata from animdata.mul.
 type Animation struct {
-	Frames []AnimationFrame // All frames in the animation
+	frames   []AnimationFrame
+	metadata *AnimdataEntry
+}
+
+// Frames returns a sequence (iter.Seq) of AnimationFrame for this animation.
+func (a *Animation) Frames() iter.Seq[AnimationFrame] {
+	return func(yield func(AnimationFrame) bool) {
+		for _, f := range a.frames {
+			if !yield(f) {
+				break
+			}
+		}
+	}
+}
+
+// Metadata returns the animdata entry for this animation.
+func (a *Animation) Metadata() *AnimdataEntry {
+	return a.metadata
 }
 
 // LoadAnimation loads animation frames for a given body, action, direction, and hue.
@@ -55,6 +79,8 @@ func (s *SDK) LoadAnimation(body, action, direction, hue int, preserveHue, first
 		index += uint32(direction - ((direction - 4) * 2))
 	}
 
+	// Retrieve metadata for this animation ID
+	meta := Animdata[int(index)]
 	frameData, _, err := animFile.Read(index)
 	if err != nil {
 		return nil, fmt.Errorf("LoadAnimation: failed to read anim.mul entry: %w", err)
@@ -76,9 +102,9 @@ func (s *SDK) LoadAnimation(body, action, direction, hue int, preserveHue, first
 	}
 
 	// Frame count and lookup table.
-	frameCount := int(int32(binary.LittleEndian.Uint32(frameData[paletteSize:paletteSize+frameCountSize])))
+	frameCount := int(int32(binary.LittleEndian.Uint32(frameData[paletteSize : paletteSize+frameCountSize])))
 	if frameCount <= 0 {
-		return &Animation{Frames: nil}, nil
+		return &Animation{frames: nil, metadata: meta}, nil
 	}
 	// Lookup table starts immediately after the frame count.
 	const lookupStart = paletteSize + frameCountSize
@@ -88,7 +114,7 @@ func (s *SDK) LoadAnimation(body, action, direction, hue int, preserveHue, first
 		if entry+4 > len(frameData) {
 			break
 		}
-		rel := int(int32(binary.LittleEndian.Uint32(frameData[entry:entry+4])))
+		rel := int(int32(binary.LittleEndian.Uint32(frameData[entry : entry+4])))
 		if rel <= 0 {
 			continue
 		}
@@ -98,11 +124,11 @@ func (s *SDK) LoadAnimation(body, action, direction, hue int, preserveHue, first
 		}
 		frameSlice := frameData[offset:]
 		flip := direction > 4
-		center, img, err := anim.DecodeFrame(palette, frameSlice, flip)
+		center, img, err := decodeFrame(palette, frameSlice, flip)
 		if err != nil || img == nil {
 			continue
 		}
 		frames = append(frames, AnimationFrame{Center: center, Bitmap: img})
 	}
-	return &Animation{Frames: frames}, nil
+	return &Animation{frames: frames, metadata: meta}, nil
 }

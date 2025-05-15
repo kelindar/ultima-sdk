@@ -1,4 +1,4 @@
-package anim
+package ultima
 
 import (
 	"encoding/binary"
@@ -33,7 +33,7 @@ func LoadAnimdata(path string) error {
 	}
 	size := info.Size()
 
-	const entrySize = 64 + 4        // 64 sbytes + 4 metadata bytes
+	const entrySize = 64 + 4          // 64 sbytes + 4 metadata bytes
 	const chunkSize = 4 + 8*entrySize // 4 bytes header + 8 entries
 	count := size / chunkSize
 

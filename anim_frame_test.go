@@ -1,4 +1,4 @@
-package anim
+package ultima
 
 import (
 	"encoding/binary"
@@ -10,7 +10,7 @@ import (
 
 // TestDecodeFrame_MinData verifies DecodeFrame returns no image for insufficient data
 func TestDecodeFrame_MinData(t *testing.T) {
-	center, img, err := DecodeFrame(nil, []byte{1, 2, 3}, false)
+	center, img, err := decodeFrame(nil, []byte{1, 2, 3}, false)
 	assert.NoError(t, err)
 	assert.Nil(t, img)
 	assert.Equal(t, image.Point{}, center)
@@ -28,7 +28,7 @@ func TestDecodeFrame_Terminator(t *testing.T) {
 	binary.LittleEndian.PutUint32(data[8:12], 0x7FFF7FFF)
 	palette := make([]uint16, 256)
 
-	center, img, err := DecodeFrame(palette, data, false)
+	center, img, err := decodeFrame(palette, data, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, img)
 	bounds := img.Bounds()
@@ -48,7 +48,7 @@ func TestDecodeFrame_Flip(t *testing.T) {
 	binary.LittleEndian.PutUint32(data[8:12], 0x7FFF7FFF)
 	palette := make([]uint16, 256)
 
-	center, img, err := DecodeFrame(palette, data, true)
+	center, img, err := decodeFrame(palette, data, true)
 	assert.NoError(t, err)
 	assert.NotNil(t, img)
 	// For flipped images, X center should be width - xCenter
