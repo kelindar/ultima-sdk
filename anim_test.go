@@ -1,12 +1,13 @@
 package ultima
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	uotest "github.com/kelindar/ultima-sdk/internal/testing"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLoadAnimation(t *testing.T) {
@@ -34,6 +35,8 @@ func testLoadAnimation(t *testing.T, body, action, direction int) {
 			assert.NotNil(t, frame.Bitmap, "Frame %d bitmap should not be nil", i)
 			assert.NotZero(t, frame.Bitmap.Bounds().Dx(), "Frame %d width should not be zero", i)
 			assert.NotZero(t, frame.Bitmap.Bounds().Dy(), "Frame %d height should not be zero", i)
+			savePng(frame.Bitmap, fmt.Sprintf("frame_%d.png", i))
+			break
 		}
 	})
 }

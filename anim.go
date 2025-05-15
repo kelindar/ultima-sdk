@@ -1,6 +1,7 @@
 package ultima
 
 import (
+	"encoding/binary"
 	"fmt"
 	"image"
 
@@ -58,42 +59,50 @@ func (s *SDK) LoadAnimation(body, action, direction, hue int, preserveHue, first
 	if err != nil {
 		return nil, fmt.Errorf("LoadAnimation: failed to read anim.mul entry: %w", err)
 	}
-	if len(frameData) < 520 {
+
+	// Palette: first 512 bytes (256 colors, 2 bytes each)
+	const paletteSize = 512
+	const frameCountSize = 4
+	if len(frameData) < paletteSize+frameCountSize {
 		return nil, fmt.Errorf("invalid frame data length: %d", len(frameData))
 	}
 
-	// Palette: first 512 bytes (256 colors, 2 bytes each)
 	palette := make([]uint16, 256)
 	for i := 0; i < 256; i++ {
-		palette[i] = uint16(frameData[i*2]) | uint16(frameData[i*2+1])<<8
+		// C# does: palette[i] = (ushort)(bin.ReadUInt16() ^ 0x8000)
+		// This XORs with the high bit which controls transparency
+		color := uint16(frameData[i*2]) | uint16(frameData[i*2+1])<<8
+		palette[i] = color ^ 0x8000 // XOR with 0x8000 to match C# implementation
 	}
 
-	// Frame count and offsets
-	frameCount := int(frameData[512])
-	if frameCount == 0 {
+	// Frame count and lookup table.
+	frameCount := int(int32(binary.LittleEndian.Uint32(frameData[paletteSize:paletteSize+frameCountSize])))
+	if frameCount <= 0 {
 		return &Animation{Frames: nil}, nil
 	}
+	// Lookup table starts immediately after the frame count.
+	const lookupStart = paletteSize + frameCountSize
 	frames := make([]AnimationFrame, 0, frameCount)
 	for i := 0; i < frameCount; i++ {
-		if 516+i*4+4 > len(frameData) {
+		entry := lookupStart + i*4
+		if entry+4 > len(frameData) {
 			break
 		}
-		offset := int(frameData[516+i*4]) |
-			int(frameData[516+i*4+1])<<8 |
-			int(frameData[516+i*4+2])<<16 |
-			int(frameData[516+i*4+3])<<24
-		if offset == 0 || offset >= len(frameData) {
+		rel := int(int32(binary.LittleEndian.Uint32(frameData[entry:entry+4])))
+		if rel <= 0 {
+			continue
+		}
+		offset := paletteSize + rel
+		if offset < 0 || offset >= len(frameData) {
 			continue
 		}
 		frameSlice := frameData[offset:]
-		center, img, err := anim.DecodeFrame(palette, frameSlice, false)
+		flip := direction > 4
+		center, img, err := anim.DecodeFrame(palette, frameSlice, flip)
 		if err != nil || img == nil {
 			continue
 		}
-		frames = append(frames, AnimationFrame{
-			Center: center,
-			Bitmap: img,
-		})
+		frames = append(frames, AnimationFrame{Center: center, Bitmap: img})
 	}
 	return &Animation{Frames: frames}, nil
 }
