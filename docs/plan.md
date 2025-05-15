@@ -101,15 +101,15 @@ Follow these steps sequentially. Each step involves translating the correspondin
 19. **[✅] Port `ASCIIFont.cs`, `UnicodeFont.cs` -> `font.go`:**
     - Define `Font` interface, `FontCharacterInfo`. Implement loading for `fonts.mul`.
     - _Sub-task: Write tests for loading fonts and character data._
-20. **[❌] Port `Map.cs` & `Helpers/MapHelper.cs` -> `map.go`:**
+20. **[❌] Port Animations (`anim.go`, `internal/anim`):**
+    - Define `Animation`, `AnimationFrame`. Port logic from `Animations.cs`, `Animdata.cs`, `BodyConverter.cs`, `BodyTable.cs`.
+    - Read `anim.idx`/`.mul`, `animdata.mul`, `bodyconv.def`, `body.def`. Use `internal/bitmap`.
+    - _Sub-task: Write tests for loading animations, verify frame counts/image data._
+21. **[❌] Port `Map.cs` & `Helpers/MapHelper.cs` -> `map.go`:**
     - Define `GameMap`, `MapTileInfo`, `LandTile`, `StaticTile`. Implement loading for map files, statics, patches.
     - Integrate `MapHelper.cs` logic.
     - _Sub-task: Write extensive tests for map/static reading, including patches._
     - _Sub-task: Verify against C# tile/static details at specific coordinates._
-21. **[❌] Port Animations (`anim.go`, `internal/anim`):**
-    - Define `Animation`, `AnimationFrame`. Port logic from `Animations.cs`, `Animdata.cs`, `BodyConverter.cs`, `BodyTable.cs`.
-    - Read `anim.idx`/`.mul`, `animdata.mul`, `bodyconv.def`, `body.def`. Use `internal/bitmap`.
-    - _Sub-task: Write tests for loading animations, verify frame counts/image data._
 22. **[❌] Port `Multis.cs` & `Helpers/MultiHelpers.cs` -> `multi.go`:**
     - Define `Multi`, `MultiItem`. Implement loading for `multi.idx`, `multi.mul`.
     - Integrate `MultiHelpers.cs` logic.

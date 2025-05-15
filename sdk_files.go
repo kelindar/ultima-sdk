@@ -124,12 +124,18 @@ func (s *SDK) loadVerdata() (*uofile.File, error) {
 }
 
 // loadAnim loads the animation files for a specific file type
-// fileType can be 1 for anim.mul, 2 for anim2.mul, etc.
+// fileType can be 0 for anim.mul, 1 for anim2.mul, etc.
 func (s *SDK) loadAnim(fileType int) (*uofile.File, error) {
-	return s.load([]string{
-		fmt.Sprintf("anim%d.mul", fileType),
-		fmt.Sprintf("anim%d.idx", fileType),
-	}, 0, uofile.WithIndexLength(12))
+	var files []string
+	if fileType == 0 {
+		files = []string{"anim.mul", "anim.idx"}
+	} else {
+		files = []string{
+			fmt.Sprintf("anim%d.mul", fileType),
+			fmt.Sprintf("anim%d.idx", fileType),
+		}
+	}
+	return s.load(files, 0, uofile.WithIndexLength(12))
 }
 
 // loadUnicodeFonts loads the Unicode fonts file

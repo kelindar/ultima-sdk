@@ -1,23 +1,25 @@
 package ultima
 
 import (
-	"image"
 	"fmt"
+	"image"
+
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
 )
 
-// FontCharacterInfo represents a single character's metadata and bitmap.
-type FontCharacterInfo struct {
+// FontRune represents a single character's metadata and bitmap.
+// FontRune holds metadata and bitmap for a single font character.
+type FontRune struct {
 	Width   int
 	Height  int
-	XOffset int         // For Unicode
-	YOffset int         // For Unicode
-	Bitmap  image.Image // ARGB1555, nil if not present
+	XOffset int
+	YOffset int
+	Bitmap  *bitmap.ARGB1555 // Always ARGB1555, nil if not present
 }
 
 // Font is the interface for font types (ASCII, Unicode)
 type Font interface {
-	Character(rune) *FontCharacterInfo
+	Character(rune) *FontRune
 	Size(string) (int, int)
 }
 
@@ -47,7 +49,7 @@ func (s *SDK) FontUnicode() (Font, error) {
 	for i := 0; i < 0x10000; i++ {
 		offset := offsets[i]
 		if offset <= 0 {
-			font.Characters[i] = &FontCharacterInfo{}
+			font.Characters[i] = &FontRune{}
 			continue
 		}
 		if int(offset)+4 > len(data) {
@@ -58,7 +60,7 @@ func (s *SDK) FontUnicode() (Font, error) {
 		yOff := int(int8(meta[1]))
 		width := int(meta[2])
 		height := int(meta[3])
-		var bmp image.Image
+		var bmp *bitmap.ARGB1555
 		if width > 0 && height > 0 {
 			bytesPerRow := (width + 7) / 8
 			dataLen := height * bytesPerRow
@@ -68,7 +70,7 @@ func (s *SDK) FontUnicode() (Font, error) {
 			charData := data[offset+4 : offset+4+int32(dataLen)]
 			bmp = decodeUnicodeBitmap(width, height, charData)
 		}
-		font.Characters[i] = &FontCharacterInfo{
+		font.Characters[i] = &FontRune{
 			Width:   width,
 			Height:  height,
 			XOffset: xOff,
@@ -79,8 +81,8 @@ func (s *SDK) FontUnicode() (Font, error) {
 	return font, nil
 }
 
-// decodeUnicodeBitmap decodes Unicode font bitmap (bit-packed)
-func decodeUnicodeBitmap(width, height int, data []byte) image.Image {
+// decodeUnicodeBitmap decodes a bit-packed Unicode font glyph to ARGB1555.
+func decodeUnicodeBitmap(width, height int, data []byte) *bitmap.ARGB1555 {
 	img := bitmap.NewARGB1555(image.Rect(0, 0, width, height))
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
@@ -129,7 +131,7 @@ func (s *SDK) Font() ([]Font, error) {
 			offset += 3
 			width, height, unk := int(buf[0]), int(buf[1]), buf[2]
 			fonts[i].Unk[k] = unk
-			var bmp image.Image
+			var bmp *bitmap.ARGB1555
 			if width > 0 && height > 0 {
 				pixLen := width * height * 2
 				if offset+pixLen > len(data) {
@@ -137,13 +139,12 @@ func (s *SDK) Font() ([]Font, error) {
 				}
 				pix := data[offset : offset+pixLen]
 				offset += pixLen
-				// Convert pix (ARGB1555) to image.Image
 				bmp = decodeARGB1555(width, height, pix)
 				if height > fonts[i].Height && k < 96 {
 					fonts[i].Height = height
 				}
 			}
-			fonts[i].Characters[k] = &FontCharacterInfo{
+			fonts[i].Characters[k] = &FontRune{
 				Width:  width,
 				Height: height,
 				Bitmap: bmp,
@@ -157,8 +158,8 @@ func (s *SDK) Font() ([]Font, error) {
 	return out, nil
 }
 
-// decodeARGB1555 converts ARGB1555 bytes to a bitmap.ARGB1555 image
-func decodeARGB1555(width, height int, data []byte) image.Image {
+// decodeARGB1555 converts ARGB1555 bytes to a bitmap.ARGB1555 image.
+func decodeARGB1555(width, height int, data []byte) *bitmap.ARGB1555 {
 	img := bitmap.NewARGB1555(image.Rect(0, 0, width, height))
 	if len(data) == len(img.Pix) {
 		copy(img.Pix, data)
@@ -168,10 +169,10 @@ func decodeARGB1555(width, height int, data []byte) image.Image {
 
 // unicodeFont implements Font for Unicode fonts (unifont*.mul)
 type unicodeFont struct {
-	Characters [0x10000]*FontCharacterInfo
+	Characters [0x10000]*FontRune
 }
 
-func (f *unicodeFont) Character(r rune) *FontCharacterInfo {
+func (f *unicodeFont) Character(r rune) *FontRune {
 	idx := int(r) % 0x10000
 	return f.Characters[idx]
 }
@@ -196,11 +197,11 @@ func (f *unicodeFont) Size(text string) (int, int) {
 type asciiFont struct {
 	Header     byte
 	Unk        [224]byte
-	Characters [224]*FontCharacterInfo
+	Characters [224]*FontRune
 	Height     int
 }
 
-func (f *asciiFont) Character(r rune) *FontCharacterInfo {
+func (f *asciiFont) Character(r rune) *FontRune {
 	idx := int((r - 0x20) & 0x7FFFFFFF % 224)
 	return f.Characters[idx]
 }
