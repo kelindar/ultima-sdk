@@ -24,8 +24,8 @@ func (af AnimationFrame) Image() (image.Image, error) {
 // Use Frames() to iterate through AnimationFrame instances.
 // Metadata returns the animation metadata from animdata.mul.
 type Animation struct {
-	frames   []AnimationFrame
-	metadata *AnimdataEntry
+	*AnimdataEntry
+	frames []AnimationFrame
 }
 
 // Frames returns a sequence (iter.Seq) of AnimationFrame for this animation.
@@ -37,11 +37,6 @@ func (a *Animation) Frames() iter.Seq[AnimationFrame] {
 			}
 		}
 	}
-}
-
-// Metadata returns the animdata entry for this animation.
-func (a *Animation) Metadata() *AnimdataEntry {
-	return a.metadata
 }
 
 // LoadAnimation loads animation frames for a given body, action, direction, and hue.
@@ -104,7 +99,10 @@ func (s *SDK) LoadAnimation(body, action, direction, hue int, preserveHue, first
 	// Frame count and lookup table.
 	frameCount := int(int32(binary.LittleEndian.Uint32(frameData[paletteSize : paletteSize+frameCountSize])))
 	if frameCount <= 0 {
-		return &Animation{frames: nil, metadata: meta}, nil
+		return &Animation{
+			AnimdataEntry: meta,
+			frames:        nil,
+		}, nil
 	}
 	// Lookup table starts immediately after the frame count.
 	const lookupStart = paletteSize + frameCountSize
@@ -130,5 +128,8 @@ func (s *SDK) LoadAnimation(body, action, direction, hue int, preserveHue, first
 		}
 		frames = append(frames, AnimationFrame{Center: center, Bitmap: img})
 	}
-	return &Animation{frames: frames, metadata: meta}, nil
+	return &Animation{
+		AnimdataEntry: meta,
+		frames:        frames,
+	}, nil
 }

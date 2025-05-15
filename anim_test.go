@@ -28,6 +28,7 @@ func testLoadAnimation(t *testing.T, body, action, direction int) {
 		anim, err := sdk.LoadAnimation(body, action, direction, 0, false, false)
 		assert.NoError(t, err, "LoadAnimation should succeed")
 		assert.NotNil(t, anim, "Animation should not be nil")
+		assert.NotNil(t, anim.AnimdataEntry, "Animation metadata should not be nil")
 		called := false
 
 		for frame := range anim.Frames() {
