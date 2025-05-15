@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"iter"
+	"path/filepath"
 
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
 )
@@ -39,9 +40,14 @@ func (a *Animation) Frames() iter.Seq[AnimationFrame] {
 	}
 }
 
-// LoadAnimation loads animation frames for a given body, action, direction, and hue.
-// It returns an Animation containing all valid frames, or an error if loading fails.
-func (s *SDK) LoadAnimation(body, action, direction, hue int, preserveHue, firstFrame bool) (*Animation, error) {
+// Animation loads animation frames for a given body, action, direction, and hue.
+func (s *SDK) Animation(body, action, direction, hue int, preserveHue, firstFrame bool) (*Animation, error) {
+	if len(Animdata) == 0 {
+		if err := LoadAnimdata(filepath.Join(s.basePath, "animdata.mul")); err != nil {
+			return nil, fmt.Errorf("LoadAnimation: failed loading animdata: %w", err)
+		}
+	}
+
 	// Select animX.mul based on body - match the C# implementation
 	// FileType in C# ranges from 1-5, with 1 being the default
 	fileType := 1 // Default to 1 (which is anim.mul)
@@ -74,8 +80,14 @@ func (s *SDK) LoadAnimation(body, action, direction, hue int, preserveHue, first
 		index += uint32(direction - ((direction - 4) * 2))
 	}
 
-	// Retrieve metadata for this animation ID
-	meta := Animdata[int(index)]
+	// Retrieve metadata for this animation ID, defaulting to empty if missing
+	var meta *AnimdataEntry
+	if m, ok := Animdata[int(index)]; ok && m != nil {
+		meta = m
+	} else {
+		meta = &AnimdataEntry{}
+	}
+
 	frameData, _, err := animFile.Read(index)
 	if err != nil {
 		return nil, fmt.Errorf("LoadAnimation: failed to read anim.mul entry: %w", err)
