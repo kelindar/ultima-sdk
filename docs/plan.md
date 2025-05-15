@@ -95,10 +95,10 @@ Follow these steps sequentially. Each step involves translating the correspondin
 17. **[✅] Port `Textures.cs` -> `texture.go`:**
     - Define `Texture` struct. Use `internal/bitmap`.
     - _Sub-task: Write tests for loading textures and verify image data._
-18. **[❌] Port `Sound.cs`, `WaveFormat.cs` -> `sound.go`:**
+18. **[✅] Port `Sound.cs`, `WaveFormat.cs` -> `sound.go`:**
     - Define `Sound` struct. Implement loading for `soundidx.mul`, `sound.mul`. Handle WAV/PCM.
     - _Sub-task: Write tests for loading sound entries and verifying data properties._
-19. **[❌] Port `ASCIIFont.cs`, `UnicodeFont.cs` -> `font.go`:**
+19. **[✅] Port `ASCIIFont.cs`, `UnicodeFont.cs` -> `font.go`:**
     - Define `Font` interface, `FontCharacterInfo`. Implement loading for `fonts.mul`.
     - _Sub-task: Write tests for loading fonts and character data._
 20. **[❌] Port `Map.cs` & `Helpers/MapHelper.cs` -> `map.go`:**

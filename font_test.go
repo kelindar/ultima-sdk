@@ -19,7 +19,7 @@ func TestFont_Load(t *testing.T) {
 				assert.Greater(t, c.Height, 0)
 				assert.NotNil(t, c.Bitmap)
 
-				savePng(c.Bitmap, "a.png")
+				//savePng(c.Bitmap, "a.png")
 			}
 		})
 
@@ -30,6 +30,8 @@ func TestFont_Load(t *testing.T) {
 			assert.NotNil(t, c)
 			assert.GreaterOrEqual(t, c.Width, 0)
 			assert.GreaterOrEqual(t, c.Height, 0)
+
+			//savePng(c.Bitmap, "x.png")
 		})
 	})
 }
