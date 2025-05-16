@@ -5,10 +5,18 @@ import (
 	"fmt"
 	"image"
 	"iter"
-	"path/filepath"
 
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
 )
+
+// AnimdataEntry holds metadata for a single animation (from animdata.mul)
+type AnimdataEntry struct {
+	FrameData     [64]int8
+	Unknown       uint8
+	FrameCount    uint8
+	FrameInterval uint8
+	FrameStart    uint8
+}
 
 // AnimationFrame holds the center point and bitmap for a single animation frame.
 type AnimationFrame struct {
@@ -42,10 +50,9 @@ func (a *Animation) Frames() iter.Seq[AnimationFrame] {
 
 // Animation loads animation frames for a given body, action, direction, and hue.
 func (s *SDK) Animation(body, action, direction, hue int, preserveHue, firstFrame bool) (*Animation, error) {
-	if len(Animdata) == 0 {
-		if err := LoadAnimdata(filepath.Join(s.basePath, "animdata.mul")); err != nil {
-			return nil, fmt.Errorf("LoadAnimation: failed loading animdata: %w", err)
-		}
+	animdataFile, err := s.loadAnimdata()
+	if err != nil {
+		return nil, fmt.Errorf("Animation: failed loading animdata: %w", err)
 	}
 
 	// Select animX.mul based on body - match the C# implementation
@@ -80,12 +87,14 @@ func (s *SDK) Animation(body, action, direction, hue int, preserveHue, firstFram
 		index += uint32(direction - ((direction - 4) * 2))
 	}
 
-	// Retrieve metadata for this animation ID, defaulting to empty if missing
-	var meta *AnimdataEntry
-	if m, ok := Animdata[int(index)]; ok && m != nil {
-		meta = m
-	} else {
-		meta = &AnimdataEntry{}
+	animdataEntry, _, err := animdataFile.Read(index)
+	if err != nil {
+		return nil, fmt.Errorf("Animation: failed reading animdata entry: %w", err)
+	}
+
+	meta, err := decodeAnimdata(animdataEntry)
+	if err != nil {
+		return nil, fmt.Errorf("Animation: failed decoding animdata entry: %w", err)
 	}
 
 	frameData, _, err := animFile.Read(index)
@@ -144,4 +153,9 @@ func (s *SDK) Animation(body, action, direction, hue int, preserveHue, firstFram
 		AnimdataEntry: meta,
 		frames:        frames,
 	}, nil
+}
+
+func decodeAnimdata(data []byte) (*AnimdataEntry, error) {
+	// TODO
+	return nil, nil
 }

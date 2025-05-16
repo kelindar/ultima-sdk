@@ -138,6 +138,13 @@ func (s *SDK) loadAnim(fileType int) (*uofile.File, error) {
 	return s.load(files, 0, uofile.WithIndexLength(12))
 }
 
+// loadAnimdata loads the animdata file
+func (s *SDK) loadAnimdata() (*uofile.File, error) {
+	return s.load([]string{
+		"animdata.mul",
+	}, 0, uofile.WithIndexLength(12))
+}
+
 // loadUnicodeFonts loads the Unicode fonts file
 func (s *SDK) loadUnicodeFonts() (*uofile.File, error) {
 	return s.load([]string{
