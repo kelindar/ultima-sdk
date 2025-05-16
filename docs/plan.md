@@ -105,14 +105,14 @@ Follow these steps sequentially. Each step involves translating the correspondin
     - Define `Animation`, `AnimationFrame`. Port logic from `Animations.cs`, `Animdata.cs`, `BodyConverter.cs`, `BodyTable.cs`.
     - Read `anim.idx`/`.mul`, `animdata.mul`, `bodyconv.def`, `body.def`. Use `internal/bitmap`.
     - _Sub-task: Write tests for loading animations, verify frame counts/image data._
-22. **[❌] Port `Multis.cs` & `Helpers/MultiHelpers.cs` -> `multi.go`:**
+22. **[✅] Port `Multis.cs` & `Helpers/MultiHelpers.cs` -> `multi.go`:**
     - Define `Multi`, `MultiItem`. Implement loading for `multi.idx`, `multi.mul`.
     - Integrate `MultiHelpers.cs` logic.
     - _Sub-task: Write tests for loading multis and verifying structure._
 23. **[❌] Port `Map.cs` & `Helpers/MapHelper.cs` -> `map.go`:**
-    - Define `GameMap`, `MapTileInfo`, `LandTile`, `StaticTile`. Implement loading for map files, statics, patches.
+    - Define `TileMap`, `Tile`. Implement loading for map files.
     - Integrate `MapHelper.cs` logic.
-    - _Sub-task: Write extensive tests for map/static reading, including patches._
+    - _Sub-task: Write extensive tests for map data reading._
     - _Sub-task: Verify against C# tile/static details at specific coordinates._
 24. **[❌] Port `Verdata.cs` -> `verdata.go`:**
     - Define `VerdataPatch` struct. Implement loading for `verdata.mul`.

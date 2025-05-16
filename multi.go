@@ -124,9 +124,6 @@ func (m *Multi) Image() (image.Image, error) {
 		drawX := pos.drawX - minDrawX
 		drawY := pos.drawY - minDrawY
 
-		// Debug output
-		// Debug output for draw order
-		fmt.Printf("Draw ItemID=0x%X at iso (%d,%d) px (%d,%d) Z=%d\n", pos.item.ItemID, pos.item.OffsetX, pos.item.OffsetY, drawX, drawY, pos.item.OffsetZ)
 		for ty := 0; ty < pos.artH; ty++ {
 			for tx := 0; tx < pos.artW; tx++ {
 				px := drawX + tx
