@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"image"
+	"sort"
 
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
 )
@@ -38,19 +39,12 @@ func (m *Multi) Image() (image.Image, error) {
 	for _, item := range m.Items {
 		x := int(item.OffsetX)
 		y := int(item.OffsetY)
-		if x < minX {
-			minX = x
-		}
-		if y < minY {
-			minY = y
-		}
-		if x > maxX {
-			maxX = x
-		}
-		if y > maxY {
-			maxY = y
-		}
+		minX = min(minX, x)
+		minY = min(minY, y)
+		maxX = max(maxX, x)
+		maxY = max(maxY, y)
 	}
+
 	width := (maxX - minX) + 44  // 44: max art tile width
 	height := (maxY - minY) + 44 // 44: max art tile height
 	if width <= 0 || height <= 0 {
@@ -59,8 +53,18 @@ func (m *Multi) Image() (image.Image, error) {
 
 	img := bitmap.NewARGB1555(image.Rect(0, 0, width, height))
 
-	// Composite each item
-	for _, item := range m.Items {
+	// Sort items by OffsetZ (and ItemID for stability)
+	items := make([]MultiItem, len(m.Items))
+	copy(items, m.Items)
+	sort.SliceStable(items, func(i, j int) bool {
+		if items[i].OffsetZ != items[j].OffsetZ {
+			return items[i].OffsetZ < items[j].OffsetZ
+		}
+		return items[i].ItemID < items[j].ItemID
+	})
+
+	// Composite each item with bottom-center alignment
+	for _, item := range items {
 		art, err := m.sdk.ArtTile(int(item.ItemID))
 		if err != nil || art == nil {
 			continue // skip missing art
@@ -71,14 +75,18 @@ func (m *Multi) Image() (image.Image, error) {
 			continue // skip missing image
 		}
 
-		// Compute top-left position for this item in the output image
-		x := int(item.OffsetX) - minX
-		y := int(item.OffsetY) - minY
 		tileBounds := tileImg.Bounds()
-		for ty := 0; ty < tileBounds.Dy(); ty++ {
-			for tx := 0; tx < tileBounds.Dx(); tx++ {
-				px := x + tx
-				py := y + ty
+		artW := tileBounds.Dx()
+		artH := tileBounds.Dy()
+
+		// Bottom-center anchor: place so (OffsetX, OffsetY) is at bottom center of art
+		drawX := int(item.OffsetX) - minX - (artW / 2)
+		drawY := int(item.OffsetY) - minY - artH + 1
+
+		for ty := 0; ty < artH; ty++ {
+			for tx := 0; tx < artW; tx++ {
+				px := drawX + tx
+				py := drawY + ty
 				if px < 0 || py < 0 || px >= width || py >= height {
 					continue
 				}
@@ -90,8 +98,7 @@ func (m *Multi) Image() (image.Image, error) {
 	return img, nil
 }
 
-// Multi returns a Multi structure by id, loading from multi.mul/multi.idx via loadMulti().
-// This follows the same pattern as other SDK data accessors.
+// Multi returns a Multi structure by id, loading from multi.mul/multi.idx
 func (s *SDK) Multi(id int) (*Multi, error) {
 	file, err := s.loadMulti()
 	if err != nil {
@@ -104,25 +111,21 @@ func (s *SDK) Multi(id int) (*Multi, error) {
 	if len(data) == 0 {
 		return nil, fmt.Errorf("multi entry %d not found", id)
 	}
-	// TODO: Detect UOAHS format properly; for now, assume false
-	isUOAHS := false
-	entrySize := 12
-	if isUOAHS {
-		entrySize = 16
-	}
+
+	// Assume UOAHS format for now
+	const entrySize = 16
+
+	// Parse multi data
 	var items []MultiItem
 	for i := 0; i+entrySize <= len(data); i += entrySize {
-		item := MultiItem{
+		items = append(items, MultiItem{
 			ItemID:  binary.LittleEndian.Uint16(data[i:]),
 			OffsetX: int16(binary.LittleEndian.Uint16(data[i+2:])),
 			OffsetY: int16(binary.LittleEndian.Uint16(data[i+4:])),
 			OffsetZ: int16(binary.LittleEndian.Uint16(data[i+6:])),
 			Flags:   binary.LittleEndian.Uint32(data[i+8:]),
-		}
-		if isUOAHS {
-			item.Unk1 = binary.LittleEndian.Uint32(data[i+12:])
-		}
-		items = append(items, item)
+			Unk1:    binary.LittleEndian.Uint32(data[i+12:]),
+		})
 	}
 	return &Multi{
 		sdk:   s,
