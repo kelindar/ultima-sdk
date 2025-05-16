@@ -139,10 +139,14 @@ func (s *SDK) loadAnim(fileType int) (*uofile.File, error) {
 }
 
 // loadAnimdata loads the animdata file
+// animdata.mul format:
+// - File is divided into chunks of 548 bytes each (4-byte header + 8 entries * 68 bytes)
+// - Each entry is 68 bytes (64 bytes frame data + 4 bytes metadata)
+// - We use WithChunks(548) to read each chunk, and the MUL reader will handle skipping the 4-byte header
+//   and breaking it into 68-byte entries for us
 func (s *SDK) loadAnimdata() (*uofile.File, error) {
-	return s.load([]string{
-		"animdata.mul",
-	}, 0, uofile.WithIndexLength(12))
+	// Each chunk is 548 bytes (4-byte header + 8 entries * 68 bytes)
+	return s.load([]string{"animdata.mul"}, 0, uofile.WithChunks(548))
 }
 
 // loadUnicodeFonts loads the Unicode fonts file

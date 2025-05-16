@@ -87,12 +87,18 @@ func (s *SDK) Animation(body, action, direction, hue int, preserveHue, firstFram
 		index += uint32(direction - ((direction - 4) * 2))
 	}
 
-	animdataEntry, _, err := animdataFile.Read(index)
+	// For animdata.mul, extract the correct entry from the chunk using body ID
+	chunkIndex := body / 8
+	entryOffset := body % 8
+	chunk, _, err := animdataFile.Read(uint32(chunkIndex))
 	if err != nil {
-		return nil, fmt.Errorf("Animation: failed reading animdata entry: %w", err)
+		return nil, fmt.Errorf("Animation: failed reading animdata chunk for body %d: %w", body, err)
 	}
-
-	meta, err := decodeAnimdata(animdataEntry)
+	if len(chunk) < 4+(entryOffset+1)*68 {
+		return nil, fmt.Errorf("Animation: animdata chunk too small for body %d", body)
+	}
+	entry := chunk[4+entryOffset*68 : 4+(entryOffset+1)*68]
+	meta, err := decodeAnimdata(entry)
 	if err != nil {
 		return nil, fmt.Errorf("Animation: failed decoding animdata entry: %w", err)
 	}
@@ -155,7 +161,33 @@ func (s *SDK) Animation(body, action, direction, hue int, preserveHue, firstFram
 	}, nil
 }
 
+// decodeAnimdata parses the animation metadata from the provided binary data.
+// The data should be exactly 68 bytes long (64 bytes of frame data + 4 bytes of metadata).
+// Format:
+//   - FrameData: 64 bytes (signed 8-bit integers)
+//   - Unknown: 1 byte (unsigned 8-bit integer)
+//   - FrameCount: 1 byte (unsigned 8-bit integer)
+//   - FrameInterval: 1 byte (unsigned 8-bit integer)
+//   - FrameStart: 1 byte (unsigned 8-bit integer)
 func decodeAnimdata(data []byte) (*AnimdataEntry, error) {
-	// TODO
-	return nil, nil
+	const expectedSize = 68 // 64 (FrameData) + 1 (Unknown) + 1 (FrameCount) + 1 (FrameInterval) + 1 (FrameStart)
+	if len(data) < expectedSize {
+		return nil, fmt.Errorf("invalid animdata length: expected at least %d bytes, got %d", expectedSize, len(data))
+	}
+
+	// Create a new AnimdataEntry
+	entry := &AnimdataEntry{
+		FrameData:     [64]int8{},
+		Unknown:       data[64],
+		FrameCount:    data[65],
+		FrameInterval: data[66],
+		FrameStart:    data[67],
+	}
+
+	// Copy the frame data
+	for i := 0; i < 64; i++ {
+		entry.FrameData[i] = int8(data[i])
+	}
+
+	return entry, nil
 }

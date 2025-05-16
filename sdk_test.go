@@ -103,12 +103,6 @@ func TestFileCleanupOnClose(t *testing.T) {
 // Test file existence check
 func TestFileExists(t *testing.T) {
 	runWith(t, func(sdk *SDK) {
-		// Check if a common file exists in the test data
-		exists := sdk.fileExists("hues.mul")
-		// We can't assert the result because it depends on the test data,
-		// but the method shouldn't panic
-
-		// Create a temp file in the base path to test
 		tempFileName := "test_file_exists_check.tmp"
 		tempFilePath := filepath.Join(sdk.BasePath(), tempFileName)
 		f, err := os.Create(tempFilePath)
@@ -120,7 +114,7 @@ func TestFileExists(t *testing.T) {
 		defer os.Remove(tempFilePath)
 
 		// Now check if our temp file exists
-		exists = sdk.fileExists(tempFileName)
+		exists := sdk.fileExists(tempFileName)
 		assert.True(t, exists, "Temporary file should exist")
 	})
 }
