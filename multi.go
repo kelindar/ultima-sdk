@@ -45,21 +45,58 @@ func (m *Multi) Image() (image.Image, error) {
 		return nil, fmt.Errorf("multi has no items")
 	}
 
-	// Tile dimensions in pixels
-	const tileWidth, tileHeight = 44, 44
+	// Isometric tile placement constants
+	const isoX, isoY = 22, 22
 
-	// Compute bounds in tiles (using max/min int16 values)
-	minX, minY, maxX, maxY := int16(32767), int16(32767), int16(-32768), int16(-32768)
+	// First pass: compute min/max drawX/drawY for canvas size
+	minDrawX, minDrawY := 1<<31-1, 1<<31-1
+	maxDrawX, maxDrawY := -(1<<31), -(1<<31)
+	tilePositions := make([]struct {
+		drawX, drawY, artW, artH int
+		item MultiItem
+	}, 0, len(m.Items))
+
 	for _, item := range m.Items {
-		minX = min(minX, item.OffsetX)
-		minY = min(minY, item.OffsetY)
-		maxX = max(maxX, item.OffsetX)
-		maxY = max(maxY, item.OffsetY)
+		art, err := m.sdk.StaticArtTile(int(item.ItemID))
+		if err != nil || art == nil {
+			continue
+		}
+		tileImg, err := art.Image()
+		if err != nil || tileImg == nil {
+			continue
+		}
+		tileBounds := tileImg.Bounds()
+		artW := tileBounds.Dx()
+		artH := tileBounds.Dy()
+
+		tileX := int(item.OffsetX)
+		tileY := int(item.OffsetY)
+		drawX := (tileX - tileY) * isoX
+		drawY := (tileX + tileY) * isoY
+		drawY -= int(item.OffsetZ) * 4
+		drawX -= artW / 2
+		drawY -= artH
+
+		if drawX < minDrawX {
+			minDrawX = drawX
+		}
+		if drawY < minDrawY {
+			minDrawY = drawY
+		}
+		if drawX+artW > maxDrawX {
+			maxDrawX = drawX + artW
+		}
+		if drawY+artH > maxDrawY {
+			maxDrawY = drawY + artH
+		}
+		tilePositions = append(tilePositions, struct {
+			drawX, drawY, artW, artH int
+			item MultiItem
+		}{drawX, drawY, artW, artH, item})
 	}
 
-	// Calculate dimensions in pixels
-	width := int(maxX-minX+1) * tileWidth
-	height := int(maxY-minY+1) * tileHeight
+	width := maxDrawX - minDrawX
+	height := maxDrawY - minDrawY
 	if width <= 0 || height <= 0 {
 		return nil, fmt.Errorf("invalid multi bounds: width=%d, height=%d", width, height)
 	}
@@ -67,42 +104,30 @@ func (m *Multi) Image() (image.Image, error) {
 	img := bitmap.NewARGB1555(image.Rect(0, 0, width, height))
 
 	// Sort items by OffsetZ (and ItemID for stability)
-	items := make([]MultiItem, len(m.Items))
-	copy(items, m.Items)
-	sort.SliceStable(items, func(i, j int) bool {
-		if items[i].OffsetZ != items[j].OffsetZ {
-			return items[i].OffsetZ < items[j].OffsetZ
+	sort.SliceStable(tilePositions, func(i, j int) bool {
+		if tilePositions[i].item.OffsetZ != tilePositions[j].item.OffsetZ {
+			return tilePositions[i].item.OffsetZ < tilePositions[j].item.OffsetZ
 		}
-		return items[i].ItemID < items[j].ItemID
+		return tilePositions[i].item.ItemID < tilePositions[j].item.ItemID
 	})
 
-	// Composite each item with bottom-center alignment
-	for _, item := range items {
-		art, err := m.sdk.StaticArtTile(int(item.ItemID))
+	// Second pass: draw tiles at adjusted positions
+	for _, pos := range tilePositions {
+		art, err := m.sdk.StaticArtTile(int(pos.item.ItemID))
 		if err != nil || art == nil {
-			continue // skip missing art
+			continue
 		}
-
 		tileImg, err := art.Image()
 		if err != nil || tileImg == nil {
-			continue // skip missing image
+			continue
 		}
-
 		tileBounds := tileImg.Bounds()
-		artW := tileBounds.Dx()
-		artH := tileBounds.Dy()
-
-		// Calculate position in pixels (bottom-center of the tile)
-		drawX := int(item.OffsetX-minX) * tileWidth
-		drawY := int(item.OffsetY-minY) * tileHeight
-
-		// Center the art within the tile (bottom-center aligned)
-		drawX += (tileWidth - artW) / 2
-		drawY += tileHeight - artH
-
-		// Draw the art
-		for ty := 0; ty < artH; ty++ {
-			for tx := 0; tx < artW; tx++ {
+		drawX := pos.drawX - minDrawX
+		drawY := pos.drawY - minDrawY
+		// Debug output
+		fmt.Printf("Draw ItemID=%d at iso (%d,%d) px (%d,%d)\n", pos.item.ItemID, pos.item.OffsetX, pos.item.OffsetY, drawX, drawY)
+		for ty := 0; ty < pos.artH; ty++ {
+			for tx := 0; tx < pos.artW; tx++ {
 				px := drawX + tx
 				py := drawY + ty
 				if px < 0 || py < 0 || px >= width || py >= height {
@@ -145,6 +170,7 @@ func (s *SDK) Multi(id int) (*Multi, error) {
 			Unk1:    binary.LittleEndian.Uint32(data[i+12:]),
 		})
 	}
+
 	return &Multi{
 		sdk:   s,
 		Items: items,
