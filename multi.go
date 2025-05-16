@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"image"
+	"image/png"
+	"os"
 	"sort"
 
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
@@ -26,6 +28,15 @@ type Multi struct {
 	Items []MultiItem
 }
 
+func savePng(img image.Image, name string) error {
+	file, err := os.Create(name)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer file.Close()
+	return png.Encode(file, img)
+}
+
 // Image renders the multi structure as a full image using art tiles for each MultiItem.
 // The image bounds are computed from the offsets of all items. Each item's art is fetched using sdk.ArtTile,
 // and composited at the correct position. The method returns an ARGB1555 image.
@@ -34,19 +45,21 @@ func (m *Multi) Image() (image.Image, error) {
 		return nil, fmt.Errorf("multi has no items")
 	}
 
-	// Compute bounds
-	minX, minY, maxX, maxY := int(1<<15), int(1<<15), int(-1<<15), int(-1<<15)
+	// Tile dimensions in pixels
+	const tileWidth, tileHeight = 44, 44
+
+	// Compute bounds in tiles (using max/min int16 values)
+	minX, minY, maxX, maxY := int16(32767), int16(32767), int16(-32768), int16(-32768)
 	for _, item := range m.Items {
-		x := int(item.OffsetX)
-		y := int(item.OffsetY)
-		minX = min(minX, x)
-		minY = min(minY, y)
-		maxX = max(maxX, x)
-		maxY = max(maxY, y)
+		minX = min(minX, item.OffsetX)
+		minY = min(minY, item.OffsetY)
+		maxX = max(maxX, item.OffsetX)
+		maxY = max(maxY, item.OffsetY)
 	}
 
-	width := (maxX - minX) + 44  // 44: max art tile width
-	height := (maxY - minY) + 44 // 44: max art tile height
+	// Calculate dimensions in pixels
+	width := int(maxX-minX+1) * tileWidth
+	height := int(maxY-minY+1) * tileHeight
 	if width <= 0 || height <= 0 {
 		return nil, fmt.Errorf("invalid multi bounds: width=%d, height=%d", width, height)
 	}
@@ -65,7 +78,7 @@ func (m *Multi) Image() (image.Image, error) {
 
 	// Composite each item with bottom-center alignment
 	for _, item := range items {
-		art, err := m.sdk.ArtTile(int(item.ItemID))
+		art, err := m.sdk.StaticArtTile(int(item.ItemID))
 		if err != nil || art == nil {
 			continue // skip missing art
 		}
@@ -79,10 +92,15 @@ func (m *Multi) Image() (image.Image, error) {
 		artW := tileBounds.Dx()
 		artH := tileBounds.Dy()
 
-		// Bottom-center anchor: place so (OffsetX, OffsetY) is at bottom center of art
-		drawX := int(item.OffsetX) - minX - (artW / 2)
-		drawY := int(item.OffsetY) - minY - artH + 1
+		// Calculate position in pixels (bottom-center of the tile)
+		drawX := int(item.OffsetX-minX) * tileWidth
+		drawY := int(item.OffsetY-minY) * tileHeight
 
+		// Center the art within the tile (bottom-center aligned)
+		drawX += (tileWidth - artW) / 2
+		drawY += tileHeight - artH
+
+		// Draw the art
 		for ty := 0; ty < artH; ty++ {
 			for tx := 0; tx < artW; tx++ {
 				px := drawX + tx
