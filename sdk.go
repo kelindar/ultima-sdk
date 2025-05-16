@@ -35,28 +35,17 @@ func Open(directory string) (*SDK, error) {
 	sdk := &SDK{
 		basePath: directory,
 	}
-
-	// In later tasks, this is where initial file indexing or loading might be triggered,
-	// similar to C#'s Files.Initialize(). For now, we just store the path.
-
 	return sdk, nil
 }
 
 // Close releases any resources held by the SDK instance.
-// This is analogous to C#'s `Files.Dispose()` and should be called when the SDK
-// is no longer needed to free up file handles or other resources.
 func (s *SDK) Close() error {
-	// Close all open file handles
 	s.closeAllFiles()
-
-	// Clear the base path to indicate the SDK is "closed"
 	s.basePath = ""
-
 	return nil
 }
 
 // BasePath returns the base directory path provided when the SDK was opened.
-// This is primarily for internal use or testing to confirm the SDK was initialized correctly.
 func (s *SDK) BasePath() string {
 	return s.basePath
 }

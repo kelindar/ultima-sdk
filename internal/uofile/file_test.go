@@ -316,10 +316,6 @@ func TestFile_Concurrency(t *testing.T) {
 }
 
 func TestAnimationNameByBody(t *testing.T) {
-	// Should find a known body (adjust the expected name as per your file_anim.json)
 	assert.Equal(t, "ogres_ogre (1)", AnimationNameByBody(1), "Body 1 should return correct name")
-
-	// Should return empty string for unknown body
 	assert.Equal(t, "", AnimationNameByBody(99999), "Unknown body should return empty string")
 }
-
