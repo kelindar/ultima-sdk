@@ -5,8 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"image"
-	"image/png"
-	"os"
 	"sort"
 
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
@@ -28,15 +26,6 @@ type Multi struct {
 	Items []MultiItem
 }
 
-func savePng(img image.Image, name string) error {
-	file, err := os.Create(name)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	defer file.Close()
-	return png.Encode(file, img)
-}
-
 // Image renders the multi structure as a full image using art tiles for each MultiItem.
 // The image bounds are computed from the offsets of all items. Each item's art is fetched using sdk.ArtTile,
 // and composited at the correct position. The method returns an ARGB1555 image.
@@ -50,10 +39,10 @@ func (m *Multi) Image() (image.Image, error) {
 
 	// First pass: compute min/max drawX/drawY for canvas size
 	minDrawX, minDrawY := 1<<31-1, 1<<31-1
-	maxDrawX, maxDrawY := -(1<<31), -(1<<31)
+	maxDrawX, maxDrawY := -(1 << 31), -(1 << 31)
 	tilePositions := make([]struct {
 		drawX, drawY, artW, artH int
-		item MultiItem
+		item                     MultiItem
 	}, 0, len(m.Items))
 
 	for _, item := range m.Items {
@@ -91,7 +80,7 @@ func (m *Multi) Image() (image.Image, error) {
 		}
 		tilePositions = append(tilePositions, struct {
 			drawX, drawY, artW, artH int
-			item MultiItem
+			item                     MultiItem
 		}{drawX, drawY, artW, artH, item})
 	}
 
@@ -103,12 +92,22 @@ func (m *Multi) Image() (image.Image, error) {
 
 	img := bitmap.NewARGB1555(image.Rect(0, 0, width, height))
 
-	// Sort items by OffsetZ (and ItemID for stability)
+	// Sort items by OffsetZ, then OffsetY, then OffsetX, then ItemID (matches UO stacking logic)
 	sort.SliceStable(tilePositions, func(i, j int) bool {
-		if tilePositions[i].item.OffsetZ != tilePositions[j].item.OffsetZ {
-			return tilePositions[i].item.OffsetZ < tilePositions[j].item.OffsetZ
+		a, b := tilePositions[i], tilePositions[j]
+		az, bz := int(a.item.OffsetZ), int(b.item.OffsetZ)
+		ay, by := int(a.item.OffsetY), int(b.item.OffsetY)
+		ax, bx := int(a.item.OffsetX), int(b.item.OffsetX)
+		if az != bz {
+			return az < bz
 		}
-		return tilePositions[i].item.ItemID < tilePositions[j].item.ItemID
+		if ay != by {
+			return ay < by
+		}
+		if ax != bx {
+			return ax < bx
+		}
+		return a.item.ItemID < b.item.ItemID
 	})
 
 	// Second pass: draw tiles at adjusted positions
@@ -124,8 +123,10 @@ func (m *Multi) Image() (image.Image, error) {
 		tileBounds := tileImg.Bounds()
 		drawX := pos.drawX - minDrawX
 		drawY := pos.drawY - minDrawY
+
 		// Debug output
-		fmt.Printf("Draw ItemID=%d at iso (%d,%d) px (%d,%d)\n", pos.item.ItemID, pos.item.OffsetX, pos.item.OffsetY, drawX, drawY)
+		// Debug output for draw order
+		fmt.Printf("Draw ItemID=0x%X at iso (%d,%d) px (%d,%d) Z=%d\n", pos.item.ItemID, pos.item.OffsetX, pos.item.OffsetY, drawX, drawY, pos.item.OffsetZ)
 		for ty := 0; ty < pos.artH; ty++ {
 			for tx := 0; tx < pos.artW; tx++ {
 				px := drawX + tx
@@ -133,7 +134,10 @@ func (m *Multi) Image() (image.Image, error) {
 				if px < 0 || py < 0 || px >= width || py >= height {
 					continue
 				}
-				img.Set(px, py, tileImg.At(tileBounds.Min.X+tx, tileBounds.Min.Y+ty))
+				col := tileImg.At(tileBounds.Min.X+tx, tileBounds.Min.Y+ty)
+				if c, ok := col.(bitmap.ARGB1555Color); ok && c != 0 {
+					img.Set(px, py, c)
+				}
 			}
 		}
 	}

@@ -1,6 +1,10 @@
 package ultima
 
 import (
+	"fmt"
+	"image"
+	"image/png"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +22,15 @@ func TestMulti_Load(t *testing.T) {
 		img, err := multi.Image()
 		assert.NoError(t, err)
 		assert.NotNil(t, img)
-
-		savePng(img, "multi.png")
+		//savePng(img, "multi.png")
 	})
+}
+
+func savePng(img image.Image, name string) error {
+	file, err := os.Create(name)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer file.Close()
+	return png.Encode(file, img)
 }

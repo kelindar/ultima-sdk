@@ -1,10 +1,6 @@
 package ultima
 
 import (
-	"fmt"
-	"image"
-	"image/png"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -62,13 +58,4 @@ func TestLight(t *testing.T) {
 			assert.Greater(t, count, 0, "Should have found at least one light")
 		})
 	})
-}
-
-func savePng(img image.Image, name string) error {
-	file, err := os.Create(name)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	defer file.Close()
-	return png.Encode(file, img)
 }

@@ -40,7 +40,7 @@ type ArtTile struct {
 // Image retrieves and decodes the art tile's graphical representation.
 // The image is loaded on the first call and cached for subsequent calls.
 func (a *ArtTile) Image() (image.Image, error) {
-	if a.imageData == nil || len(a.imageData) == 0 {
+	if len(a.imageData) == 0 {
 		return nil, ErrNoArtData
 	}
 
