@@ -1,0 +1,2054 @@
+{
+  "Mobs": [
+    {
+      "name": "ogres_ogre (1)",
+      "body": 1,
+      "type": 0
+    },
+    {
+      "name": "ettins_ettin (2)",
+      "body": 2,
+      "type": 0
+    },
+    {
+      "name": "walking_dead_zombie (3)",
+      "body": 3,
+      "type": 0
+    },
+    {
+      "name": "gargoyles_gargoyle (4)",
+      "body": 4,
+      "type": 0
+    },
+    {
+      "name": "birds_eagle (5)",
+      "body": 5,
+      "type": 0
+    },
+    {
+      "name": "birds_generic (6)",
+      "body": 6,
+      "type": 0
+    },
+    {
+      "name": "orcs_orc_captain (7)",
+      "body": 7,
+      "type": 0
+    },
+    {
+      "name": "flails_corpser (8)",
+      "body": 8,
+      "type": 0
+    },
+    {
+      "name": "daemons_daemon (9)",
+      "body": 9,
+      "type": 0
+    },
+    {
+      "name": "daemons_daemon2 (10)",
+      "body": 10,
+      "type": 0
+    },
+    {
+      "name": "arachnids_spider_dread (11)",
+      "body": 11,
+      "type": 0
+    },
+    {
+      "name": "dragons_dragon_retro_grey (12)",
+      "body": 12,
+      "type": 0
+    },
+    {
+      "name": "elementals_air_elemental (13)",
+      "body": 13,
+      "type": 0
+    },
+    {
+      "name": "elementals_earth_elemental (14)",
+      "body": 14,
+      "type": 0
+    },
+    {
+      "name": "elementals_fire_elemental (15)",
+      "body": 15,
+      "type": 0
+    },
+    {
+      "name": "elementals_water_elemental (16)",
+      "body": 16,
+      "type": 0
+    },
+    {
+      "name": "orcs_orc (17)",
+      "body": 17,
+      "type": 0
+    },
+    {
+      "name": "ettins_ettin2 (18)",
+      "body": 18,
+      "type": 0
+    },
+    {
+      "name": "arachnids_spider_dread2 (19)",
+      "body": 19,
+      "type": 0
+    },
+    {
+      "name": "arachnids_spider_frost (20)",
+      "body": 20,
+      "type": 0
+    },
+    {
+      "name": "serpents_snake_giant (21)",
+      "body": 21,
+      "type": 0
+    },
+    {
+      "name": "gazers_gazer (22)",
+      "body": 22,
+      "type": 0
+    },
+    {
+      "name": "canines_wolf_dire (23)",
+      "body": 23,
+      "type": 2
+    },
+    {
+      "name": "liche_liche_retro (24)",
+      "body": 24,
+      "type": 0
+    },
+    {
+      "name": "canines_wolf_grey (25)",
+      "body": 25,
+      "type": 2
+    },
+    {
+      "name": "spirits_ghost (26)",
+      "body": 26,
+      "type": 0
+    },
+    {
+      "name": "canines_wolf_grey2 (27)",
+      "body": 27,
+      "type": 2
+    },
+    {
+      "name": "arachnids_spider_giant (28)",
+      "body": 28,
+      "type": 0
+    },
+    {
+      "name": "gorillas_silverback (29)",
+      "body": 29,
+      "type": 0
+    },
+    {
+      "name": "harpies_harpy (30)",
+      "body": 30,
+      "type": 0
+    },
+    {
+      "name": "headless_headless (31)",
+      "body": 31,
+      "type": 0
+    },
+    {
+      "name": "lizard_race_lizardman (33)",
+      "body": 33,
+      "type": 0
+    },
+    {
+      "name": "canines_wolf_white (34)",
+      "body": 34,
+      "type": 2
+    },
+    {
+      "name": "lizard_race_lizardman2 (35)",
+      "body": 35,
+      "type": 0
+    },
+    {
+      "name": "lizard_race_lizardman3 (36)",
+      "body": 36,
+      "type": 0
+    },
+    {
+      "name": "canines_wolf_white2 (37)",
+      "body": 37,
+      "type": 2
+    },
+    {
+      "name": "daemons_daemon_black_gate (38)",
+      "body": 38,
+      "type": 0
+    },
+    {
+      "name": "mongbats_mongbat (39)",
+      "body": 39,
+      "type": 0
+    },
+    {
+      "name": "daemons_daemon_elder (40)",
+      "body": 40,
+      "type": 0
+    },
+    {
+      "name": "orcs_orc2 (41)",
+      "body": 41,
+      "type": 0
+    },
+    {
+      "name": "rat_race_ratman (42)",
+      "body": 42,
+      "type": 0
+    },
+    {
+      "name": "daemons_daemon_ice_fiend (43)",
+      "body": 43,
+      "type": 0
+    },
+    {
+      "name": "rat_race_ratman2 (44)",
+      "body": 44,
+      "type": 0
+    },
+    {
+      "name": "rat_race_ratman3 (45)",
+      "body": 45,
+      "type": 0
+    },
+    {
+      "name": "Mf_Dragon_Rust (46)",
+      "body": 46,
+      "type": 0
+    },
+    {
+      "name": "flails_reaper (47)",
+      "body": 47,
+      "type": 0
+    },
+    {
+      "name": "scorpions_giant (48)",
+      "body": 48,
+      "type": 0
+    },
+    {
+      "name": "dragons_wyrm_retro_white (49)",
+      "body": 49,
+      "type": 0
+    },
+    {
+      "name": "skeletons_skeleton (50)",
+      "body": 50,
+      "type": 0
+    },
+    {
+      "name": "slimes_slime (51)",
+      "body": 51,
+      "type": 0
+    },
+    {
+      "name": "serpents_snake (52)",
+      "body": 52,
+      "type": 0
+    },
+    {
+      "name": "trolls_troll (53)",
+      "body": 53,
+      "type": 0
+    },
+    {
+      "name": "trolls_troll2 (54)",
+      "body": 54,
+      "type": 0
+    },
+    {
+      "name": "trolls_troll_frost (55)",
+      "body": 55,
+      "type": 0
+    },
+    {
+      "name": "skeletons_skeleton2 (56)",
+      "body": 56,
+      "type": 0
+    },
+    {
+      "name": "skeletons_skeleton3 (57)",
+      "body": 57,
+      "type": 0
+    },
+    {
+      "name": "ethereals_wisp (58)",
+      "body": 58,
+      "type": 0
+    },
+    {
+      "name": "dragons_dragon_retro_red (59)",
+      "body": 59,
+      "type": 0
+    },
+    {
+      "name": "dragons_dragon_retro_grey2 (60)",
+      "body": 60,
+      "type": 0
+    },
+    {
+      "name": "dragons_dragon_retro_red2 (61)",
+      "body": 61,
+      "type": 0
+    },
+    {
+      "name": "dragons_wyvern (62)",
+      "body": 62,
+      "type": 0
+    },
+    {
+      "name": "felines_cougar (63)",
+      "body": 63,
+      "type": 2
+    },
+    {
+      "name": "felines_leopard_snow (64)",
+      "body": 64,
+      "type": 2
+    },
+    {
+      "name": "felines_leopard_snow2 (65)",
+      "body": 65,
+      "type": 2
+    },
+    {
+      "name": "flails_swamp_tentacles (66)",
+      "body": 66,
+      "type": 0
+    },
+    {
+      "name": "gargoyles_gargoyle_stone (67)",
+      "body": 67,
+      "type": 0
+    },
+    {
+      "name": "gazers_gazer_elder (68)",
+      "body": 68,
+      "type": 0
+    },
+    {
+      "name": "gazers_gazer_elder2 (69)",
+      "body": 69,
+      "type": 0
+    },
+    {
+      "name": "terathan_terathan_warrior (70)",
+      "body": 70,
+      "type": 0
+    },
+    {
+      "name": "terathan_terathan_drone (71)",
+      "body": 71,
+      "type": 0
+    },
+    {
+      "name": "terathan_terathan_queen (72)",
+      "body": 72,
+      "type": 0
+    },
+    {
+      "name": "harpies_harpy_stone (73)",
+      "body": 73,
+      "type": 0
+    },
+    {
+      "name": "imps_imp (74)",
+      "body": 74,
+      "type": 0
+    },
+    {
+      "name": "cyclops_cyclops (75)",
+      "body": 75,
+      "type": 0
+    },
+    {
+      "name": "titans_titan (76)",
+      "body": 76,
+      "type": 0
+    },
+    {
+      "name": "krakens_kraken (77)",
+      "body": 77,
+      "type": 0
+    },
+    {
+      "name": "liche_liche_lord_retro (78)",
+      "body": 78,
+      "type": 0
+    },
+    {
+      "name": "liche_liche_lord_retro2 (79)",
+      "body": 79,
+      "type": 0
+    },
+    {
+      "name": "frogs_frog_giant (80)",
+      "body": 80,
+      "type": 0
+    },
+    {
+      "name": "frogs_bullfrog (81)",
+      "body": 81,
+      "type": 0
+    },
+    {
+      "name": "liche_liche_lord_retro3 (82)",
+      "body": 82,
+      "type": 0
+    },
+    {
+      "name": "ogres_ogre_lord (83)",
+      "body": 83,
+      "type": 0
+    },
+    {
+      "name": "ogres_ogre_lord2 (84)",
+      "body": 84,
+      "type": 0
+    },
+    {
+      "name": "ophidians_ophidian_mage (85)",
+      "body": 85,
+      "type": 0
+    },
+    {
+      "name": "ophidians_ophidian_warrior (86)",
+      "body": 86,
+      "type": 0
+    },
+    {
+      "name": "ophidians_ophidian_queen (87)",
+      "body": 87,
+      "type": 0
+    },
+    {
+      "name": "ruminants_goat_mountain (88)",
+      "body": 88,
+      "type": 2
+    },
+    {
+      "name": "serpents_snake_giant_ice (89)",
+      "body": 89,
+      "type": 0
+    },
+    {
+      "name": "serpents_snake_giant_lava (90)",
+      "body": 90,
+      "type": 0
+    },
+    {
+      "name": "serpents_snake_giant_silver (91)",
+      "body": 91,
+      "type": 0
+    },
+    {
+      "name": "serpents_snake_giant_silver2 (92)",
+      "body": 92,
+      "type": 0
+    },
+    {
+      "name": "serpents_snake_giant_silver3 (93)",
+      "body": 93,
+      "type": 0
+    },
+    {
+      "name": "slimes_slime_frost (94)",
+      "body": 94,
+      "type": 0
+    },
+    {
+      "name": "bird_turkey (95)",
+      "body": 95,
+      "type": 0
+    },
+    {
+      "name": "slimes_slime_frost2 (96)",
+      "body": 96,
+      "type": 0
+    },
+    {
+      "name": "canines_hell_hound (97)",
+      "body": 97,
+      "type": 2
+    },
+    {
+      "name": "canines_hell_hound2 (98)",
+      "body": 98,
+      "type": 2
+    },
+    {
+      "name": "canines_wolf_dark (99)",
+      "body": 99,
+      "type": 2
+    },
+    {
+      "name": "canines_wolf_silver (100)",
+      "body": 100,
+      "type": 2
+    },
+    {
+      "name": "centaurs_centaur (101)",
+      "body": 101,
+      "type": 0
+    },
+    {
+      "name": "daemons_daemon_exodus (102)",
+      "body": 102,
+      "type": 0
+    },
+    {
+      "name": "dragons_dragon_asian (103)",
+      "body": 103,
+      "type": 0
+    },
+    {
+      "name": "dragons_dragon_skeletal (104)",
+      "body": 104,
+      "type": 0
+    },
+    {
+      "name": "dragons_wyrm_ancient (105)",
+      "body": 105,
+      "type": 0
+    },
+    {
+      "name": "dragons_wyrm_shadow (106)",
+      "body": 106,
+      "type": 0
+    },
+    {
+      "name": "elementals_agapite_elemental (107)",
+      "body": 107,
+      "type": 0
+    },
+    {
+      "name": "elementals_bronze_elemental (108)",
+      "body": 108,
+      "type": 0
+    },
+    {
+      "name": "elementals_copper_elemental (109)",
+      "body": 109,
+      "type": 0
+    },
+    {
+      "name": "elementals_copper_dull_elemental (110)",
+      "body": 110,
+      "type": 0
+    },
+    {
+      "name": "elementals_iron_elemental (111)",
+      "body": 111,
+      "type": 0
+    },
+    {
+      "name": "elementals_valorite_elemental (112)",
+      "body": 112,
+      "type": 0
+    },
+    {
+      "name": "elementals_verite_elemental (113)",
+      "body": 113,
+      "type": 0
+    },
+    {
+      "name": "equines_horse_dark_steed (114)",
+      "body": 114,
+      "type": 2
+    },
+    {
+      "name": "equines_horse_ethereal (115)",
+      "body": 115,
+      "type": 2
+    },
+    {
+      "name": "equines_horse_nightmare (116)",
+      "body": 116,
+      "type": 2
+    },
+    {
+      "name": "equines_horse_silver_steed (117)",
+      "body": 117,
+      "type": 2
+    },
+    {
+      "name": "equines_horse_war_brittanian (118)",
+      "body": 118,
+      "type": 2
+    },
+    {
+      "name": "equines_horse_war_mage_council (119)",
+      "body": 119,
+      "type": 2
+    },
+    {
+      "name": "equines_horse_war_minax (120)",
+      "body": 120,
+      "type": 2
+    },
+    {
+      "name": "equines_horse_war_shadowlord (121)",
+      "body": 121,
+      "type": 2
+    },
+    {
+      "name": "equines_unicorn (122)",
+      "body": 122,
+      "type": 2
+    },
+    {
+      "name": "ethereal_warriors_male (123)",
+      "body": 123,
+      "type": 0
+    },
+    {
+      "name": "mages_evil_mage (124)",
+      "body": 124,
+      "type": 0
+    },
+    {
+      "name": "mages_evil_mage_master (125)",
+      "body": 125,
+      "type": 0
+    },
+    {
+      "name": "mages_evil_mage_master2 (126)",
+      "body": 126,
+      "type": 0
+    },
+    {
+      "name": "felines_predator_hellcat (127)",
+      "body": 127,
+      "type": 2
+    },
+    {
+      "name": "fey_race_pixie (128)",
+      "body": 128,
+      "type": 0
+    },
+    {
+      "name": "flails_swamp_tentacles2 (129)",
+      "body": 129,
+      "type": 0
+    },
+    {
+      "name": "gargoyles_gargoyle_blistering (130)",
+      "body": 130,
+      "type": 0
+    },
+    {
+      "name": "genies_efreet (131)",
+      "body": 131,
+      "type": 0
+    },
+    {
+      "name": "kirin_kirin (132)",
+      "body": 132,
+      "type": 2
+    },
+    {
+      "name": "lizards_alligator_small (133)",
+      "body": 133,
+      "type": 2
+    },
+    {
+      "name": "lizards_komodo_dragon (134)",
+      "body": 134,
+      "type": 2
+    },
+    {
+      "name": "ogres_ogre_lord_arctic (135)",
+      "body": 135,
+      "type": 0
+    },
+    {
+      "name": "ophidians_ophidian_archmage (136)",
+      "body": 136,
+      "type": 0
+    },
+    {
+      "name": "ophidians_ophidian_knight (137)",
+      "body": 137,
+      "type": 0
+    },
+    {
+      "name": "orcs_orc_lord (138)",
+      "body": 138,
+      "type": 0
+    },
+    {
+      "name": "orcs_orc_lord2 (139)",
+      "body": 139,
+      "type": 0
+    },
+    {
+      "name": "orcs_orc_shaman (140)",
+      "body": 140,
+      "type": 0
+    },
+    {
+      "name": "paladins_paladin (141)",
+      "body": 141,
+      "type": 0
+    },
+    {
+      "name": "rat_race_ratman4 (142)",
+      "body": 142,
+      "type": 0
+    },
+    {
+      "name": "rat_race_shaman (143)",
+      "body": 143,
+      "type": 0
+    },
+    {
+      "name": "sea_horse_sea_horse (144)",
+      "body": 144,
+      "type": 1
+    },
+    {
+      "name": "sea_serpents_sea_serpent (145)",
+      "body": 145,
+      "type": 1
+    },
+    {
+      "name": "shadowlords_shadowlord (146)",
+      "body": 146,
+      "type": 0
+    },
+    {
+      "name": "skeletons_skeleton_knight (147)",
+      "body": 147,
+      "type": 0
+    },
+    {
+      "name": "skeletons_skeleton_mage (148)",
+      "body": 148,
+      "type": 0
+    },
+    {
+      "name": "succubi_succubus (149)",
+      "body": 149,
+      "type": 0
+    },
+    {
+      "name": "sea_serpents_sea_serpent2 (150)",
+      "body": 150,
+      "type": 1
+    },
+    {
+      "name": "dolphins_dolphin (151)",
+      "body": 151,
+      "type": 1
+    },
+    {
+      "name": "terathan_terathan_avenger (152)",
+      "body": 152,
+      "type": 0
+    },
+    {
+      "name": "walking_dead_ghoul (153)",
+      "body": 153,
+      "type": 0
+    },
+    {
+      "name": "walking_dead_mummy (154)",
+      "body": 154,
+      "type": 0
+    },
+    {
+      "name": "walking_dead_rotting_corpse (155)",
+      "body": 155,
+      "type": 0
+    },
+    {
+      "name": "arachnids_spider_black_widow (157)",
+      "body": 157,
+      "type": 0
+    },
+    {
+      "name": "elementals_acid_elemental (158)",
+      "body": 158,
+      "type": 0
+    },
+    {
+      "name": "elementals_blood_elemental (159)",
+      "body": 159,
+      "type": 0
+    },
+    {
+      "name": "elementals_blood_elemental2 (160)",
+      "body": 160,
+      "type": 0
+    },
+    {
+      "name": "elementals_ice_elemental (161)",
+      "body": 161,
+      "type": 0
+    },
+    {
+      "name": "elementals_poison_elemental (162)",
+      "body": 162,
+      "type": 0
+    },
+    {
+      "name": "elementals_snow_elemental (163)",
+      "body": 163,
+      "type": 0
+    },
+    {
+      "name": "ethereals_energy_vortex (164)",
+      "body": 164,
+      "type": 0
+    },
+    {
+      "name": "ethereals_wisp2 (165)",
+      "body": 165,
+      "type": 0
+    },
+    {
+      "name": "elementals_gold_elemental (166)",
+      "body": 166,
+      "type": 0
+    },
+    {
+      "name": "bruins_bear_brown (167)",
+      "body": 167,
+      "type": 2
+    },
+    {
+      "name": "imps_shadow_fiend (168)",
+      "body": 168,
+      "type": 0
+    },
+    {
+      "name": "Giant_Beetle_Fire (169)",
+      "body": 169,
+      "type": 2
+    },
+    {
+      "name": "llamas_llama_ethereal (170)",
+      "body": 170,
+      "type": 2
+    },
+    {
+      "name": "ostards_ostard_ethereal (171)",
+      "body": 171,
+      "type": 2
+    },
+    {
+      "name": "dragons_dragon_retro_red3 (172)",
+      "body": 172,
+      "type": 0
+    },
+    {
+      "name": "arachnids_spider_black_widow2 (173)",
+      "body": 173,
+      "type": 0
+    },
+    {
+      "name": "succubi_succubus2 (174)",
+      "body": 174,
+      "type": 0
+    },
+    {
+      "name": "ethereal_warriors_male2 (175)",
+      "body": 175,
+      "type": 0
+    },
+    {
+      "name": "fey_race_pixie2 (176)",
+      "body": 176,
+      "type": 0
+    },
+    {
+      "name": "equines_horse_nightmare2 (177)",
+      "body": 177,
+      "type": 2
+    },
+    {
+      "name": "equines_horse_nightmare3 (178)",
+      "body": 178,
+      "type": 2
+    },
+    {
+      "name": "equines_horse_nightmare4 (179)",
+      "body": 179,
+      "type": 2
+    },
+    {
+      "name": "dragons_wyrm_retro_white2 (180)",
+      "body": 180,
+      "type": 0
+    },
+    {
+      "name": "orcs_orc_scout (181)",
+      "body": 181,
+      "type": 0
+    },
+    {
+      "name": "orcs_orc_bomber (182)",
+      "body": 182,
+      "type": 0
+    },
+    {
+      "name": "H_Savage_Male (183)",
+      "body": 183,
+      "type": 3
+    },
+    {
+      "name": "H_Savage_Female (184)",
+      "body": 184,
+      "type": 3
+    },
+    {
+      "name": "H_SavageRider_Male (185)",
+      "body": 185,
+      "type": 3
+    },
+    {
+      "name": "H_Savage_Female2 (186)",
+      "body": 186,
+      "type": 3
+    },
+    {
+      "name": "ridgeback_ridgeback (187)",
+      "body": 187,
+      "type": 2
+    },
+    {
+      "name": "ridgeback_savage (188)",
+      "body": 188,
+      "type": 2
+    },
+    {
+      "name": "orcs_orc_lord3 (189)",
+      "body": 189,
+      "type": 0
+    },
+    {
+      "name": "equines_horse_firesteed (190)",
+      "body": 190,
+      "type": 2
+    },
+    {
+      "name": "kirin_kirin_ethereal (191)",
+      "body": 191,
+      "type": 2
+    },
+    {
+      "name": "equines_unicorn_ethereal (192)",
+      "body": 192,
+      "type": 2
+    },
+    {
+      "name": "ridgeback_ridgeback_ethereal (193)",
+      "body": 193,
+      "type": 2
+    },
+    {
+      "name": "swamp_dragon_ethereal (194)",
+      "body": 194,
+      "type": 2
+    },
+    {
+      "name": "giant_beetle_ethereal (195)",
+      "body": 195,
+      "type": 2
+    },
+    {
+      "name": "Denkou_Yajuu (196)",
+      "body": 196,
+      "type": 0
+    },
+    {
+      "name": "Dragon_Chaos (197)",
+      "body": 197,
+      "type": 0
+    },
+    {
+      "name": "Dragon_Order (198)",
+      "body": 198,
+      "type": 0
+    },
+    {
+      "name": "Gouzen_Ha (199)",
+      "body": 199,
+      "type": 0
+    },
+    {
+      "name": "equines_horse_dappled_brown (200)",
+      "body": 200,
+      "type": 2
+    },
+    {
+      "name": "felines_housecat (201)",
+      "body": 201,
+      "type": 2
+    },
+    {
+      "name": "lizards_alligator_brown (202)",
+      "body": 202,
+      "type": 2
+    },
+    {
+      "name": "porcines_pig (203)",
+      "body": 203,
+      "type": 2
+    },
+    {
+      "name": "equines_horse_dark_brown (204)",
+      "body": 204,
+      "type": 2
+    },
+    {
+      "name": "rodents_rabbit_cottontail (205)",
+      "body": 205,
+      "type": 2
+    },
+    {
+      "name": "lizards_lava_lizard (206)",
+      "body": 206,
+      "type": 2
+    },
+    {
+      "name": "ruminants_sheep (207)",
+      "body": 207,
+      "type": 2
+    },
+    {
+      "name": "fowl_normal_hen (208)",
+      "body": 208,
+      "type": 2
+    },
+    {
+      "name": "ruminants_goat_billy (209)",
+      "body": 209,
+      "type": 2
+    },
+    {
+      "name": "ostards_ostard_desert (210)",
+      "body": 210,
+      "type": 2
+    },
+    {
+      "name": "bruins_bear_black (211)",
+      "body": 211,
+      "type": 2
+    },
+    {
+      "name": "bruins_bear_grizzly (212)",
+      "body": 212,
+      "type": 2
+    },
+    {
+      "name": "bruins_bear_polar (213)",
+      "body": 213,
+      "type": 2
+    },
+    {
+      "name": "felines_panther (214)",
+      "body": 214,
+      "type": 2
+    },
+    {
+      "name": "rodents_rat_giant (215)",
+      "body": 215,
+      "type": 2
+    },
+    {
+      "name": "bovines_cow_brown (216)",
+      "body": 216,
+      "type": 2
+    },
+    {
+      "name": "canines_dog_hound (217)",
+      "body": 217,
+      "type": 2
+    },
+    {
+      "name": "ostards_ostard_forest (218)",
+      "body": 218,
+      "type": 2
+    },
+    {
+      "name": "ostards_ostard_frenzied (219)",
+      "body": 219,
+      "type": 2
+    },
+    {
+      "name": "llamas_llama (220)",
+      "body": 220,
+      "type": 2
+    },
+    {
+      "name": "walrus_walrus_male (221)",
+      "body": 221,
+      "type": 2
+    },
+    {
+      "name": "ruminants_sheep_shorn (223)",
+      "body": 223,
+      "type": 2
+    },
+    {
+      "name": "canines_wolf_timber (225)",
+      "body": 225,
+      "type": 2
+    },
+    {
+      "name": "equines_horse_dappled_grey (226)",
+      "body": 226,
+      "type": 2
+    },
+    {
+      "name": "equines_horse_tan (228)",
+      "body": 228,
+      "type": 2
+    },
+    {
+      "name": "bovines_cow_spotted (231)",
+      "body": 231,
+      "type": 2
+    },
+    {
+      "name": "bovines_bull_brown (232)",
+      "body": 232,
+      "type": 2
+    },
+    {
+      "name": "bovines_bull_spotted (233)",
+      "body": 233,
+      "type": 2
+    },
+    {
+      "name": "deer_stag (234)",
+      "body": 234,
+      "type": 2
+    },
+    {
+      "name": "deer_doe (237)",
+      "body": 237,
+      "type": 2
+    },
+    {
+      "name": "rodents_rat_sewer (238)",
+      "body": 238,
+      "type": 2
+    },
+    {
+      "name": "Kappa (240)",
+      "body": 240,
+      "type": 0
+    },
+    {
+      "name": "Oni (241)",
+      "body": 241,
+      "type": 0
+    },
+    {
+      "name": "Bimbobushi (242)",
+      "body": 242,
+      "type": 0
+    },
+    {
+      "name": "Hai_Riyo (243)",
+      "body": 243,
+      "type": 2
+    },
+    {
+      "name": "Rune_Beetle (244)",
+      "body": 244,
+      "type": 0
+    },
+    {
+      "name": "Yomotsu_Warrior (245)",
+      "body": 245,
+      "type": 0
+    },
+    {
+      "name": "Kitsun_Tsuki (246)",
+      "body": 246,
+      "type": 2
+    },
+    {
+      "name": "Fan_Dancer (247)",
+      "body": 247,
+      "type": 0
+    },
+    {
+      "name": "Wild_Guar (248)",
+      "body": 248,
+      "type": 2
+    },
+    {
+      "name": "Yamandon (249)",
+      "body": 249,
+      "type": 0
+    },
+    {
+      "name": "Tri_Wolf (250)",
+      "body": 250,
+      "type": 0
+    },
+    {
+      "name": "Vampyric_Beast (251)",
+      "body": 251,
+      "type": 0
+    },
+    {
+      "name": "Lady_of_the_Snow (252)",
+      "body": 252,
+      "type": 0
+    },
+    {
+      "name": "Yomotsu_Priest (253)",
+      "body": 253,
+      "type": 0
+    },
+    {
+      "name": "Crane (254)",
+      "body": 254,
+      "type": 2
+    },
+    {
+      "name": "Yomotsu_Elder (255)",
+      "body": 255,
+      "type": 0
+    },
+    {
+      "name": "Paroxysmus (256)",
+      "body": 256,
+      "type": 0
+    },
+    {
+      "name": "DreadHorn (257)",
+      "body": 257,
+      "type": 0
+    },
+    {
+      "name": "LadyMelisande (258)",
+      "body": 258,
+      "type": 0
+    },
+    {
+      "name": "MonstrousInterredGrizzle (259)",
+      "body": 259,
+      "type": 0
+    },
+    {
+      "name": "Shimmering_Effusion (261)",
+      "body": 261,
+      "type": 0
+    },
+    {
+      "name": "TormentedMinotaur (262)",
+      "body": 262,
+      "type": 0
+    },
+    {
+      "name": "Minotaur (263)",
+      "body": 263,
+      "type": 0
+    },
+    {
+      "name": "Changling (264)",
+      "body": 264,
+      "type": 0
+    },
+    {
+      "name": "Hydra (265)",
+      "body": 265,
+      "type": 0
+    },
+    {
+      "name": "Dryad (266)",
+      "body": 266,
+      "type": 0
+    },
+    {
+      "name": "Troglodyte (267)",
+      "body": 267,
+      "type": 0
+    },
+    {
+      "name": "Satyr (271)",
+      "body": 271,
+      "type": 0
+    },
+    {
+      "name": "MonstrousInterredGrizzle2 (272)",
+      "body": 272,
+      "type": 0
+    },
+    {
+      "name": "Fetid_Essence (273)",
+      "body": 273,
+      "type": 0
+    },
+    {
+      "name": "Raptalon (276)",
+      "body": 276,
+      "type": 2
+    },
+    {
+      "name": "CuShidhe (277)",
+      "body": 277,
+      "type": 2
+    },
+    {
+      "name": "Squirrel (278)",
+      "body": 278,
+      "type": 2
+    },
+    {
+      "name": "Ferret (279)",
+      "body": 279,
+      "type": 2
+    },
+    {
+      "name": "MinotaurArmored (280)",
+      "body": 280,
+      "type": 0
+    },
+    {
+      "name": "LeatherMinotaur (281)",
+      "body": 281,
+      "type": 0
+    },
+    {
+      "name": "Perched_Parrot (282)",
+      "body": 282,
+      "type": 2
+    },
+    {
+      "name": "Perched_Crow (283)",
+      "body": 283,
+      "type": 2
+    },
+    {
+      "name": "MondainSteed01 (284)",
+      "body": 284,
+      "type": 2
+    },
+    {
+      "name": "ReaperForm (285)",
+      "body": 285,
+      "type": 0
+    },
+    {
+      "name": "Bloodworm (287)",
+      "body": 287,
+      "type": 0
+    },
+    {
+      "name": "porcines_boar (290)",
+      "body": 290,
+      "type": 2
+    },
+    {
+      "name": "equines_horse_dappled_brown_pack (291)",
+      "body": 291,
+      "type": 2
+    },
+    {
+      "name": "llamas_llama_pack (292)",
+      "body": 292,
+      "type": 2
+    },
+    {
+      "name": "vollum (293)",
+      "body": 293,
+      "type": 0
+    },
+    {
+      "name": "crystal_elemental (300)",
+      "body": 300,
+      "type": 0
+    },
+    {
+      "name": "treefellow (301)",
+      "body": 301,
+      "type": 0
+    },
+    {
+      "name": "skittering_hopper (302)",
+      "body": 302,
+      "type": 0
+    },
+    {
+      "name": "devourer (303)",
+      "body": 303,
+      "type": 0
+    },
+    {
+      "name": "flesh_golem (304)",
+      "body": 304,
+      "type": 0
+    },
+    {
+      "name": "gore_fiend (305)",
+      "body": 305,
+      "type": 0
+    },
+    {
+      "name": "impaler (306)",
+      "body": 306,
+      "type": 0
+    },
+    {
+      "name": "gibberling (307)",
+      "body": 307,
+      "type": 0
+    },
+    {
+      "name": "bonedemon (308)",
+      "body": 308,
+      "type": 0
+    },
+    {
+      "name": "patchskeleton (309)",
+      "body": 309,
+      "type": 0
+    },
+    {
+      "name": "wailingbanshee (310)",
+      "body": 310,
+      "type": 0
+    },
+    {
+      "name": "shadow_knight (311)",
+      "body": 311,
+      "type": 0
+    },
+    {
+      "name": "abysmal_horror (312)",
+      "body": 312,
+      "type": 0
+    },
+    {
+      "name": "Darknight_Creeper (313)",
+      "body": 313,
+      "type": 0
+    },
+    {
+      "name": "ravager (314)",
+      "body": 314,
+      "type": 0
+    },
+    {
+      "name": "flesh_renderer (315)",
+      "body": 315,
+      "type": 0
+    },
+    {
+      "name": "wander (316)",
+      "body": 316,
+      "type": 0
+    },
+    {
+      "name": "vampire_bat (317)",
+      "body": 317,
+      "type": 0
+    },
+    {
+      "name": "demon_knight (318)",
+      "body": 318,
+      "type": 0
+    },
+    {
+      "name": "mound_of_maggots (319)",
+      "body": 319,
+      "type": 0
+    },
+    {
+      "name": "gray_goblin (334)",
+      "body": 334,
+      "type": 0
+    },
+    {
+      "name": "h_male (400)",
+      "body": 400,
+      "type": 3
+    },
+    {
+      "name": "h_female (401)",
+      "body": 401,
+      "type": 3
+    },
+    {
+      "name": "ridable_boura (432)",
+      "body": 432,
+      "type": 2
+    },
+    {
+      "name": "death_vortex (573)",
+      "body": 573,
+      "type": 0
+    },
+    {
+      "name": "spirits_blade_spirit (574)",
+      "body": 574,
+      "type": 0
+    },
+    {
+      "name": "elf_male (605)",
+      "body": 605,
+      "type": 3
+    },
+    {
+      "name": "elf_female (606)",
+      "body": 606,
+      "type": 3
+    },
+    {
+      "name": "garg_male (666)",
+      "body": 666,
+      "type": 3
+    },
+    {
+      "name": "garg_female (667)",
+      "body": 667,
+      "type": 3
+    },
+    {
+      "name": "timelord (689)",
+      "body": 689,
+      "type": 0
+    },
+    {
+      "name": "shadowlord2 (704)",
+      "body": 704,
+      "type": 0
+    },
+    {
+      "name": "Abyssal_Infernal (713)",
+      "body": 713,
+      "type": 0
+    },
+    {
+      "name": "beetle_iron (714)",
+      "body": 714,
+      "type": 2
+    },
+    {
+      "name": "lowland_boura (715)",
+      "body": 715,
+      "type": 0
+    },
+    {
+      "name": "chicken_lizard (716)",
+      "body": 716,
+      "type": 0
+    },
+    {
+      "name": "clockwork_scorpion (717)",
+      "body": 717,
+      "type": 2
+    },
+    {
+      "name": "fairy_dragon (718)",
+      "body": 718,
+      "type": 0
+    },
+    {
+      "name": "wolfman (719)",
+      "body": 719,
+      "type": 0
+    },
+    {
+      "name": "lava_worm (720)",
+      "body": 720,
+      "type": 0
+    },
+    {
+      "name": "Maddening_Horror (721)",
+      "body": 721,
+      "type": 0
+    },
+    {
+      "name": "Putrid_Undead_Gargoyle (722)",
+      "body": 722,
+      "type": 0
+    },
+    {
+      "name": "Green_Goblin (723)",
+      "body": 723,
+      "type": 0
+    },
+    {
+      "name": "Gremlin (724)",
+      "body": 724,
+      "type": 0
+    },
+    {
+      "name": "Homunculus (725)",
+      "body": 725,
+      "type": 0
+    },
+    {
+      "name": "Kepetch (726)",
+      "body": 726,
+      "type": 0
+    },
+    {
+      "name": "Kepetch_Ambusher (727)",
+      "body": 727,
+      "type": 0
+    },
+    {
+      "name": "Medusa (728)",
+      "body": 728,
+      "type": 0
+    },
+    {
+      "name": "Paralithode (729)",
+      "body": 729,
+      "type": 0
+    },
+    {
+      "name": "Raptor (730)",
+      "body": 730,
+      "type": 0
+    },
+    {
+      "name": "Rotworm (732)",
+      "body": 732,
+      "type": 0
+    },
+    {
+      "name": "Skree (733)",
+      "body": 733,
+      "type": 0
+    },
+    {
+      "name": "Toxic Slith (734)",
+      "body": 734,
+      "type": 0
+    },
+    {
+      "name": "Navrey Night-Eyes (735)",
+      "body": 735,
+      "type": 0
+    },
+    {
+      "name": "Wolf Spider (736)",
+      "body": 736,
+      "type": 0
+    },
+    {
+      "name": "Trapdoor Spider (737)",
+      "body": 737,
+      "type": 0
+    },
+    {
+      "name": "Fire Ant (738)",
+      "body": 738,
+      "type": 0
+    },
+    {
+      "name": "Leather Wolf (739)",
+      "body": 739,
+      "type": 0
+    },
+    {
+      "name": "Dream Wraith (740)",
+      "body": 740,
+      "type": 0
+    },
+    {
+      "name": "Slasher of Viels (741)",
+      "body": 741,
+      "type": 0
+    },
+    {
+      "name": "Charybdis (742)",
+      "body": 742,
+      "type": 0
+    },
+    {
+      "name": "Tentacles of Osiredon the Scalis Enforcer (743)",
+      "body": 743,
+      "type": 0
+    },
+    {
+      "name": "four_armed_demon (746)",
+      "body": 746,
+      "type": 0
+    },
+    {
+      "name": "wailingbanshee2 (747)",
+      "body": 747,
+      "type": 0
+    },
+    {
+      "name": "spirits_ghost2 (748)",
+      "body": 748,
+      "type": 0
+    },
+    {
+      "name": "liche_liche_retro3 (749)",
+      "body": 749,
+      "type": 0
+    },
+    {
+      "name": "h_savage_male (750)",
+      "body": 750,
+      "type": 3
+    },
+    {
+      "name": "h_savage_female (751)",
+      "body": 751,
+      "type": 3
+    },
+    {
+      "name": "golem_iron (752)",
+      "body": 752,
+      "type": 0
+    },
+    {
+      "name": "gargoyles_gargoyle_slave (753)",
+      "body": 753,
+      "type": 0
+    },
+    {
+      "name": "gargoyles_gargoyle_enforcer (754)",
+      "body": 754,
+      "type": 0
+    },
+    {
+      "name": "gargoyles_gargoyle_guard (755)",
+      "body": 755,
+      "type": 0
+    },
+    {
+      "name": "clockwork_overseer (756)",
+      "body": 756,
+      "type": 0
+    },
+    {
+      "name": "clockwork_minion (757)",
+      "body": 757,
+      "type": 0
+    },
+    {
+      "name": "gargoyles_gargoyle_shopkeeper (758)",
+      "body": 758,
+      "type": 0
+    },
+    {
+      "name": "clockwork_minion2 (763)",
+      "body": 763,
+      "type": 0
+    },
+    {
+      "name": "Juka_Warrior (764)",
+      "body": 764,
+      "type": 0
+    },
+    {
+      "name": "Juka_Mage (765)",
+      "body": 765,
+      "type": 0
+    },
+    {
+      "name": "NPC_Kabur (766)",
+      "body": 766,
+      "type": 0
+    },
+    {
+      "name": "NPC_Blackthorn_Cohort (767)",
+      "body": 767,
+      "type": 0
+    },
+    {
+      "name": "Juggernaut (768)",
+      "body": 768,
+      "type": 0
+    },
+    {
+      "name": "NPC_Blackthorn (769)",
+      "body": 769,
+      "type": 0
+    },
+    {
+      "name": "Meer_Mage (770)",
+      "body": 770,
+      "type": 0
+    },
+    {
+      "name": "Meer_Warrior (771)",
+      "body": 771,
+      "type": 0
+    },
+    {
+      "name": "NPC_Adranath (772)",
+      "body": 772,
+      "type": 0
+    },
+    {
+      "name": "NPC_Cpt_Dasha (773)",
+      "body": 773,
+      "type": 0
+    },
+    {
+      "name": "Dawn_Girl (774)",
+      "body": 774,
+      "type": 0
+    },
+    {
+      "name": "plague_beast (775)",
+      "body": 775,
+      "type": 0
+    },
+    {
+      "name": "horde_demon (776)",
+      "body": 776,
+      "type": 0
+    },
+    {
+      "name": "doppleganger (777)",
+      "body": 777,
+      "type": 0
+    },
+    {
+      "name": "swarm (778)",
+      "body": 778,
+      "type": 0
+    },
+    {
+      "name": "bogling (779)",
+      "body": 779,
+      "type": 0
+    },
+    {
+      "name": "bog_thing (780)",
+      "body": 780,
+      "type": 0
+    },
+    {
+      "name": "fire_ant_worker (781)",
+      "body": 781,
+      "type": 0
+    },
+    {
+      "name": "fire_ant_warrior (782)",
+      "body": 782,
+      "type": 0
+    },
+    {
+      "name": "fire_ant_queen (783)",
+      "body": 783,
+      "type": 0
+    },
+    {
+      "name": "arcane_demon (784)",
+      "body": 784,
+      "type": 0
+    },
+    {
+      "name": "four_armed_demon2 (785)",
+      "body": 785,
+      "type": 0
+    },
+    {
+      "name": "chariot (786)",
+      "body": 786,
+      "type": 0
+    },
+    {
+      "name": "ant_lion (787)",
+      "body": 787,
+      "type": 0
+    },
+    {
+      "name": "sphinx (788)",
+      "body": 788,
+      "type": 0
+    },
+    {
+      "name": "quagmire (789)",
+      "body": 789,
+      "type": 0
+    },
+    {
+      "name": "sand_vortex (790)",
+      "body": 790,
+      "type": 0
+    },
+    {
+      "name": "giant_beetle (791)",
+      "body": 791,
+      "type": 2
+    },
+    {
+      "name": "chaos_demon (792)",
+      "body": 792,
+      "type": 0
+    },
+    {
+      "name": "skeletal_mount (793)",
+      "body": 793,
+      "type": 2
+    },
+    {
+      "name": "swamp_dragon (794)",
+      "body": 794,
+      "type": 2
+    },
+    {
+      "name": "horde_demon2 (795)",
+      "body": 795,
+      "type": 0
+    },
+    {
+      "name": "horde_demon3 (796)",
+      "body": 796,
+      "type": 0
+    },
+    {
+      "name": "mf_dragon_fire (797)",
+      "body": 797,
+      "type": 0
+    },
+    {
+      "name": "mf_dragon_rust (798)",
+      "body": 798,
+      "type": 0
+    },
+    {
+      "name": "swamp_dragon_armor (799)",
+      "body": 799,
+      "type": 2
+    },
+    {
+      "name": "fire_ant_matriarch (804)",
+      "body": 804,
+      "type": 0
+    },
+    {
+      "name": "black_ant_worker (805)",
+      "body": 805,
+      "type": 0
+    },
+    {
+      "name": "black_ant_warrior (806)",
+      "body": 806,
+      "type": 0
+    },
+    {
+      "name": "black_ant_queen (807)",
+      "body": 807,
+      "type": 0
+    },
+    {
+      "name": "black_ant_matriarch (808)",
+      "body": 808,
+      "type": 0
+    },
+    {
+      "name": "Dragon (827)",
+      "body": 827,
+      "type": 0
+    },
+    {
+      "name": "Rising_Colossus (829)",
+      "body": 829,
+      "type": 0
+    },
+    {
+      "name": "Prime_Evil_Lich (830)",
+      "body": 830,
+      "type": 0
+    },
+    {
+      "name": "Parrot (831)",
+      "body": 831,
+      "type": 2
+    },
+    {
+      "name": "Phoenix (832)",
+      "body": 832,
+      "type": 2
+    },
+    {
+      "name": "Women_unclear (833)",
+      "body": 833,
+      "type": 3
+    },
+    {
+      "name": "player_ghost5 (970)",
+      "body": 970,
+      "type": 3
+    },
+    {
+      "name": "character_lord_british (990)",
+      "body": 990,
+      "type": 3
+    },
+    {
+      "name": "character_blackthorn (991)",
+      "body": 991,
+      "type": 3
+    },
+    {
+      "name": "character_dupre (994)",
+      "body": 994,
+      "type": 3
+    },
+    {
+      "name": "Multi_Colored_Horde_Daemon (999)",
+      "body": 999,
+      "type": 0
+    },
+    {
+      "name": "Uber Turkey (1026)",
+      "body": 1026,
+      "type": 0
+    },
+    {
+      "name": "Oseridan The Scalis Enforcer (1068)",
+      "body": 1068,
+      "type": 0
+    },
+    {
+      "name": "Ancient Hellhound (1069)",
+      "body": 1069,
+      "type": 0
+    },
+    {
+      "name": "Werewolf (1070)",
+      "body": 1070,
+      "type": 0
+    },
+    {
+      "name": "unknown Demon Lord (1071)",
+      "body": 1071,
+      "type": 0
+    },
+    {
+      "name": "Killer Pumpkin Dark (1246)",
+      "body": 1246,
+      "type": 0
+    },
+    {
+      "name": "Killer Pumpkin Light (1247)",
+      "body": 1247,
+      "type": 0
+    },
+    {
+      "name": "Tiger (1254)",
+      "body": 1254,
+      "type": 0
+    }
+  ]
+}

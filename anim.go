@@ -7,6 +7,7 @@ import (
 	"iter"
 
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
+	"github.com/kelindar/ultima-sdk/internal/uofile"
 )
 
 // AnimdataEntry holds metadata for a single animation (from animdata.mul)
@@ -33,8 +34,9 @@ func (af AnimationFrame) Image() (image.Image, error) {
 // Use Frames() to iterate through AnimationFrame instances.
 // Metadata returns the animation metadata from animdata.mul.
 type Animation struct {
-	*AnimdataEntry
-	frames []AnimationFrame
+	Name         string
+	AnimdataEntry *AnimdataEntry
+	frames        []AnimationFrame
 }
 
 // Frames returns a sequence (iter.Seq) of AnimationFrame for this animation.
@@ -98,6 +100,8 @@ func (s *SDK) Animation(body, action, direction, hue int, preserveHue, firstFram
 		return nil, fmt.Errorf("Animation: animdata chunk too small for body %d", body)
 	}
 	entry := chunk[4+entryOffset*68 : 4+(entryOffset+1)*68]
+	fmt.Printf("body=%d chunkIndex=%d entryOffset=%d chunkLen=%d entry[0:8]=%v\n",
+		body, chunkIndex, entryOffset, len(chunk), entry[:8])
 	meta, err := decodeAnimdata(entry)
 	if err != nil {
 		return nil, fmt.Errorf("Animation: failed decoding animdata entry: %w", err)
@@ -155,10 +159,39 @@ func (s *SDK) Animation(body, action, direction, hue int, preserveHue, firstFram
 		}
 		frames = append(frames, AnimationFrame{Center: center, Bitmap: img})
 	}
+	// Lookup the animation name using the embedded lookup
+	name := "Unknown"
+	if n := uofile.AnimationNameByBody(body); n != "" {
+		name = n
+	}
 	return &Animation{
+		Name:         name,
 		AnimdataEntry: meta,
 		frames:        frames,
 	}, nil
+}
+
+// AnimationNames provides canonical names for humanoid animation actions by index
+var AnimationNames = []string{
+	"Idle",     // 0
+	"Walk",     // 1
+	"Run",      // 2
+	"Eat",      // 3
+	"Attack",   // 4
+	"Unknown5", // 5
+	"Unknown6", // 6
+	"Unknown7", // 7
+	"Unknown8", // 8
+	"Unknown9", // 9
+	// Extend as needed for your use case
+}
+
+// AnimationName returns the canonical name for a given animation action index
+func AnimationName(action int) string {
+	if action >= 0 && action < len(AnimationNames) {
+		return AnimationNames[action]
+	}
+	return "Unknown"
 }
 
 // decodeAnimdata parses the animation metadata from the provided binary data.
