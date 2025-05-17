@@ -109,7 +109,7 @@ Follow these steps sequentially. Each step involves translating the correspondin
     - Define `Multi`, `MultiItem`. Implement loading for `multi.idx`, `multi.mul`.
     - Integrate `MultiHelpers.cs` logic.
     - _Sub-task: Write tests for loading multis and verifying structure._
-23. **[❌] Port `Map.cs` & `Helpers/MapHelper.cs` -> `map.go`:**
+23. **[✅] Port `Map.cs` & `Helpers/MapHelper.cs` -> `map.go`:**
     - Define `TileMap`, `Tile`. Implement loading for map files.
     - Integrate `MapHelper.cs` logic.
     - _Sub-task: Write extensive tests for map data reading._

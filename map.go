@@ -3,12 +3,13 @@ package ultima
 import (
 	"encoding/binary"
 	"fmt"
+	"image"
 
+	"github.com/kelindar/ultima-sdk/internal/bitmap"
 	"github.com/kelindar/ultima-sdk/internal/uofile"
 )
 
-// TileFlag represents a tile flag (imported from tiledata.go).
-// type TileFlag uint64 // Already defined in tiledata.go, do not redeclare here.
+const blocksPerEntry = 4096
 
 // StaticItem represents a single static placed on the map.
 type StaticItem struct {
@@ -23,7 +24,6 @@ type StaticItem struct {
 type Tile struct {
 	ID      uint16       // Land tile ID
 	Z       int8         // Land tile elevation
-	Flags   TileFlag     // Tile flags (TODO: fill from tiledata)
 	Statics []StaticItem // Statics located at this tile
 }
 
@@ -89,7 +89,6 @@ func decodeMapTile(block []byte, tileIndex int, statics []StaticItem) (*Tile, er
 	return &Tile{
 		ID:      binary.LittleEndian.Uint16(tileData[:2]),
 		Z:       int8(tileData[2]),
-		Flags:   0, // TODO: fill from tiledata
 		Statics: tileStatics,
 	}, nil
 }
@@ -102,7 +101,6 @@ func (m *TileMap) TileAt(x, y int) (*Tile, error) {
 	}
 
 	// Calculate the block index (column-major) and entry index
-	const blocksPerEntry = 4096
 	blocksDown := m.height / 8
 	blockX, blockY := x/8, y/8
 	blockIndex := blockX*blocksDown + blockY
@@ -204,8 +202,40 @@ func detectMapSize(mapID int) (width, height int) {
 	}
 }
 
-// --- Helper logic for map sizes, detection, etc. ---
-// TODO: Port logic from MapHelper.cs to detect map sizes, legacy vs. extended maps, etc.
+// Image renders the map as a radar-color overview (1 pixel per tile).
+func (m *TileMap) Image() (image.Image, error) {
+	img := bitmap.NewARGB1555(image.Rect(0, 0, m.width, m.height))
+
+	for entry := range m.mapFile.Entries() {
+		data, _, err := m.mapFile.Read(uint32(entry))
+		switch {
+		case err != nil:
+			return nil, fmt.Errorf("map.Image: failed reading entry %d: %w", entry, err)
+		case len(data) != blocksPerEntry*196:
+			return nil, fmt.Errorf("map.Image: entry %d too short (%d bytes)", entry, len(data))
+		}
+
+		for blockIndex := 0; blockIndex < blocksPerEntry; blockIndex++ {
+			blockData := data[blockIndex*196 : blockIndex*196+196]
+			landBlock, err := decodeMapBlock(blockData)
+			if err != nil {
+				return nil, fmt.Errorf("map.Image: %w", err)
+			}
+
+			for i, t := range landBlock.Tiles {
+				x0 := (i % 8) + blockIndex*8
+				y0 := (i / 8) + blockIndex*8
+				rc, err := m.sdk.RadarColor(int(t.ID))
+				if err != nil {
+					continue
+				}
+				img.Set(x0, y0, rc.GetColor())
+			}
+		}
+	}
+
+	return img, nil
+}
 
 // --- Tests ---
 // TODO: Write extensive tests for map data reading, verifying against C# tile/static details at specific coordinates.

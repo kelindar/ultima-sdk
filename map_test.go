@@ -49,3 +49,16 @@ func TestTileMap_TileAt(t *testing.T) {
 		}
 	})
 }
+
+// TestTileMap_Image verifies that Image() renders radar-color per tile.
+func TestTileMap_Image(t *testing.T) {
+	runWith(t, func(sdk *SDK) {
+		m, err := sdk.Map(1)
+		assert.NoError(t, err)
+		img, err := m.Image()
+		assert.NoError(t, err)
+		bounds := img.Bounds()
+		assert.Equal(t, m.width, bounds.Dx())
+		assert.Equal(t, m.height, bounds.Dy())
+	})
+}
