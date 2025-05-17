@@ -47,29 +47,6 @@ func NewTileMap(mapID int, mapFile, staticsFile *uofile.File, width, height int)
 	}
 }
 
-// LandBlock represents a single 8x8 block of land tiles (from UOP/MUL map block).
-type LandBlock struct {
-	Tiles [64]struct {
-		ID uint16
-		Z  int8
-	}
-}
-
-// decodeMapBlock parses a 196-byte map block and returns a LandBlock struct.
-func decodeMapBlock(block []byte) (*LandBlock, error) {
-	if len(block) != 192 {
-		return nil, fmt.Errorf("decodeMapBlock: expected 196 bytes, got %d", len(block))
-	}
-
-	var out LandBlock
-	for i := 0; i < 64; i++ {
-		off := i * 3
-		out.Tiles[i].ID = binary.LittleEndian.Uint16(block[off : off+2])
-		out.Tiles[i].Z = int8(block[off+2])
-	}
-	return &out, nil
-}
-
 // decodeMapTile parses a single tile from a 196-byte map block, including statics.
 func decodeMapTile(block []byte, tileIndex int, statics []StaticItem) (*Tile, error) {
 	if len(block) < 196 {
@@ -222,15 +199,18 @@ func (m *TileMap) Image() (image.Image, error) {
 			blockX := blockAbs / blocksDown
 			blockY := blockAbs % blocksDown
 			blockData := data[blockIndex*196 : blockIndex*196+196]
-			landBlock, err := decodeMapBlock(blockData[4:])
-			if err != nil {
-				return nil, fmt.Errorf("map.Image: %w", err)
+			if len(blockData) < 4+192 {
+				return nil, fmt.Errorf("map.Image: block %d too short (%d bytes)", blockAbs, len(blockData))
 			}
 
-			for i, t := range landBlock.Tiles {
+			// Tiles start at offset 4, each tile is 3 bytes (id:2, z:1)
+			tiles := blockData[4:]
+			for i := 0; i < 64; i++ {
+				off := i * 3
+				tileID := binary.LittleEndian.Uint16(tiles[off : off+2])
 				x0 := (i % 8) + blockX*8
 				y0 := (i / 8) + blockY*8
-				rc, err := m.sdk.RadarColor(int(t.ID))
+				rc, err := m.sdk.RadarColor(int(tileID))
 				if err != nil {
 					continue
 				}
