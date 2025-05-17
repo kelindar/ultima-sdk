@@ -60,6 +60,7 @@ type Reader struct {
 	ext       string      // File extension
 	closed    bool        // Flag to track if reader is closed
 	hasextra  bool        // Flag to indicate if extra data is present
+	strict    bool        // Flag to indicate if the reader should skip not found hashes
 }
 
 // Option defines a function that configures a Reader.
@@ -86,6 +87,13 @@ func WithIndexLength(length int) Option {
 	}
 }
 
+// WithStrict sets a flag to indicate if the reader should perform strict entry validation.
+func WithStrict() Option {
+	return func(r *Reader) {
+		r.strict = true
+	}
+}
+
 // Open creates a new UOP file reader
 func Open(filename string, length int, options ...Option) (*Reader, error) {
 	info, err := os.Stat(filename)
@@ -101,9 +109,7 @@ func Open(filename string, length int, options ...Option) (*Reader, error) {
 	r := &Reader{
 		file:      file,
 		info:      info,
-		entries:   make([]Entry6D, length),
 		ext:       ".dat",
-		length:    length,
 		idxLength: 0xFFFFFFFF,
 	}
 
@@ -143,8 +149,14 @@ func (r *Reader) parseFile() error {
 
 	// Read blockCapacity and entryCount from header
 	blockCapacity := binary.LittleEndian.Uint32(header[20:24])
-	entryCount := binary.LittleEndian.Uint32(header[24:28])
+	entryCount := int(binary.LittleEndian.Uint32(header[24:28]))
 	parsedEntries := 0
+
+	if r.length <= 0 {
+		r.length = entryCount
+	}
+
+	r.entries = make([]Entry6D, r.length)
 
 	// Build the pattern name
 	hashes := make(map[uint64]int, r.length)
@@ -197,9 +209,13 @@ func (r *Reader) parseFile() error {
 
 			parsedEntries++
 			entryIdx, ok := hashes[hash]
+			if !ok && r.strict {
+				return fmt.Errorf("UOP: file with hash 0x%X was not found in hashes map", hash)
+			}
 			if !ok {
 				continue
 			}
+
 			if entryIdx < 0 || entryIdx > r.idxLength {
 				return fmt.Errorf("hashes dictionary and files collection have different count of entries")
 			}
@@ -237,10 +253,6 @@ func (r *Reader) parseFile() error {
 		nextBlock = nextBlockOffset
 	}
 
-	// Final defensive check: did we parse as many entries as entryCount?
-	if entryCount > 0 && parsedEntries != int(entryCount) {
-		return fmt.Errorf("UOP: parsed %d entries, expected %d from entryCount", parsedEntries, entryCount)
-	}
 	return nil
 }
 

@@ -97,6 +97,13 @@ func WithDecodeMUL(fn func(file *os.File, add mul.AddFn) error) Option {
 	}
 }
 
+// WithStrict sets a flag to indicate if the reader should perform strict entry validation.
+func WithStrict() Option {
+	return func(f *File) {
+		f.uopOpts = append(f.uopOpts, uop.WithStrict())
+	}
+}
+
 // New creates a new File instance with automatic format detection
 // It takes a base path, file names to check for, and options
 func New(basePath string, fileNames []string, length int, options ...Option) *File {

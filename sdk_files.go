@@ -96,7 +96,7 @@ func (s *SDK) loadMap(mapID int) (*uofile.File, error) {
 	return s.load([]string{
 		fmt.Sprintf("map%dLegacyMUL.uop", mapID),
 		fmt.Sprintf("map%d.mul", mapID),
-	}, 0, uofile.WithIndexLength(12))
+	}, 0, uofile.WithStrict())
 }
 
 // loadStatics loads the statics files for a specific map ID
