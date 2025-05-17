@@ -23,9 +23,9 @@ type StaticItem struct {
 
 // Tile represents a single map tile, including statics.
 type Tile struct {
-	ID      uint16      // Land tile ID
-	Z       int8        // Land tile elevation
-	Flags   TileFlag    // Tile flags (TODO: fill from tiledata)
+	ID      uint16       // Land tile ID
+	Z       int8         // Land tile elevation
+	Flags   TileFlag     // Tile flags (TODO: fill from tiledata)
 	Statics []StaticItem // Statics located at this tile
 }
 
@@ -106,11 +106,12 @@ func (m *TileMap) TileAt(x, y int) (*Tile, error) {
 		return nil, fmt.Errorf("TileAt: coordinates out of bounds (%d,%d)", x, y)
 	}
 
-	// Calculate the block index and entry index
+	// Calculate the block index (column-major) and entry index
 	const blocksPerEntry = 4096
-	blocksPerRow := m.width / 8
+	blocksDown := m.height / 8
 	blockX, blockY := x/8, y/8
-	blockIndex := blockY*blocksPerRow + blockX
+	// Column-major block index as in C# implementation
+	blockIndex := blockX*blocksDown + blockY
 	entryIndex := blockIndex / blocksPerEntry
 	blockOffset := blockIndex % blocksPerEntry
 

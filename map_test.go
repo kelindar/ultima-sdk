@@ -15,8 +15,8 @@ func TestTileMap_TileAt(t *testing.T) {
 			wantID uint16
 			wantZ  int8
 		}{
-			//	{1, 12, 14, 0xA8, -5},   // Trammel water
-			{1, 536, 970, 0x409, 0}, // Trammel wooden floor with statics
+			{1, 12, 14, 0xA8, -5},   // Trammel water
+			{1, 536, 970, 0x409, 0}, // Trammel wooden floor with statics (wooden shingles: 0x5D0 Hue: 0 Altitude: 29)
 		}
 		for _, tc := range maps {
 			t.Run(fmt.Sprintf("MapID_%d", tc.mapID), func(t *testing.T) {
