@@ -1,3 +1,6 @@
+// Copyright (c) Roman Atachiants and contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+
 package bitmap
 
 import (
@@ -218,4 +221,3 @@ func TestARGB1555Image_Additional(t *testing.T) {
 	assert.Equal(t, ARGB1555Color(0), img.At(-1, -1))
 	assert.Equal(t, ARGB1555Color(0), img.At(100, 100))
 }
-

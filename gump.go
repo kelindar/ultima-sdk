@@ -1,3 +1,6 @@
+// Copyright (c) Roman Atachiants and contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+
 package ultima
 
 import (
@@ -31,7 +34,6 @@ func (g *Gump) Image() (image.Image, error) {
 // It handles reading from .mul or UOP files.
 // The returned Gump object allows for lazy loading of its image.
 func (s *SDK) Gump(id int) (*Gump, error) {
-	// Load the gump file
 	file, err := s.loadGump()
 	if err != nil {
 		return nil, err

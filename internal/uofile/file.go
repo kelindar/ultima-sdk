@@ -1,5 +1,6 @@
-// Package uofile provides a unified interface for accessing Ultima Online data files,
-// supporting both MUL and UOP file formats.
+// Copyright (c) Roman Atachiants and contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+
 package uofile
 
 import (
