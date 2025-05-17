@@ -178,3 +178,44 @@ func TestARGB1555Image(t *testing.T) {
 	assert.True(t, emptySub.Bounds().Empty(), "SubImage of non-overlapping rect should be empty")
 	assert.Nil(t, emptySub.Pix, "Empty SubImage Pix should be nil")
 }
+
+func TestARGB1555Image_Additional(t *testing.T) {
+	rect := image.Rect(0, 0, 3, 2)
+	img := NewARGB1555(rect)
+
+	// Test: All pixels initially zero (transparent)
+	for y := 0; y < 2; y++ {
+		for x := 0; x < 3; x++ {
+			assert.Equal(t, ARGB1555Color(0), img.At(x, y), "Initial pixel should be transparent")
+		}
+	}
+
+	// Test: Set and get with roundtrip for all ARGB1555 values in a small range
+	for val := uint16(0); val < 0x20; val++ {
+		col := ARGB1555Color(val | 0x8000) // Opaque, varying blue
+		img.Set(0, 0, col)
+		got := img.At(0, 0)
+		assert.Equal(t, col, got, "Roundtrip ARGB1555 should match")
+	}
+
+	// Test: Stride correctness for non-square image
+	assert.Equal(t, 6, img.Stride)
+	img.Set(2, 1, ARGB1555Color(0x801F)) // Opaque blue
+	assert.Equal(t, ARGB1555Color(0x801F), img.At(2, 1))
+
+	// Test: Opaque on empty image
+	empty := &ARGB1555{}
+	assert.True(t, empty.Opaque(), "Empty image should be considered opaque")
+
+	// Test: SubImage chaining
+	sub1 := img.SubImage(image.Rect(1, 0, 3, 2)).(*ARGB1555)
+	sub2 := sub1.SubImage(image.Rect(2, 0, 3, 2)).(*ARGB1555)
+	assert.Equal(t, image.Rect(2, 0, 3, 2), sub2.Bounds())
+
+	// Test: At/Set with negative and out-of-bounds coordinates
+	img.Set(-10, -10, ARGB1555Color(0x8000))
+	img.Set(100, 100, ARGB1555Color(0x8000))
+	assert.Equal(t, ARGB1555Color(0), img.At(-1, -1))
+	assert.Equal(t, ARGB1555Color(0), img.At(100, 100))
+}
+
