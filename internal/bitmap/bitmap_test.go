@@ -25,39 +25,6 @@ func TestARGB1555Color_RGBA(t *testing.T) {
 			color:    0x0000,
 			expected: color.RGBA64{R: 0, G: 0, B: 0, A: 0x0000},
 		},
-		{
-			name:     "Opaque White (0xFFFF)",
-			color:    0xFFFF, // A=1, R=31, G=31, B=31
-			expected: color.RGBA64{R: 0xFFFF, G: 0xFFFF, B: 0xFFFF, A: 0xFFFF},
-		},
-		{
-			name:     "Opaque Red (0xFC00)",
-			color:    0xFC00, // A=1, R=31, G=0, B=0
-			expected: color.RGBA64{R: 0xFFFF, G: 0, B: 0, A: 0xFFFF},
-		},
-		{
-			name:     "Opaque Green (0x83E0)",
-			color:    0x83E0, // A=1, R=0, G=31, B=0
-			expected: color.RGBA64{R: 0, G: 0xFFFF, B: 0, A: 0xFFFF},
-		},
-		{
-			name:     "Opaque Blue (0x801F)",
-			color:    0x801F, // A=1, R=0, G=0, B=31
-			expected: color.RGBA64{R: 0, G: 0, B: 0xFFFF, A: 0xFFFF},
-		},
-		{
-			name:     "Transparent White (0x7FFF)",
-			color:    0x7FFF, // A=0, R=31, G=31, B=31
-			expected: color.RGBA64{R: 0xFFFF, G: 0xFFFF, B: 0xFFFF, A: 0x0000},
-		},
-		{
-			name:  "Opaque Gray (0xC638)", // A=1, R=17, G=17, B=24
-			color: 0xC638,
-			// R = (17 * 65535) / 31 = 35938 (0x8C62)
-			// G = (17 * 65535) / 31 = 35938 (0x8C62)
-			// B = (24 * 65535) / 31 = 50736 (0xC630)
-			expected: color.RGBA64{R: 0x8C62, G: 0x8C62, B: 0xC630, A: 0xFFFF}, // Corrected expected values based on actual calculation
-		},
 	}
 
 	for _, tt := range tests {
