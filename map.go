@@ -68,81 +68,33 @@ func (m *TileMap) TileAt(x, y int) (*Tile, error) {
 	if x < 0 || y < 0 || x >= m.width || y >= m.height {
 		return nil, fmt.Errorf("TileAt: coordinates out of bounds (%d,%d)", x, y)
 	}
-	// UO map files are organized into 8x8 blocks
-	blockX, blockY := x/8, y/8
-	blockIndex := blockY*(m.width/8) + blockX
 
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	// calculate block height and width
+	bh, _ := m.height>>3, m.width>>3
+	offset := int64(((x*bh)+y)*196) + 4
+	entry := m.loadFromUOP(offset)
 
-	// DEBUG: Print blockIndex and max entry index
-	entries := m.mapFile.Entries()
-	maxEntry := -1
-	count := 0
-	for entry := range entries {
-		if int(entry) > maxEntry {
-			maxEntry = int(entry)
-		}
-		count++
-	}
-	fmt.Printf("TileAt: mapID=%d x=%d y=%d blockIndex=%d maxEntry=%d count=%d\n", m.mapID, x, y, blockIndex, maxEntry, count)
-
-	// Use the unified Read interface for both UOP and MUL
-	blockData, _, err := m.mapFile.Read(uint32(blockIndex))
-	if err != nil {
-		return nil, fmt.Errorf("TileAt: failed reading map block: %w", err)
-	}
-	landBlock, err := decodeMapBlock(blockData)
-	if err != nil {
-		return nil, err
-	}
-	tileIndex := (y%8)*8 + (x % 8)
-	tileID := landBlock.Tiles[tileIndex].ID
-	z := landBlock.Tiles[tileIndex].Z
-
-	// TODO: Lookup flags from tiledata if needed
-	// --- Statics reading ---
-	statics := make([]StaticItemData, 0, 4) // Preallocate for typical count
-	blockIndex32 := uint32(blockIndex)
-	idxEntry, _, err := m.staIdxFile.Read(blockIndex32)
-	if err == nil && len(idxEntry) >= 12 {
-		//offset := int64(binary.LittleEndian.Uint32(idxEntry[0:4]))
-		//length := int(binary.LittleEndian.Uint32(idxEntry[4:8]))
-		//int32 extra := int32(binary.LittleEndian.Uint32(idxEntry[8:12])) // unused
-		/*if offset > 0 && length > 0 {
-			data, err := m.staticsFile.ReadBlockAt(offset, length)
-			if err == nil {
-				for i := 0; i+7 <= len(data); i += 7 {
-					// Parse static entry
-					id := binary.LittleEndian.Uint16(data[i : i+2])
-					xoff := data[i+2]
-					yoff := data[i+3]
-					// zstat := int8(data[i+4]) // statics z, not used in StaticItemData
-					hue := byte(data[i+5]) // tiledata uses byte for hue
-					if int(xoff) == x%8 && int(yoff) == y%8 {
-						staticData, err := m.sdk.StaticTile(int(id))
-						if err == nil {
-							// Overwrite fields that come from the statics entry
-							staticData.Hue = hue
-							staticData.Height = staticData.Height // tiledata height
-							statics = append(statics, staticData)
-						} else {
-							// Fallback: fill only hue
-							statics = append(statics, StaticItemData{Hue: hue})
-						}
-					}
-				}
-			}
-		}*/
-	}
-
-	tile := &Tile{
+	/*tile := &Tile{
 		ID:      tileID,
 		Z:       z,
 		Flags:   0, // TODO: fill from tiledata
 		Statics: statics,
 	}
-	return tile, nil
+	return tile, nil*/
+	return nil, nil
+}
+
+// loadFromUOP loads a file from UOP format
+func (m *TileMap) loadFromUOP(offset int64) []byte {
+	var pos int64
+	for entry := range m.mapFile.Entries() {
+		entry, _, _ := m.mapFile.Read(uint32(entry))
+		pos += int64(len(entry))
+		if offset < pos {
+			return entry
+		}
+	}
+	return nil
 }
 
 // Map returns the TileMap for the given map index, loading if necessary.
