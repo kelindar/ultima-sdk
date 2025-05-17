@@ -12,13 +12,11 @@ import (
 
 // StaticItem represents a single static placed on the map.
 type StaticItem struct {
-	ID    uint16   // Static tile ID
-	X     uint8    // X offset within the block
-	Y     uint8    // Y offset within the block
-	Z     int8     // Elevation
-	Hue   uint16   // Color hue
-	Flags TileFlag // Tile flags (from tiledata)
-	Name  string   // Tile name (from tiledata)
+	ID  uint16 // Static tile ID
+	X   uint8  // X offset within the block
+	Y   uint8  // Y offset within the block
+	Z   int8   // Elevation
+	Hue uint16 // Color hue
 }
 
 // Tile represents a single map tile, including statics.
@@ -135,13 +133,11 @@ func (m *TileMap) TileAt(x, y int) (*Tile, error) {
 
 // readStatics reads and parses statics for a given block index.
 func (m *TileMap) readStatics(blockIndex int) ([]StaticItem, error) {
-	if m.staticsFile == nil {
-		return nil, nil
-	}
 	data, _, err := m.staticsFile.Read(uint32(blockIndex))
 	if err != nil || len(data) == 0 {
 		return nil, nil
 	}
+
 	count := len(data) / 7
 	statics := make([]StaticItem, 0, count)
 	for i := 0; i < count; i++ {
@@ -156,13 +152,6 @@ func (m *TileMap) readStatics(blockIndex int) ([]StaticItem, error) {
 			Y:   data[off+3],
 			Z:   int8(data[off+4]),
 			Hue: binary.LittleEndian.Uint16(data[off+5 : off+7]),
-		}
-		if m.sdk != nil {
-			d, err := m.sdk.StaticTile(int(id))
-			if err == nil {
-				item.Flags = d.Flags
-				item.Name = d.Name
-			}
 		}
 		statics = append(statics, item)
 	}
@@ -184,7 +173,7 @@ func (s *SDK) loadTileMap(mapID int) (*TileMap, error) {
 	if err != nil {
 		return nil, fmt.Errorf("loadTileMap: failed to load statics file: %w", err)
 	}
-	width, height := detectMapSize(s, mapID)
+	width, height := detectMapSize(mapID)
 	return &TileMap{
 		sdk:         s,
 		mapID:       mapID,
@@ -196,16 +185,12 @@ func (s *SDK) loadTileMap(mapID int) (*TileMap, error) {
 }
 
 // detectMapSize returns the width and height for a given map ID, checking for extended maps.
-func detectMapSize(s *SDK, mapID int) (width, height int) {
+func detectMapSize(mapID int) (width, height int) {
 	switch mapID {
 	case 0: // Felucca
 		return 6144, 4096
 	case 1: // Trammel
-		// Check for extended map file
-		if s.fileExists("map1.mul") || s.fileExists("map1legacymul.uop") {
-			return 7168, 4096
-		}
-		return 6144, 4096
+		return 7168, 4096
 	case 2: // Ilshenar
 		return 2304, 1600
 	case 3: // Malas
