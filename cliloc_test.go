@@ -47,6 +47,12 @@ func TestCliloc(t *testing.T) {
 				t.Skip("Skipping test as cliloc.enu may not be present in test data or is empty")
 			}
 		})
+
+		t.Run("Strings_IteratorExhaustion", func(t *testing.T) {
+			// Test that the iterator doesn't panic when exhausted
+			for range sdk.Strings() {
+			}
+		})
 	})
 }
 

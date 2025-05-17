@@ -7,6 +7,7 @@ import (
 )
 
 func TestFont_Load(t *testing.T) {
+
 	runWith(t, func(sdk *SDK) {
 		t.Run("ASCII", func(t *testing.T) {
 			fonts, err := sdk.Font()

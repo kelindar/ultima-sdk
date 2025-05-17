@@ -7,6 +7,14 @@ import (
 )
 
 func TestLight(t *testing.T) {
+
+	t.Run("GetRawLightNegativeID", func(t *testing.T) {
+		runWith(t, func(sdk *SDK) {
+			_, _, _, err := sdk.GetRawLight(-1)
+			assert.Error(t, err)
+		})
+	})
+
 	runWith(t, func(sdk *SDK) {
 		t.Run("Light_Valid", func(t *testing.T) {
 			// Test retrieving a valid light (assuming light ID 0 exists in test data)

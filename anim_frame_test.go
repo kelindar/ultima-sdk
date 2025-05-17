@@ -55,3 +55,35 @@ func TestDecodeFrame_Flip(t *testing.T) {
 	assert.Equal(t, width-xCenter, center.X)
 	assert.Equal(t, yCenter, center.Y)
 }
+
+func TestDecodeFrame_EdgeCases(t *testing.T) {
+	// Nil palette, valid header
+	data := make([]byte, 8+4)
+	binary.LittleEndian.PutUint16(data[0:2], 1)
+	binary.LittleEndian.PutUint16(data[2:4], 1)
+	binary.LittleEndian.PutUint16(data[4:6], 1)
+	binary.LittleEndian.PutUint16(data[6:8], 1)
+	binary.LittleEndian.PutUint32(data[8:12], 0x7FFF7FFF)
+	center, img, err := decodeFrame(nil, data, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, img)
+	assert.Equal(t, image.Point{1, 1}, center)
+
+	// Empty data
+	center, img, err = decodeFrame(nil, []byte{}, false)
+	assert.NoError(t, err)
+	assert.Nil(t, img)
+	assert.Equal(t, image.Point{}, center)
+
+	// Short header
+	center, img, err = decodeFrame(nil, []byte{1, 2}, false)
+	assert.NoError(t, err)
+	assert.Nil(t, img)
+	assert.Equal(t, image.Point{}, center)
+
+	// Palette wrong size (simulate by passing a slice of wrong length)
+	palette := make([]uint16, 10)
+	center, img, err = decodeFrame(palette, data, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, img)
+}

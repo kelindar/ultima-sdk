@@ -52,6 +52,16 @@ func (a *Animation) Frames() iter.Seq[AnimationFrame] {
 
 // Animation loads animation frames for a given body, action, direction, and hue.
 func (s *SDK) Animation(body, action, direction, hue int, preserveHue, firstFrame bool) (*Animation, error) {
+	// Defensive checks for invalid indices using switch { case }
+	switch {
+	case body < 0 || body > 10000:
+		return nil, fmt.Errorf("Animation: invalid body index: %d", body)
+	case action < 0 || action > 1000:
+		return nil, fmt.Errorf("Animation: invalid action index: %d", action)
+	case direction < 0 || direction > 7:
+		return nil, fmt.Errorf("Animation: invalid direction index: %d", direction)
+	}
+
 	animdataFile, err := s.loadAnimdata()
 	if err != nil {
 		return nil, fmt.Errorf("Animation: failed loading animdata: %w", err)

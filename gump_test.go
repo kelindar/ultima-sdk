@@ -9,6 +9,29 @@ import (
 )
 
 func TestGump(t *testing.T) {
+	t.Run("NegativeID", func(t *testing.T) {
+		runWith(t, func(sdk *SDK) {
+			gump, err := sdk.Gump(-1)
+			assert.Error(t, err)
+			assert.Nil(t, gump)
+		})
+	})
+
+	t.Run("IteratorExhaustion", func(t *testing.T) {
+		runWith(t, func(sdk *SDK) {
+			count := 0
+			for range sdk.Gumps() {
+				count++
+				if count > 1000 {
+					break
+				}
+			}
+			assert.Greater(t, count, 0)
+		})
+	})
+
+	// Existing tests...
+
 	t.Run("LoadGump", func(t *testing.T) {
 		runWith(t, func(sdk *SDK) {
 			// Test loading a specific gump (ID 1, which typically exists in most UO clients)

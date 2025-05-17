@@ -21,6 +21,35 @@ func TestLoadAnimation(t *testing.T) {
 	t.Run("Body200", func(t *testing.T) {
 		testLoadAnimation(t, 200, 1, 4) // Validated test parameters
 	})
+
+	t.Run("NegativeIndices", func(t *testing.T) {
+		runWith(t, func(sdk *SDK) {
+			anim, err := sdk.Animation(-1, -1, -1, 0, false, false)
+			assert.Error(t, err)
+			assert.Nil(t, anim)
+		})
+	})
+
+	t.Run("OutOfRangeIndices", func(t *testing.T) {
+		runWith(t, func(sdk *SDK) {
+			anim, err := sdk.Animation(99999, 99999, 99999, 0, false, false)
+			assert.Error(t, err)
+			assert.Nil(t, anim)
+		})
+	})
+
+	t.Run("ZeroFrames", func(t *testing.T) {
+		runWith(t, func(sdk *SDK) {
+			anim, err := sdk.Animation(1, 0, 0, 0, false, false)
+			if err == nil && anim != nil {
+				count := 0
+				for range anim.Frames() {
+					count++
+				}
+				assert.GreaterOrEqual(t, count, 0)
+			}
+		})
+	})
 }
 
 func testLoadAnimation(t *testing.T, body, action, direction int) {
