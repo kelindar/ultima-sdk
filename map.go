@@ -240,6 +240,3 @@ func (m *TileMap) Image() (image.Image, error) {
 	}
 	return img, nil
 }
-
-// --- Tests ---
-// TODO: Write extensive tests for map data reading, verifying against C# tile/static details at specific coordinates.
