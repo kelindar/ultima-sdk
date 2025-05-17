@@ -170,9 +170,10 @@ func detectFormat(f *File, basePath string, fileNames []string) {
 	var mulPath, idxPath string
 	for _, fileName := range fileNames {
 		if path, ok := f.fileExists(fileName); ok {
-			if strings.HasSuffix(fileName, "idx.mul") || strings.HasSuffix(fileName, ".idx") {
+			switch {
+			case strings.HasPrefix(fileName, "staidx") || strings.HasSuffix(fileName, "idx.mul") || strings.HasSuffix(fileName, ".idx"):
 				idxPath = path
-			} else if strings.HasSuffix(fileName, ".mul") && !strings.HasSuffix(fileName, "idx.mul") {
+			case strings.HasSuffix(fileName, ".mul") && !strings.HasSuffix(fileName, "idx.mul"):
 				mulPath = path
 			}
 		}

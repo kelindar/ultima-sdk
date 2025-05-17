@@ -31,24 +31,21 @@ type Tile struct {
 
 // TileMap provides access to Ultima Online map data.
 type TileMap struct {
-	sdk         *SDK
-	mapID       int
-	width       int
-	height      int
-	mapFile     *uofile.File // internal: mapX.mul
-	staticsFile *uofile.File // internal: staticsX.mul
-	staIdxFile  *uofile.File // internal: staidxX.mul
+	sdk           *SDK
+	mapID         int
+	width, height int
+	mapFile       *uofile.File // internal: mapX.mul
+	staticsFile   *uofile.File // internal: staticsX.mul + staidxX.mul
 }
 
 // NewTileMap initializes a TileMap for a given map index and files.
-func NewTileMap(mapID int, mapFile, staticsFile, staIdxFile *uofile.File, width, height int) *TileMap {
+func NewTileMap(mapID int, mapFile, staticsFile *uofile.File, width, height int) *TileMap {
 	return &TileMap{
 		mapID:       mapID,
 		width:       width,
 		height:      height,
 		mapFile:     mapFile,
 		staticsFile: staticsFile,
-		staIdxFile:  staIdxFile,
 	}
 }
 
@@ -110,7 +107,6 @@ func (m *TileMap) TileAt(x, y int) (*Tile, error) {
 	const blocksPerEntry = 4096
 	blocksDown := m.height / 8
 	blockX, blockY := x/8, y/8
-	// Column-major block index as in C# implementation
 	blockIndex := blockX*blocksDown + blockY
 	entryIndex := blockIndex / blocksPerEntry
 	blockOffset := blockIndex % blocksPerEntry
@@ -139,44 +135,33 @@ func (m *TileMap) TileAt(x, y int) (*Tile, error) {
 
 // readStatics reads and parses statics for a given block index.
 func (m *TileMap) readStatics(blockIndex int) ([]StaticItem, error) {
-	if m.staIdxFile == nil || m.staticsFile == nil {
-		return nil, nil // No statics available
+	if m.staticsFile == nil {
+		return nil, nil
 	}
-	idxData, _, err := m.staIdxFile.Read(uint32(blockIndex))
-	if err != nil || len(idxData) < 12 {
-		return nil, nil // No statics for this block
+	data, _, err := m.staticsFile.Read(uint32(blockIndex))
+	if err != nil || len(data) == 0 {
+		return nil, nil
 	}
-	offset := int64(binary.LittleEndian.Uint32(idxData[0:4]))
-	length := int(binary.LittleEndian.Uint32(idxData[4:8]))
-	if offset == -1 || length <= 0 {
-		return nil, nil // No statics
-	}
-	// Read the statics entry for this block
-	staticData, _, err := m.staticsFile.Read(uint32(blockIndex))
-	if err != nil || len(staticData) == 0 {
-		return nil, nil // No statics for this block
-	}
-	count := len(staticData) / 7
+	count := len(data) / 7
 	statics := make([]StaticItem, 0, count)
 	for i := 0; i < count; i++ {
 		off := i * 7
-		if off+7 > len(staticData) {
+		if off+7 > len(data) {
 			break
 		}
-		id := binary.LittleEndian.Uint16(staticData[off : off+2])
+		id := binary.LittleEndian.Uint16(data[off : off+2])
 		item := StaticItem{
 			ID:  id,
-			X:   staticData[off+2],
-			Y:   staticData[off+3],
-			Z:   int8(staticData[off+4]),
-			Hue: binary.LittleEndian.Uint16(staticData[off+5 : off+7]),
+			X:   data[off+2],
+			Y:   data[off+3],
+			Z:   int8(data[off+4]),
+			Hue: binary.LittleEndian.Uint16(data[off+5 : off+7]),
 		}
-		// Lookup tiledata for this static ID
-		if m != nil && m.sdk != nil {
-			data, err := m.sdk.StaticTile(int(id))
+		if m.sdk != nil {
+			d, err := m.sdk.StaticTile(int(id))
 			if err == nil {
-				item.Flags = data.Flags
-				item.Name = data.Name
+				item.Flags = d.Flags
+				item.Name = d.Name
 			}
 		}
 		statics = append(statics, item)
@@ -199,12 +184,6 @@ func (s *SDK) loadTileMap(mapID int) (*TileMap, error) {
 	if err != nil {
 		return nil, fmt.Errorf("loadTileMap: failed to load statics file: %w", err)
 	}
-	staIdxFile, err := s.load([]string{
-		fmt.Sprintf("staidx%d.mul", mapID),
-	}, 0, uofile.WithIndexLength(12))
-	if err != nil {
-		return nil, fmt.Errorf("loadTileMap: failed to load staidx file: %w", err)
-	}
 	width, height := detectMapSize(s, mapID)
 	return &TileMap{
 		sdk:         s,
@@ -213,7 +192,6 @@ func (s *SDK) loadTileMap(mapID int) (*TileMap, error) {
 		height:      height,
 		mapFile:     mapFile,
 		staticsFile: staticsFile,
-		staIdxFile:  staIdxFile,
 	}, nil
 }
 
