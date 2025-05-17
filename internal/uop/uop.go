@@ -140,8 +140,11 @@ func (r *Reader) parseFile() error {
 	// version := binary.LittleEndian.Uint32(header[4:8])
 	// signature := binary.LittleEndian.Uint32(header[8:12])
 	nextBlock := int64(binary.LittleEndian.Uint64(header[12:20]))
-	// blockCapacity := binary.LittleEndian.Uint32(header[20:24])
-	// entryCount := binary.LittleEndian.Uint32(header[24:28])
+
+	// Read blockCapacity and entryCount from header
+	blockCapacity := binary.LittleEndian.Uint32(header[20:24])
+	entryCount := binary.LittleEndian.Uint32(header[24:28])
+	parsedEntries := 0
 
 	// Build the pattern name
 	hashes := make(map[uint64]int, r.length)
@@ -165,6 +168,9 @@ func (r *Reader) parseFile() error {
 
 		// Read file entries in this block
 		entrySize := 34 // Each entry is 34 bytes
+		if uint32(fileCount) > blockCapacity {
+			return fmt.Errorf("UOP block fileCount %d exceeds blockCapacity %d", fileCount, blockCapacity)
+		}
 		entryData := make([]byte, fileCount*entrySize)
 		if _, err := r.file.ReadAt(entryData, nextBlock+12); err != nil && !errors.Is(err, io.EOF) {
 			return fmt.Errorf("failed to read file entries: %w", err)
@@ -189,6 +195,7 @@ func (r *Reader) parseFile() error {
 				continue
 			}
 
+			parsedEntries++
 			entryIdx, ok := hashes[hash]
 			if !ok {
 				continue
@@ -230,6 +237,10 @@ func (r *Reader) parseFile() error {
 		nextBlock = nextBlockOffset
 	}
 
+	// Final defensive check: did we parse as many entries as entryCount?
+	if entryCount > 0 && parsedEntries != int(entryCount) {
+		return fmt.Errorf("UOP: parsed %d entries, expected %d from entryCount", parsedEntries, entryCount)
+	}
 	return nil
 }
 
