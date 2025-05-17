@@ -57,13 +57,13 @@ type LandBlock struct {
 
 // decodeMapBlock parses a 196-byte map block and returns a LandBlock struct.
 func decodeMapBlock(block []byte) (*LandBlock, error) {
-	if len(block) != 196 {
+	if len(block) != 192 {
 		return nil, fmt.Errorf("decodeMapBlock: expected 196 bytes, got %d", len(block))
 	}
 
 	var out LandBlock
 	for i := 0; i < 64; i++ {
-		off := i * 3 // Data already starts with tile data
+		off := i * 3
 		out.Tiles[i].ID = binary.LittleEndian.Uint16(block[off : off+2])
 		out.Tiles[i].Z = int8(block[off+2])
 	}
@@ -205,26 +205,31 @@ func detectMapSize(mapID int) (width, height int) {
 // Image renders the map as a radar-color overview (1 pixel per tile).
 func (m *TileMap) Image() (image.Image, error) {
 	img := bitmap.NewARGB1555(image.Rect(0, 0, m.width, m.height))
+	blocksDown := m.height / 8
 
 	for entry := range m.mapFile.Entries() {
 		data, _, err := m.mapFile.Read(uint32(entry))
 		switch {
 		case err != nil:
 			return nil, fmt.Errorf("map.Image: failed reading entry %d: %w", entry, err)
-		case len(data) != blocksPerEntry*196:
-			return nil, fmt.Errorf("map.Image: entry %d too short (%d bytes)", entry, len(data))
+		case len(data)%196 != 0:
+			return nil, fmt.Errorf("map.Image: entry %d has invalid length (%d bytes)", entry, len(data))
 		}
 
-		for blockIndex := 0; blockIndex < blocksPerEntry; blockIndex++ {
+		length := len(data) / 196
+		for blockIndex := 0; blockIndex < length; blockIndex++ {
+			blockAbs := int(entry)*length + blockIndex
+			blockX := blockAbs / blocksDown
+			blockY := blockAbs % blocksDown
 			blockData := data[blockIndex*196 : blockIndex*196+196]
-			landBlock, err := decodeMapBlock(blockData)
+			landBlock, err := decodeMapBlock(blockData[4:])
 			if err != nil {
 				return nil, fmt.Errorf("map.Image: %w", err)
 			}
 
 			for i, t := range landBlock.Tiles {
-				x0 := (i % 8) + blockIndex*8
-				y0 := (i / 8) + blockIndex*8
+				x0 := (i % 8) + blockX*8
+				y0 := (i / 8) + blockY*8
 				rc, err := m.sdk.RadarColor(int(t.ID))
 				if err != nil {
 					continue
@@ -233,7 +238,6 @@ func (m *TileMap) Image() (image.Image, error) {
 			}
 		}
 	}
-
 	return img, nil
 }
 

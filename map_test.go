@@ -60,5 +60,7 @@ func TestTileMap_Image(t *testing.T) {
 		bounds := img.Bounds()
 		assert.Equal(t, m.width, bounds.Dx())
 		assert.Equal(t, m.height, bounds.Dy())
+
+		//savePng(img, "test.png")
 	})
 }
