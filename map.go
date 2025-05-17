@@ -50,17 +50,31 @@ type LandBlock struct {
 }
 
 // decodeMapBlock parses a 196-byte map block and returns a LandBlock struct.
-func decodeMapBlock(data []byte) (*LandBlock, error) {
-	if len(data) != 196 {
-		return nil, fmt.Errorf("decodeMapBlock: expected 196 bytes, got %d", len(data))
+func decodeMapBlock(block []byte) (*LandBlock, error) {
+	if len(block) != 196 {
+		return nil, fmt.Errorf("decodeMapBlock: expected 196 bytes, got %d", len(block))
 	}
-	var block LandBlock
+
+	var out LandBlock
 	for i := 0; i < 64; i++ {
-		off := 4 + i*3 // skip 4-byte header
-		block.Tiles[i].ID = binary.LittleEndian.Uint16(data[off : off+2])
-		block.Tiles[i].Z = int8(data[off+2])
+		off := i * 3 // Data already starts with tile data
+		out.Tiles[i].ID = binary.LittleEndian.Uint16(block[off : off+2])
+		out.Tiles[i].Z = int8(block[off+2])
 	}
-	return &block, nil
+	return &out, nil
+}
+
+func decodeMapTile(block []byte, tileIndex int) (*Tile, error) {
+	if len(block) < 196 {
+		return nil, fmt.Errorf("decodeMapTile: expected 196 bytes, got %d", len(block))
+	}
+	tileData := block[tileIndex*3 : tileIndex*3+3]
+	return &Tile{
+		ID:      binary.LittleEndian.Uint16(tileData[:2]),
+		Z:       int8(tileData[2]),
+		Flags:   0,   // TODO: fill from tiledata
+		Statics: nil, // TODO: fill statics if needed
+	}, nil
 }
 
 // TileAt returns the tile at the given x, y coordinate.
@@ -69,36 +83,28 @@ func (m *TileMap) TileAt(x, y int) (*Tile, error) {
 		return nil, fmt.Errorf("TileAt: coordinates out of bounds (%d,%d)", x, y)
 	}
 
+	// Calculate the block index and entry index
 	const blocksPerEntry = 4096
 	blocksPerRow := m.width / 8
-	blockX := x / 8
-	blockY := y / 8
+	blockX, blockY := x/8, y/8
 	blockIndex := blockY*blocksPerRow + blockX
 	entryIndex := blockIndex / blocksPerEntry
-	blockOffsetInEntry := blockIndex % blocksPerEntry
+	blockOffset := blockIndex % blocksPerEntry
 
+	// Read the entry and check if it's valid
 	entry, _, err := m.mapFile.Read(uint32(entryIndex))
-	if err != nil {
+	switch {
+	case err != nil:
 		return nil, fmt.Errorf("TileAt: failed reading UOP entry: %w", err)
-	}
-	if len(entry) < 4+(blockOffsetInEntry+1)*196 {
-		return nil, fmt.Errorf("TileAt: entry too small for block offset (entry len=%d, needed=%d)", len(entry), 4+(blockOffsetInEntry+1)*196)
+	case len(entry) < 4+(blockOffset+1)*196:
+		return nil, fmt.Errorf("TileAt: entry too small for block offset (entry len=%d, needed=%d)", len(entry), 4+(blockOffset+1)*196)
 	}
 
-	blockStart := 4 + blockOffsetInEntry*196
+	// Get the block data and decode the tile
+	blockStart := 4 + blockOffset*196
 	blockData := entry[blockStart : blockStart+196]
-	landBlock, err := decodeMapBlock(blockData)
-	if err != nil {
-		return nil, fmt.Errorf("TileAt: failed to decode map block: %w", err)
-	}
 	tileIndex := (y%8)*8 + (x % 8)
-	tile := &Tile{
-		ID:      landBlock.Tiles[tileIndex].ID,
-		Z:       landBlock.Tiles[tileIndex].Z,
-		Flags:   0,   // TODO: fill from tiledata
-		Statics: nil, // TODO: fill statics if needed
-	}
-	return tile, nil
+	return decodeMapTile(blockData, tileIndex)
 }
 
 // Map returns the TileMap for the given map index, loading if necessary.
