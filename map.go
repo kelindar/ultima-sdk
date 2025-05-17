@@ -3,17 +3,30 @@ package ultima
 import (
 	"encoding/binary"
 	"fmt"
-	"sync"
 
 	"github.com/kelindar/ultima-sdk/internal/uofile"
 )
 
-// Tile represents a single map tile (land or static).
+// TileFlag represents a tile flag (imported from tiledata.go).
+// type TileFlag uint64 // Already defined in tiledata.go, do not redeclare here.
+
+// StaticItem represents a single static placed on the map.
+type StaticItem struct {
+	ID    uint16   // Static tile ID
+	X     uint8    // X offset within the block
+	Y     uint8    // Y offset within the block
+	Z     int8     // Elevation
+	Hue   uint16   // Color hue
+	Flags TileFlag // Tile flags (from tiledata)
+	Name  string   // Tile name (from tiledata)
+}
+
+// Tile represents a single map tile, including statics.
 type Tile struct {
-	ID      uint16           // Tile ID
-	Z       int8             // Elevation
-	Flags   uint64           // Tile flags (from tiledata)
-	Statics []StaticItemData // Statics at this tile (optional, for full fidelity)
+	ID      uint16      // Land tile ID
+	Z       int8        // Land tile elevation
+	Flags   TileFlag    // Tile flags (TODO: fill from tiledata)
+	Statics []StaticItem // Statics located at this tile
 }
 
 // TileMap provides access to Ultima Online map data.
@@ -25,8 +38,6 @@ type TileMap struct {
 	mapFile     *uofile.File // internal: mapX.mul
 	staticsFile *uofile.File // internal: staticsX.mul
 	staIdxFile  *uofile.File // internal: staidxX.mul
-	mutex       sync.Mutex
-	loaded      bool
 }
 
 // NewTileMap initializes a TileMap for a given map index and files.
@@ -64,20 +75,32 @@ func decodeMapBlock(block []byte) (*LandBlock, error) {
 	return &out, nil
 }
 
-func decodeMapTile(block []byte, tileIndex int) (*Tile, error) {
+// decodeMapTile parses a single tile from a 196-byte map block, including statics.
+func decodeMapTile(block []byte, tileIndex int, statics []StaticItem) (*Tile, error) {
 	if len(block) < 196 {
 		return nil, fmt.Errorf("decodeMapTile: expected 196 bytes, got %d", len(block))
 	}
 	tileData := block[tileIndex*3 : tileIndex*3+3]
+	// Calculate x, y within the block
+	x := tileIndex % 8
+	y := tileIndex / 8
+	// Filter statics for this tile
+	var tileStatics []StaticItem
+	for _, s := range statics {
+		if int(s.X) == x && int(s.Y) == y {
+			tileStatics = append(tileStatics, s)
+		}
+	}
 	return &Tile{
 		ID:      binary.LittleEndian.Uint16(tileData[:2]),
 		Z:       int8(tileData[2]),
-		Flags:   0,   // TODO: fill from tiledata
-		Statics: nil, // TODO: fill statics if needed
+		Flags:   0, // TODO: fill from tiledata
+		Statics: tileStatics,
 	}, nil
 }
 
 // TileAt returns the tile at the given x, y coordinate.
+// TileAt returns the tile at the given x, y coordinate, including statics.
 func (m *TileMap) TileAt(x, y int) (*Tile, error) {
 	if x < 0 || y < 0 || x >= m.width || y >= m.height {
 		return nil, fmt.Errorf("TileAt: coordinates out of bounds (%d,%d)", x, y)
@@ -100,11 +123,64 @@ func (m *TileMap) TileAt(x, y int) (*Tile, error) {
 		return nil, fmt.Errorf("TileAt: entry too small for block offset (entry len=%d, needed=%d)", len(entry), 4+(blockOffset+1)*196)
 	}
 
-	// Get the block data and decode the tile
+	// Get the block data
 	blockStart := 4 + blockOffset*196
 	blockData := entry[blockStart : blockStart+196]
 	tileIndex := (y%8)*8 + (x % 8)
-	return decodeMapTile(blockData, tileIndex)
+
+	// Read statics for this block
+	statics, err := m.readStatics(blockIndex)
+	if err != nil {
+		return nil, fmt.Errorf("TileAt: failed to read statics: %w", err)
+	}
+	return decodeMapTile(blockData, tileIndex, statics)
+}
+
+// readStatics reads and parses statics for a given block index.
+func (m *TileMap) readStatics(blockIndex int) ([]StaticItem, error) {
+	if m.staIdxFile == nil || m.staticsFile == nil {
+		return nil, nil // No statics available
+	}
+	idxData, _, err := m.staIdxFile.Read(uint32(blockIndex))
+	if err != nil || len(idxData) < 12 {
+		return nil, nil // No statics for this block
+	}
+	offset := int64(binary.LittleEndian.Uint32(idxData[0:4]))
+	length := int(binary.LittleEndian.Uint32(idxData[4:8]))
+	if offset == -1 || length <= 0 {
+		return nil, nil // No statics
+	}
+	// Read the statics entry for this block
+	staticData, _, err := m.staticsFile.Read(uint32(blockIndex))
+	if err != nil || len(staticData) == 0 {
+		return nil, nil // No statics for this block
+	}
+	count := len(staticData) / 7
+	statics := make([]StaticItem, 0, count)
+	for i := 0; i < count; i++ {
+		off := i * 7
+		if off+7 > len(staticData) {
+			break
+		}
+		id := binary.LittleEndian.Uint16(staticData[off : off+2])
+		item := StaticItem{
+			ID:  id,
+			X:   staticData[off+2],
+			Y:   staticData[off+3],
+			Z:   int8(staticData[off+4]),
+			Hue: binary.LittleEndian.Uint16(staticData[off+5 : off+7]),
+		}
+		// Lookup tiledata for this static ID
+		if m != nil && m.sdk != nil {
+			data, err := m.sdk.StaticTile(int(id))
+			if err == nil {
+				item.Flags = data.Flags
+				item.Name = data.Name
+			}
+		}
+		statics = append(statics, item)
+	}
+	return statics, nil
 }
 
 // Map returns the TileMap for the given map index, loading if necessary.
