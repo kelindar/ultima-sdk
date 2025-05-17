@@ -102,9 +102,14 @@ func (s *SDK) loadMap(mapID int) (*uofile.File, error) {
 // loadStatics loads the statics files for a specific map ID
 func (s *SDK) loadStatics(mapID int) (*uofile.File, error) {
 	return s.load([]string{
+		// UOP variant first, to apply patches from verdata
+		fmt.Sprintf("statics%dLegacyMUL.uop", mapID),
 		fmt.Sprintf("statics%d.mul", mapID),
 		fmt.Sprintf("staidx%d.mul", mapID),
-	}, 0, uofile.WithIndexLength(12))
+	}, 0,
+		uofile.WithIndexLength(12),
+		uofile.WithExtra(),
+	)
 }
 
 // loadMulti loads the multi files
