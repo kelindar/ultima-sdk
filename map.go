@@ -69,32 +69,36 @@ func (m *TileMap) TileAt(x, y int) (*Tile, error) {
 		return nil, fmt.Errorf("TileAt: coordinates out of bounds (%d,%d)", x, y)
 	}
 
-	// calculate block height and width
-	bh, _ := m.height>>3, m.width>>3
-	offset := int64(((x*bh)+y)*196) + 4
-	entry := m.loadFromUOP(offset)
+	const blocksPerEntry = 4096
+	blocksPerRow := m.width / 8
+	blockX := x / 8
+	blockY := y / 8
+	blockIndex := blockY*blocksPerRow + blockX
+	entryIndex := blockIndex / blocksPerEntry
+	blockOffsetInEntry := blockIndex % blocksPerEntry
 
-	/*tile := &Tile{
-		ID:      tileID,
-		Z:       z,
-		Flags:   0, // TODO: fill from tiledata
-		Statics: statics,
+	entry, _, err := m.mapFile.Read(uint32(entryIndex))
+	if err != nil {
+		return nil, fmt.Errorf("TileAt: failed reading UOP entry: %w", err)
 	}
-	return tile, nil*/
-	return nil, nil
-}
+	if len(entry) < 4+(blockOffsetInEntry+1)*196 {
+		return nil, fmt.Errorf("TileAt: entry too small for block offset (entry len=%d, needed=%d)", len(entry), 4+(blockOffsetInEntry+1)*196)
+	}
 
-// loadFromUOP loads a file from UOP format
-func (m *TileMap) loadFromUOP(offset int64) []byte {
-	var pos int64
-	for entry := range m.mapFile.Entries() {
-		entry, _, _ := m.mapFile.Read(uint32(entry))
-		pos += int64(len(entry))
-		if offset < pos {
-			return entry
-		}
+	blockStart := 4 + blockOffsetInEntry*196
+	blockData := entry[blockStart : blockStart+196]
+	landBlock, err := decodeMapBlock(blockData)
+	if err != nil {
+		return nil, fmt.Errorf("TileAt: failed to decode map block: %w", err)
 	}
-	return nil
+	tileIndex := (y%8)*8 + (x % 8)
+	tile := &Tile{
+		ID:      landBlock.Tiles[tileIndex].ID,
+		Z:       landBlock.Tiles[tileIndex].Z,
+		Flags:   0,   // TODO: fill from tiledata
+		Statics: nil, // TODO: fill statics if needed
+	}
+	return tile, nil
 }
 
 // Map returns the TileMap for the given map index, loading if necessary.
