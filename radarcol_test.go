@@ -14,12 +14,13 @@ import (
 func TestRadarColor(t *testing.T) {
 	runWith(t, func(sdk *SDK) {
 		// Test retrieving a land tile color
-		color, err := sdk.RadarColor(1) // Land tile (ID < 0x4000)
+		color, err := sdk.RadarColor(16) // Land tile (ID < 0x4000)
 		assert.NoError(t, err)
-		assert.Equal(t, 1, color.ID())
+		assert.Equal(t, 16, color.ID())
 		assert.False(t, color.IsStatic())
 		assert.True(t, color.IsLand())
 		assert.NotEqual(t, uint16(0), color.Value()) // The color should be non-zero
+		assert.Equal(t, uint16(12549), color.Value())
 
 		// Verify GetColor works correctly
 		goColor := color.GetColor()
