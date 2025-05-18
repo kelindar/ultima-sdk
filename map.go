@@ -14,24 +14,6 @@ import (
 
 const blocksPerEntry = 4096
 
-/*
-type StaticItem struct {
-	ID  uint16 // Static tile ID
-	X   uint8  // X offset within the block
-	Y   uint8  // Y offset within the block
-	Z   int8   // Elevation
-	Hue uint16 // Color hue
-}
-
-item := StaticItem{
-	ID:  id,
-	X:   data[off+2],
-	Y:   data[off+3],
-	Z:   int8(data[off+4]),
-	Hue: binary.LittleEndian.Uint16(data[off+5 : off+7]),
-}
-*/
-
 // StaticItem represents a single static placed on the map.
 type StaticItem []byte
 
@@ -90,8 +72,7 @@ func decodeMapTile(block []byte, tileIndex int, statics []StaticItem) (*Tile, er
 	// Filter statics for this tile
 	var tileStatics []StaticItem
 	for _, s := range statics {
-		sx, sy, _ := s.Location()
-		if int(sx) == x && int(sy) == y {
+		if sx, sy, _ := s.Location(); int(sx) == x && int(sy) == y {
 			tileStatics = append(tileStatics, s)
 		}
 	}
@@ -224,23 +205,23 @@ func (m *TileMap) Image() (image.Image, error) {
 	blocksDown := m.height / 8
 
 	buffer := make([]byte, 196*blocksPerEntry)
-	for key := range m.mapFile.Entries() {
-		entry, err := m.mapFile.Entry(uint32(key))
+	for entry := range m.mapFile.Entries() {
+		data, err := m.mapFile.Entry(uint32(entry))
 		switch {
 		case err != nil:
-			return nil, fmt.Errorf("map.Image: failed reading entry %d: %w", key, err)
-		case entry.Len()%196 != 0:
-			return nil, fmt.Errorf("map.Image: entry %d has invalid length (%d bytes)", key, entry.Len())
+			return nil, fmt.Errorf("map.Image: failed reading entry %d: %w", entry, err)
+		case data.Len()%196 != 0:
+			return nil, fmt.Errorf("map.Image: entry %d has invalid length (%d bytes)", entry, data.Len())
 		}
 
-		n, err := entry.ReadAt(buffer, 0)
+		n, err := data.ReadAt(buffer, 0)
 		if err != nil {
-			return nil, fmt.Errorf("map.Image: failed reading entry %d: %w", key, err)
+			return nil, fmt.Errorf("map.Image: failed reading entry %d: %w", entry, err)
 		}
 
 		length := n / 196
 		for blockIndex := 0; blockIndex < length; blockIndex++ {
-			blockAbs := int(key)*length + blockIndex
+			blockAbs := int(entry)*length + blockIndex
 			blockX := blockAbs / blocksDown
 			blockY := blockAbs % blocksDown
 			blockData := buffer[blockIndex*196 : blockIndex*196+196]

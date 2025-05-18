@@ -4,7 +4,6 @@
 package mul
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -174,13 +173,6 @@ func (r *Reader) Entry(key uint32) (Entry, error) {
 		return nil, nil
 	case entry.length == 0:
 		return nil, nil
-	}
-
-	if entry.decoded != nil {
-		return reader{
-			reader: bytes.NewReader(entry.decoded),
-			entry:  entry,
-		}, nil
 	}
 
 	return reader{
