@@ -204,27 +204,27 @@ func (m *TileMap) Image() (image.Image, error) {
 	img := bitmap.NewARGB1555(image.Rect(0, 0, m.width, m.height))
 	blocksDown := m.height / 8
 
-	//buffer := make([]byte, 196*blocksPerEntry)
+	buffer := make([]byte, 196*blocksPerEntry)
 	for entry := range m.mapFile.Entries() {
-		data, err := m.mapFile.ReadFull(uint32(entry))
+		data, err := m.mapFile.Entry(uint32(entry))
 		switch {
 		case err != nil:
 			return nil, fmt.Errorf("map.Image: failed reading entry %d: %w", entry, err)
-			//	case data.Len()%196 != 0:
-			//		return nil, fmt.Errorf("map.Image: entry %d has invalid length (%d bytes)", entry, data.Len())
+		case data.Len()%196 != 0:
+			return nil, fmt.Errorf("map.Image: entry %d has invalid length (%d bytes)", entry, data.Len())
 		}
 
-		/*n, err := data.ReadAt(buffer, 0)
+		n, err := data.ReadAt(buffer, 0)
 		if err != nil {
 			return nil, fmt.Errorf("map.Image: failed reading entry %d: %w", entry, err)
-		}*/
+		}
 
-		length := len(data) / 196
+		length := n / 196
 		for blockIndex := 0; blockIndex < length; blockIndex++ {
 			blockAbs := int(entry)*length + blockIndex
 			blockX := blockAbs / blocksDown
 			blockY := blockAbs % blocksDown
-			blockData := data[blockIndex*196 : blockIndex*196+196]
+			blockData := buffer[blockIndex*196 : blockIndex*196+196]
 			if len(blockData) < 4+192 {
 				return nil, fmt.Errorf("map.Image: block %d too short (%d bytes)", blockAbs, len(blockData))
 			}
