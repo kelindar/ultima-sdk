@@ -10,14 +10,6 @@ import (
 )
 
 func TestLight(t *testing.T) {
-
-	t.Run("GetRawLightNegativeID", func(t *testing.T) {
-		runWith(t, func(sdk *SDK) {
-			_, _, _, err := sdk.GetRawLight(-1)
-			assert.Error(t, err)
-		})
-	})
-
 	runWith(t, func(sdk *SDK) {
 		t.Run("Light_Valid", func(t *testing.T) {
 			// Test retrieving a valid light (assuming light ID 0 exists in test data)
@@ -39,17 +31,6 @@ func TestLight(t *testing.T) {
 			// Test with very large ID that likely doesn't exist
 			_, err = sdk.Light(9999)
 			assert.Error(t, err, "Light(9999) should return an error for non-existent ID")
-		})
-
-		t.Run("GetRawLight", func(t *testing.T) {
-			// Test getting raw light data
-			data, width, height, err := sdk.GetRawLight(0)
-
-			assert.NoError(t, err, "GetRawLight(0) should not return an error")
-			assert.NotNil(t, data, "Raw light data should not be nil")
-			assert.Greater(t, width, 0, "Light width should be positive")
-			assert.Greater(t, height, 0, "Light height should be positive")
-			assert.Equal(t, len(data), width*height, "Data length should match dimensions")
 		})
 
 		t.Run("Lights_Iterator", func(t *testing.T) {

@@ -4,29 +4,30 @@
 package mul
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"iter"
 	"os"
-	"sync/atomic"
 
+	"codeberg.org/go-mmap/mmap"
 	"github.com/kelindar/intmap"
 )
 
 // Entry3D represents an entry in MUL index files
 type Entry3D struct {
-	offset uint32       // Offset where the entry data begins
-	length uint32       // Size of the entry data
-	extra  uint32       // Extra data (can be split into Extra1/Extra2)
-	cache  atomic.Value // Cached data for the entry
+	offset  uint32 // Offset where the entry data begins
+	length  uint32 // Size of the entry data
+	extra   uint32 // Extra data (can be split into Extra1/Extra2)
+	decoded []byte // Decoded entry data
 }
 
 // Reader provides access to MUL file data
 type Reader struct {
-	file      *os.File    // File handle for the MUL file
-	index     *os.File    // Optional index file handle
+	file      *mmap.File  // File handle for the MUL file
+	index     *mmap.File  // Optional index file handle
 	entries   []Entry3D   // Cached index entries
 	lookup    *intmap.Map // Lookup table for entry offsets
 	entrySize int         // Size of each entry in the index file
@@ -50,7 +51,7 @@ func OpenOne(filename string, options ...Option) (*Reader, error) {
 	}
 
 	// Open the file
-	file, err := os.Open(filename)
+	file, err := mmap.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open MUL file: %w", err)
 	}
@@ -68,7 +69,12 @@ func OpenOne(filename string, options ...Option) (*Reader, error) {
 
 	// If no index file is provided, we need to create a default entry
 	if len(r.entries) == 0 {
-		r.add(0, 0, uint32(info.Size()), 0, nil)
+		buffer := make([]byte, info.Size())
+		if _, err := file.ReadAt(buffer, 0); err != nil {
+			return nil, err
+		}
+
+		r.add(0, 0, uint32(info.Size()), 0, buffer)
 	}
 
 	return r, nil
@@ -76,13 +82,13 @@ func OpenOne(filename string, options ...Option) (*Reader, error) {
 
 // Open creates a new MUL reader with a separate index file
 func Open(mulFilename, idxFilename string, options ...Option) (*Reader, error) {
-	file, err := os.Open(mulFilename)
+	file, err := mmap.Open(mulFilename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open MUL file: %w", err)
 	}
 
 	// Open IDX file
-	idxFile, err := os.Open(idxFilename)
+	idxFile, err := mmap.Open(idxFilename)
 	if err != nil {
 		file.Close() // Clean up MUL file handle if IDX file can't be opened
 		return nil, fmt.Errorf("failed to open IDX file: %w", err)
@@ -146,22 +152,18 @@ func (r *Reader) loadIndex() error {
 
 // add creates a new entry and adds it to the reader
 func (r *Reader) add(id, offset, length, extra uint32, value []byte) {
-	entry := Entry3D{
-		offset: offset,
-		length: length,
-		extra:  extra,
-	}
-	if value != nil {
-		entry.cache.Store(value)
-	}
-
 	index := uint32(len(r.entries))
-	r.entries = append(r.entries, entry)
+	r.entries = append(r.entries, Entry3D{
+		offset:  offset,
+		length:  length,
+		extra:   extra,
+		decoded: value,
+	})
 	r.lookup.Store(id, index)
 }
 
 // Read reads data from the file at the specified index
-func (r *Reader) Read(key uint32) (out []byte, extra uint64, err error) {
+func (r *Reader) Read(buffer *bytes.Buffer, key uint32) (out []byte, extra uint64, err error) {
 	entry, err := r.entryAt(key)
 	switch {
 	case err != nil:
@@ -174,20 +176,44 @@ func (r *Reader) Read(key uint32) (out []byte, extra uint64, err error) {
 		return nil, 0, nil
 	}
 
-	// Check if the entry is cached
-	if cached := entry.cache.Load(); cached != nil {
-		return cached.([]byte), uint64(entry.extra), nil
+	if entry.decoded != nil {
+		return entry.decoded, uint64(entry.extra), nil
+	}
+
+	// Ensure the buffer is large enough
+	if buffer != nil {
+		buffer.Grow(int(entry.length))
+		out = buffer.Bytes()[:entry.length]
+	} else {
+		out = make([]byte, entry.length)
 	}
 
 	// Read data from the file at the specified offset
-	out = make([]byte, entry.length)
-	if _, err = r.file.ReadAt(out, int64(entry.offset)); err != nil {
+	if _, err := r.file.ReadAt(out, int64(entry.offset)); err != nil {
 		return nil, 0, fmt.Errorf("failed to read data at index %d: %w", key, err)
 	}
 
-	// Write the data to the cache
-	entry.cache.Store(out)
 	return out, uint64(entry.extra), err
+}
+
+// Entry returns an entry reader
+func (r *Reader) Entry(key uint32) (Entry, error) {
+	entry, err := r.entryAt(key)
+	switch {
+	case err != nil:
+		return nil, err
+	case entry == nil:
+		return nil, ErrInvalidEntry
+	case entry.offset == 0xFFFFFFFF: // Skip invalid entries (offset == 0xFFFFFFFF or length == 0)
+		return nil, nil
+	case entry.length == 0:
+		return nil, nil
+	}
+
+	return reader{
+		reader: r.file,
+		entry:  entry,
+	}, nil
 }
 
 // entryAt retrieves entry information by its logical index/hash
@@ -260,4 +286,31 @@ func (r *Reader) Close() error {
 	}
 
 	return nil
+}
+
+type Entry = interface {
+	io.ReaderAt
+	Len() int
+	Extra() uint64
+}
+
+type reader struct {
+	reader io.ReaderAt
+	entry  *Entry3D
+}
+
+func (r reader) Len() int {
+	return int(r.entry.length)
+}
+
+func (r reader) Extra() uint64 {
+	return uint64(r.entry.extra)
+}
+
+func (r reader) ReadAt(p []byte, off int64) (n int, err error) {
+	if r.entry.decoded != nil {
+		return copy(p, r.entry.decoded), nil
+	}
+
+	return r.reader.ReadAt(p, int64(r.entry.offset)+off)
 }

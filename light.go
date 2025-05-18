@@ -56,13 +56,17 @@ func (s *SDK) Light(id int) (Light, error) {
 		return Light{}, err
 	}
 
-	// Read the actual data
-	data, extra, err := file.Read(uint32(id))
+	entry, err := file.Entry(uint32(id))
 	if err != nil {
-		return Light{}, fmt.Errorf("error reading light ID %d: %w", id, err)
+		return Light{}, err
 	}
 
-	return makeLight(uint32(id), data, uint32(extra))
+	data := make([]byte, entry.Len())
+	if _, err := entry.ReadAt(data, 0); err != nil {
+		return Light{}, err
+	}
+
+	return makeLight(uint32(id), data, uint32(entry.Extra()))
 }
 
 // Lights returns an iterator over all defined light images.
@@ -74,12 +78,17 @@ func (s *SDK) Lights() iter.Seq[Light] {
 
 	return func(yield func(Light) bool) {
 		for index := range file.Entries() {
-			data, extra, err := file.Read(index)
+			entry, err := file.Entry(index)
 			if err != nil {
 				continue
 			}
 
-			light, err := makeLight(index, data, uint32(extra))
+			data := make([]byte, entry.Len())
+			if _, err := entry.ReadAt(data, 0); err != nil {
+				continue
+			}
+
+			light, err := makeLight(index, data, uint32(entry.Extra()))
 			if err != nil {
 				continue
 			}
@@ -89,28 +98,6 @@ func (s *SDK) Lights() iter.Seq[Light] {
 			}
 		}
 	}
-}
-
-// GetRawLight returns the raw byte data for a light image.
-// This is analogous to the C# Light.GetRawLight method.
-func (s *SDK) GetRawLight(id int) ([]byte, int, int, error) {
-	if id < 0 {
-		return nil, 0, 0, fmt.Errorf("invalid light ID: %d", id)
-	}
-
-	file, err := s.loadLights()
-	if err != nil {
-		return nil, 0, 0, err
-	}
-
-	// Read the actual data
-	data, extra, err := file.Read(uint32(id))
-	if err != nil {
-		return nil, 0, 0, fmt.Errorf("error reading light ID %d: %w", id, err)
-	}
-
-	width, height := lightSize(uint32(extra))
-	return data, width, height, nil
 }
 
 func lightSize(extra uint32) (int, int) {

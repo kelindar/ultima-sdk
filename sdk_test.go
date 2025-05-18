@@ -5,7 +5,6 @@ package ultima
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	uotest "github.com/kelindar/ultima-sdk/internal/testing"
@@ -100,24 +99,5 @@ func TestFileCleanupOnClose(t *testing.T) {
 			return true
 		})
 		assert.Equal(t, 0, count, "Cache should be empty after SDK close")
-	})
-}
-
-// Test file existence check
-func TestFileExists(t *testing.T) {
-	runWith(t, func(sdk *SDK) {
-		tempFileName := "test_file_exists_check.tmp"
-		tempFilePath := filepath.Join(sdk.BasePath(), tempFileName)
-		f, err := os.Create(tempFilePath)
-		if err != nil {
-			t.Logf("Could not create temporary file: %v", err)
-			return
-		}
-		f.Close()
-		defer os.Remove(tempFilePath)
-
-		// Now check if our temp file exists
-		exists := sdk.fileExists(tempFileName)
-		assert.True(t, exists, "Temporary file should exist")
 	})
 }

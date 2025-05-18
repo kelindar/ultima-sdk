@@ -4,6 +4,7 @@
 package uop
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -12,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 
 	"codeberg.org/go-mmap/mmap"
 )
@@ -32,24 +32,13 @@ var (
 	ErrInvalidEntry  = errors.New("invalid entry")
 )
 
-// CompressionType represents the compression method used for a UOP entry
-type CompressionType int16
-
-// Compression flag constants
-const (
-	CompressionNone   CompressionType = 0
-	CompressionZlib   CompressionType = 1
-	CompressionMythic CompressionType = 2
-)
-
 // Entry6D represents an entry in UOP files with 6 components including compression info
 type Entry6D struct {
-	offset uint32       // Offset where the entry data begins
-	length uint32       // Size of the entry data (compressed)
-	rawLen uint32       // Size after decompression
-	extra  uint64       // Extra data
-	typ    byte         // Compression flag (0 = none, 1 = zlib, 2 = mythic)
-	cache  atomic.Value // Cached data for the entry
+	offset uint32 // Offset where the entry data begins
+	length uint32 // Size of the entry data (compressed)
+	rawLen uint32 // Size after decompression
+	extra  uint64 // Extra data
+	typ    byte   // Compression flag (0 = none, 1 = zlib, 2 = mythic)
 }
 
 // Reader implements the interface for reading UOP files
@@ -63,37 +52,6 @@ type Reader struct {
 	closed    bool        // Flag to track if reader is closed
 	hasextra  bool        // Flag to indicate if extra data is present
 	strict    bool        // Flag to indicate if the reader should skip not found hashes
-}
-
-// Option defines a function that configures a Reader.
-type Option func(*Reader)
-
-// WithExtra sets a flag to indicate if extra data is present in the entries.
-func WithExtra() Option {
-	return func(r *Reader) {
-		r.hasextra = true
-	}
-}
-
-// WithExtension sets the file extension for the pattern.
-func WithExtension(ext string) Option {
-	return func(r *Reader) {
-		r.ext = ext
-	}
-}
-
-// WithIndexLength sets the length of the index.
-func WithIndexLength(length int) Option {
-	return func(r *Reader) {
-		r.idxLength = length
-	}
-}
-
-// WithStrict sets a flag to indicate if the reader should perform strict entry validation.
-func WithStrict() Option {
-	return func(r *Reader) {
-		r.strict = true
-	}
 }
 
 // Open creates a new UOP file reader
@@ -289,8 +247,8 @@ func (r *Reader) Close() error {
 }
 
 // Read reads data from the file at the specified index
-func (r *Reader) Read(index uint32) (out []byte, extra uint64, err error) {
-	entry, err := r.entryAt(index)
+func (r *Reader) Read(buffer *bytes.Buffer, key uint32) (out []byte, extra uint64, err error) {
+	entry, err := r.entryAt(key)
 	switch {
 	case err != nil:
 		return nil, 0, err
@@ -302,24 +260,40 @@ func (r *Reader) Read(index uint32) (out []byte, extra uint64, err error) {
 		return nil, 0, nil
 	}
 
-	// Check if the entry is cached
-	if cached := entry.cache.Load(); cached != nil {
-		return cached.([]byte), entry.extra, nil
+	// Ensure the buffer is large enough
+	if buffer != nil {
+		buffer.Grow(int(entry.length))
+		out = buffer.Bytes()[:entry.length]
+	} else {
+		out = make([]byte, entry.length)
 	}
 
 	// Read data from the file at the specified offset
-	out = make([]byte, entry.length)
-	if _, err = r.file.ReadAt(out, int64(entry.offset)); err != nil {
-		return nil, 0, fmt.Errorf("failed to read data at index %d: %w", index, err)
+	if _, err := r.file.ReadAt(out, int64(entry.offset)); err != nil {
+		return nil, 0, fmt.Errorf("failed to read data at index %d: %w", key, err)
 	}
 
-	// Decompress the data, write it to the cache if needed
-	dec, err := decode(out, CompressionType(entry.typ))
-	if err == nil {
-		entry.cache.Store(out)
+	return out, uint64(entry.extra), err
+}
+
+// Entry returns an entry reader
+func (r *Reader) Entry(key uint32) (Entry, error) {
+	entry, err := r.entryAt(key)
+	switch {
+	case err != nil:
+		return nil, err
+	case entry == nil:
+		return nil, ErrInvalidEntry
+	case entry.offset == 0xFFFFFFFF: // Skip invalid entries (offset == 0xFFFFFFFF or length == 0)
+		return nil, nil
+	case entry.length == 0:
+		return nil, nil
 	}
 
-	return dec, entry.extra, err
+	return reader{
+		reader: r.file,
+		entry:  entry,
+	}, nil
 }
 
 // entryAt retrieves entry information by its logical index/hash
@@ -332,4 +306,27 @@ func (r *Reader) entryAt(index uint32) (*Entry6D, error) {
 	default:
 		return &r.entries[index], nil
 	}
+}
+
+type Entry = interface {
+	io.ReaderAt
+	Len() int
+	Extra() uint64
+}
+
+type reader struct {
+	reader io.ReaderAt
+	entry  *Entry6D
+}
+
+func (r reader) Len() int {
+	return int(r.entry.length)
+}
+
+func (r reader) Extra() uint64 {
+	return uint64(r.entry.extra)
+}
+
+func (r reader) ReadAt(p []byte, off int64) (n int, err error) {
+	return r.reader.ReadAt(p, int64(r.entry.offset)+off)
 }

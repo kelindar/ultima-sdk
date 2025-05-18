@@ -52,11 +52,8 @@ func (m *Multi) Image() (image.Image, error) {
 		if err != nil || art == nil {
 			continue
 		}
-		tileImg, err := art.Image()
-		if err != nil || tileImg == nil {
-			continue
-		}
-		tileBounds := tileImg.Bounds()
+
+		tileBounds := art.Image.Bounds()
 		artW := tileBounds.Dx()
 		artH := tileBounds.Dy()
 
@@ -118,11 +115,8 @@ func (m *Multi) Image() (image.Image, error) {
 		if err != nil || art == nil {
 			continue
 		}
-		tileImg, err := art.Image()
-		if err != nil || tileImg == nil {
-			continue
-		}
-		tileBounds := tileImg.Bounds()
+
+		tileBounds := art.Image.Bounds()
 		drawX := pos.drawX - minDrawX
 		drawY := pos.drawY - minDrawY
 
@@ -133,7 +127,7 @@ func (m *Multi) Image() (image.Image, error) {
 				if px < 0 || py < 0 || px >= width || py >= height {
 					continue
 				}
-				col := tileImg.At(tileBounds.Min.X+tx, tileBounds.Min.Y+ty)
+				col := art.Image.At(tileBounds.Min.X+tx, tileBounds.Min.Y+ty)
 				if c, ok := col.(bitmap.ARGB1555Color); ok && c != 0 {
 					img.Set(px, py, c)
 				}
@@ -150,11 +144,12 @@ func (s *SDK) Multi(id int) (*Multi, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, _, err := file.Read(uint32(id))
-	if err != nil {
-		return nil, err
-	}
-	if len(data) == 0 {
+
+	data, err := file.ReadFull(uint32(id))
+	switch {
+	case err != nil:
+		return nil, fmt.Errorf("multi entry %d not found: %w", id, err)
+	case len(data) == 0:
 		return nil, fmt.Errorf("multi entry %d not found", id)
 	}
 

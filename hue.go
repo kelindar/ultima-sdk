@@ -17,9 +17,7 @@ import (
 )
 
 var (
-	// ErrInvalidHueIndex is returned when an invalid hue index is requested
-	ErrInvalidHueIndex = errors.New("invalid hue index")
-	// ErrInvalidPaletteIndex is returned when an invalid palette index is requested
+	ErrInvalidHueIndex     = errors.New("invalid hue index")
 	ErrInvalidPaletteIndex = errors.New("invalid palette index")
 )
 
@@ -93,7 +91,7 @@ func (s *SDK) HueAt(index int) (*Hue, error) {
 	// - Name (20 bytes)
 
 	// Read the entire block
-	blockData, _, err := file.Read(uint32(blockIndex))
+	blockData, err := file.ReadFull(uint32(blockIndex))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read hue block: %w", err)
 	}

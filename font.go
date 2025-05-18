@@ -34,12 +34,13 @@ func (s *SDK) FontUnicode() (Font, error) {
 	}
 	defer file.Close()
 
-	data, _, err := file.Read(0)
+	data, err := file.ReadFull(0)
 	if err != nil {
-		return nil, fmt.Errorf("read unifont1.mul: %w", err)
+		return nil, err
 	}
 
 	font := &unicodeFont{}
+
 	// Read 0x10000 (65536) 4-byte offsets
 	offsets := make([]int32, 0x10000)
 	for i := 0; i < 0x10000; i++ {
@@ -73,6 +74,7 @@ func (s *SDK) FontUnicode() (Font, error) {
 			charData := data[offset+4 : offset+4+int32(dataLen)]
 			bmp = decodeUnicodeBitmap(width, height, charData)
 		}
+
 		font.Characters[i] = &FontRune{
 			Width:   width,
 			Height:  height,
@@ -112,9 +114,9 @@ func (s *SDK) Font() ([]Font, error) {
 	}
 	defer file.Close()
 
-	data, _, err := file.Read(0)
+	data, err := file.ReadFull(0)
 	if err != nil {
-		return nil, fmt.Errorf("read fonts.mul: %w", err)
+		return nil, err
 	}
 
 	var fonts [10]*asciiFont

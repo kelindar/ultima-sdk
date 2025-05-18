@@ -75,21 +75,6 @@ func TestRadarColorsIterators(t *testing.T) {
 	})
 }
 
-// TestSDKLoadRadarcol tests that the loadRadarcol function works correctly
-func TestSDKLoadRadarcol(t *testing.T) {
-	runWith(t, func(sdk *SDK) {
-		// Load the radar color file
-		file, err := sdk.loadRadarcol()
-		assert.NoError(t, err, "Should be able to load the radar color file")
-		assert.NotNil(t, file, "Radar color file should not be nil")
-
-		// Read a chunk of data to verify we can access the file
-		data, _, err := file.Read(0)
-		assert.NoError(t, err, "Should be able to read from the radar color file")
-		assert.NotEmpty(t, data, "Radar color data should not be empty")
-	})
-}
-
 // Test the bit packing and extracting logic
 func TestRadarColorBitpacking(t *testing.T) {
 	tests := []struct {

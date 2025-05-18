@@ -8,10 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"iter"
 
+	"codeberg.org/go-mmap/mmap"
 	"github.com/kelindar/ultima-sdk/internal/mul"
 )
 
@@ -40,7 +40,7 @@ func (s *SDK) SpeechEntry(id int) (Speech, error) {
 		return Speech{}, err
 	}
 
-	data, _, err := file.Read(uint32(id))
+	data, err := file.ReadFull(uint32(id))
 	if err != nil {
 		return Speech{}, err
 	}
@@ -57,7 +57,7 @@ func (s *SDK) SpeechEntries() iter.Seq[Speech] {
 
 	return func(yield func(Speech) bool) {
 		for index := range file.Entries() {
-			data, _, err := file.Read(index)
+			data, err := file.ReadFull(index)
 			if err != nil {
 				continue
 			}
@@ -76,7 +76,7 @@ func (s *SDK) SpeechEntries() iter.Seq[Speech] {
 //   - ID (int16, BigEndian)
 //   - Length (int16, BigEndian)
 //   - Text (bytes[Length], UTF-8 encoded)
-func decodeSpeechFile(reader *os.File, add mul.AddFn) error {
+func decodeSpeechFile(reader *mmap.File, add mul.AddFn) error {
 	const maxlen = 128
 	buffer := make([]byte, maxlen)
 	for index := uint32(0); ; index++ {

@@ -64,11 +64,7 @@ func BenchmarkSDK(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				for _, g := range gumps {
-					img, err := g.Image()
-					if err != nil || img == nil {
-						b.Fatalf("gump.Image() error: %v", err)
-					}
-					runtime.KeepAlive(img)
+					runtime.KeepAlive(g.Image)
 				}
 			}
 		})
@@ -98,6 +94,19 @@ func BenchmarkSDK(b *testing.B) {
 				runtime.KeepAlive(count)
 			}
 		})
+	})
+}
+
+/*
+cpu: 13th Gen Intel(R) Core(TM) i7-13700K
+BenchmarkRadarcol-24    	43445518	        25.18 ns/op	      16 B/op	       1 allocs/op
+*/
+func BenchmarkRadarcol(b *testing.B) {
+	benchWith(b, func(sdk *SDK) {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			sdk.RadarColor(123)
+		}
 	})
 }
 

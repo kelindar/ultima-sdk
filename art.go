@@ -11,6 +11,7 @@ import (
 	"iter"
 
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
+	"github.com/kelindar/ultima-sdk/internal/uofile"
 )
 
 // Land art tile ID range constants
@@ -32,26 +33,11 @@ var (
 // Information is combined from art.mul/artidx.mul and tiledata.mul.
 // The image is loaded lazily.
 type ArtTile struct {
-	ID        int      // ID of the tile
-	Name      string   // Name from TileData
-	Flags     TileFlag // Flags from TileData
-	Height    int8     // Height of the tile, from TileData
-	isLand    bool     // Whether this is a land tile (true) or static tile (false)
-	imageData []byte   // Raw image data, cleared after Image() is called
-}
-
-// Image retrieves and decodes the art tile's graphical representation.
-// The image is loaded on the first call and cached for subsequent calls.
-func (a *ArtTile) Image() (image.Image, error) {
-	if len(a.imageData) == 0 {
-		return nil, ErrNoArtData
-	}
-
-	if a.isLand {
-		return decodeLandArt(a.imageData)
-	} else {
-		return decodeStaticArt(a.imageData)
-	}
+	ID     int         // ID of the tile
+	Name   string      // Name from TileData
+	Flags  TileFlag    // Flags from TileData
+	Height int8        // Height of the tile, from TileData
+	Image  image.Image // Image of the gump
 }
 
 // ArtTile returns an art tile by ID.
@@ -82,18 +68,19 @@ func (s *SDK) LandArtTile(id int) (*ArtTile, error) {
 
 	// Read the land tile data
 	info, _ := s.LandTile(id)
-	data, _, err := file.Read(uint32(id))
-	if err != nil {
-		return nil, err
-	}
+	return uofile.Decode(file, uint32(id), func(data []byte, extra uint64) (*ArtTile, error) {
+		img, err := decodeLandImage(data)
+		if err != nil {
+			return nil, err
+		}
 
-	return &ArtTile{
-		ID:        id,
-		Name:      info.Name,
-		Flags:     info.Flags,
-		isLand:    true,
-		imageData: data,
-	}, nil
+		return &ArtTile{
+			ID:    id,
+			Name:  info.Name,
+			Flags: info.Flags,
+			Image: img,
+		}, nil
+	})
 }
 
 // StaticArtTile retrieves a static art tile by its ID.
@@ -114,20 +101,20 @@ func (s *SDK) StaticArtTile(id int) (*ArtTile, error) {
 
 	// Read the static tile data
 	info, _ := s.StaticTile(id)
-	data, _, err := file.Read(uint32(artID))
-	if err != nil {
-		return nil, err
-	}
+	return uofile.Decode(file, uint32(artID), func(data []byte, extra uint64) (*ArtTile, error) {
+		img, err := decodeStaticImage(data)
+		if err != nil {
+			return nil, err
+		}
 
-	// Create and return the ArtTile
-	return &ArtTile{
-		ID:        artID,
-		Name:      info.Name,
-		Flags:     info.Flags,
-		Height:    int8(info.Height),
-		isLand:    false,
-		imageData: data,
-	}, nil
+		return &ArtTile{
+			ID:     artID,
+			Name:   info.Name,
+			Flags:  info.Flags,
+			Height: int8(info.Height),
+			Image:  img,
+		}, nil
+	})
 }
 
 // LandArtTiles returns an iterator over all available land art tiles.
@@ -135,7 +122,7 @@ func (s *SDK) LandArtTiles() iter.Seq[*ArtTile] {
 	return func(yield func(*ArtTile) bool) {
 		for i := uint32(0); i < landTileMax; i++ {
 			tile, err := s.LandArtTile(int(i))
-			if err != nil {
+			if tile == nil || err != nil {
 				continue
 			}
 
@@ -151,7 +138,7 @@ func (s *SDK) StaticArtTiles() iter.Seq[*ArtTile] {
 	return func(yield func(*ArtTile) bool) {
 		for i := uint32(staticTileMinID); i <= maxValidArtIndex; i++ {
 			tile, err := s.StaticArtTile(int(i - staticTileMinID))
-			if err != nil {
+			if tile == nil || err != nil {
 				continue
 			}
 
@@ -162,10 +149,10 @@ func (s *SDK) StaticArtTiles() iter.Seq[*ArtTile] {
 	}
 }
 
-// decodeLandArt converts raw land art data into an image.Image.
+// decodeLandImage converts raw land art data into an image.Image.
 // Land art is always 44x44 pixels. The format is essentially a run-length
 // encoded 44x44 image where each 2-byte value represents a color index.
-func decodeLandArt(data []byte) (image.Image, error) {
+func decodeLandImage(data []byte) (image.Image, error) {
 	if len(data) < landTileRawLength {
 		return nil, fmt.Errorf("%w: land art data too short, expected %d bytes, got %d",
 			ErrInvalidArtData, landTileRawLength, len(data))
@@ -221,10 +208,10 @@ func decodeLandArt(data []byte) (image.Image, error) {
 	return img, nil
 }
 
-// decodeStaticArt converts raw static art data into an image.Image.
+// decodeStaticImage converts raw static art data into an image.Image.
 // Static art has a header with dimensions, followed by a lookup table and
 // run-length encoded pixel data.
-func decodeStaticArt(data []byte) (image.Image, error) {
+func decodeStaticImage(data []byte) (image.Image, error) {
 	if len(data) < 8 { // Header (4) + Width (2) + Height (2)
 		return nil, fmt.Errorf("%w: static art data too short for header", ErrInvalidArtData)
 	}

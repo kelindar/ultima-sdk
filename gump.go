@@ -10,24 +10,15 @@ import (
 	"iter"
 
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
+	"github.com/kelindar/ultima-sdk/internal/uofile"
 )
 
 // Gump represents a UI element or graphic.
 type Gump struct {
-	ID        int    // ID of the gump
-	Width     int    // Width in pixels
-	Height    int    // Height in pixels
-	imageData []byte // Raw gump data
-}
-
-// Image retrieves and decodes the gump's graphical representation.
-func (g *Gump) Image() (image.Image, error) {
-	if len(g.imageData) == 0 {
-		return nil, fmt.Errorf("%w: no gump data available", ErrInvalidArtData)
-	}
-
-	// Decode the image
-	return decodeGumpData(g.imageData, g.Width, g.Height)
+	ID     int         // ID of the gump
+	Width  int         // Width in pixels
+	Height int         // Height in pixels
+	Image  image.Image // Image of the gump
 }
 
 // Gump retrieves a specific gump graphic by its ID.
@@ -39,27 +30,13 @@ func (s *SDK) Gump(id int) (*Gump, error) {
 		return nil, err
 	}
 
-	// Read the raw data and info
-	data, extra, err := file.Read(uint32(id))
+	g, err := uofile.Decode(file, uint32(id), decodeGump)
 	if err != nil {
 		return nil, err
 	}
 
-	// The extra data contains width and height information
-	width := int(extra & 0xFFFF)
-	height := int((extra >> 32) & 0xFFFF)
-
-	// Sanity check
-	if width <= 0 || height <= 0 || width > 2048 || height > 2048 {
-		return nil, fmt.Errorf("%w: invalid gump dimensions %dx%d", ErrInvalidArtData, width, height)
-	}
-
-	return &Gump{
-		ID:        id,
-		Width:     width,
-		Height:    height,
-		imageData: data,
-	}, nil
+	g.ID = id
+	return g, nil
 }
 
 // Gumps returns an iterator over metadata (ID, width, height) for all available gumps.
@@ -72,31 +49,38 @@ func (s *SDK) Gumps() iter.Seq[*Gump] {
 		}
 
 		for id := range file.Entries() {
-			data, extra, err := file.Read(id)
+			g, err := uofile.Decode(file, uint32(id), decodeGump)
 			if err != nil {
-				break // End of file or invalid entry
-			}
-
-			// The extra data contains width and height information
-			width := int(extra & 0xFFFF)
-			height := int((extra >> 32) & 0xFFFF)
-
-			// Sanity check
-			if width <= 0 || height <= 0 || width > 2048 || height > 2048 {
 				continue
 			}
 
-			// Yield the info to the iterator
-			if !yield(&Gump{
-				ID:        int(id),
-				Width:     width,
-				Height:    height,
-				imageData: data,
-			}) {
+			g.ID = int(id)
+			if !yield(g) {
 				break
 			}
 		}
 	}
+}
+
+func decodeGump(data []byte, extra uint64) (*Gump, error) {
+	width := int(extra & 0xFFFF)
+	height := int((extra >> 32) & 0xFFFF)
+
+	// Sanity check
+	if width <= 0 || height <= 0 || width > 2048 || height > 2048 {
+		return nil, fmt.Errorf("%w: invalid gump dimensions %dx%d", ErrInvalidArtData, width, height)
+	}
+
+	img, err := decodeGumpData(data, width, height)
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to decode gump: %v", ErrInvalidArtData, err)
+	}
+
+	return &Gump{
+		Width:  width,
+		Height: height,
+		Image:  img,
+	}, nil
 }
 
 // decodeGumpData converts raw gump data into an image.Image (RGBA8888).

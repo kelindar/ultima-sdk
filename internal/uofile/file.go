@@ -4,15 +4,20 @@
 package uofile
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"iter"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 
+	"codeberg.org/go-mmap/mmap"
 	"github.com/kelindar/ultima-sdk/internal/mul"
 	"github.com/kelindar/ultima-sdk/internal/uop"
 )
@@ -34,9 +39,17 @@ var (
 
 // Reader defines the common interface for both MUL and UOP readers
 type Reader interface {
-	Read(uint32) ([]byte, uint64, error)
+	Read(*bytes.Buffer, uint32) ([]byte, uint64, error)
+	Entry(key uint32) (Entry, error)
 	Entries() iter.Seq[uint32]
 	Close() error
+}
+
+// Entry defines the common interface for both MUL and UOP entries
+type Entry = interface {
+	io.ReaderAt
+	Len() int
+	Extra() uint64
 }
 
 // File provides a unified interface for accessing both MUL and UOP files
@@ -92,7 +105,7 @@ func WithChunks(chunkSize int) Option {
 }
 
 // WithDecodeMUL sets a custom function to read from a MUL file
-func WithDecodeMUL(fn func(file *os.File, add mul.AddFn) error) Option {
+func WithDecodeMUL(fn func(file *mmap.File, add mul.AddFn) error) Option {
 	return func(f *File) {
 		f.mulOpts = append(f.mulOpts, mul.WithDecode(fn))
 	}
@@ -232,18 +245,36 @@ func (f *File) open() error {
 	return nil
 }
 
-// Read reads data from a specific entry, applying any patches if available
-func (f *File) Read(index uint32) ([]byte, uint64, error) {
+// Entry returns a specific entry
+func (f *File) Entry(key uint32) (Entry, error) {
 	if err := f.open(); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	// Double-check reader is not nil after initialization
 	if f.reader == nil {
-		return nil, 0, fmt.Errorf("reader not initialized for %s", f.path)
+		return nil, fmt.Errorf("reader not initialized for %s", f.path)
 	}
 
-	return f.reader.Read(index)
+	return f.reader.Entry(key)
+}
+
+// ReadFull reads the full entry data into a byte slice
+func (f *File) ReadFull(key uint32) ([]byte, error) {
+	entry, err := f.Entry(key)
+	switch {
+	case err != nil:
+		return nil, err
+	case entry == nil:
+		return nil, nil
+	}
+
+	data := make([]byte, entry.Len())
+	if _, err := entry.ReadAt(data, 0); err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
 
 // Entries returns a sequence of entry indices
@@ -273,4 +304,44 @@ func (f *File) fileExists(fileName string) (string, bool) {
 		return filePath, true
 	}
 	return "", false
+}
+
+var bufferPool sync.Pool = sync.Pool{
+	New: func() any {
+		return bytes.NewBuffer(make([]byte, 1024))
+	},
+}
+
+// Borrow allocates a buffer of the specified size from the pool
+func Borrow(n int) ([]byte, context.CancelFunc) {
+	buffer := bufferPool.Get().(*bytes.Buffer)
+	buffer.Grow(n)
+	return buffer.Bytes()[:n], func() {
+		buffer.Reset()
+		bufferPool.Put(buffer)
+	}
+}
+
+func Decode[T any](f *File, key uint32, fn func([]byte, uint64) (T, error)) (T, error) {
+	entry, err := f.Entry(uint32(key))
+	switch {
+	case err != nil:
+		return defaultT[T](), err
+	case entry == nil || entry.Len() == 0:
+		return defaultT[T](), nil
+	}
+
+	data, release := Borrow(entry.Len())
+	defer release()
+
+	if _, err := entry.ReadAt(data, 0); err != nil {
+		return defaultT[T](), err
+	}
+
+	return fn(data, entry.Extra())
+}
+
+func defaultT[T any]() T {
+	var t T
+	return t
 }

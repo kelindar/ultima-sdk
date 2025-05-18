@@ -33,8 +33,6 @@ func TestGump(t *testing.T) {
 		})
 	})
 
-	// Existing tests...
-
 	t.Run("LoadGump", func(t *testing.T) {
 		runWith(t, func(sdk *SDK) {
 			// Test loading a specific gump (ID 1, which typically exists in most UO clients)
@@ -46,15 +44,11 @@ func TestGump(t *testing.T) {
 			assert.Equal(t, 7, gump.ID)
 			assert.Greater(t, gump.Width, 0, "Gump width should be greater than 0")
 			assert.Greater(t, gump.Height, 0, "Gump height should be greater than 0")
-
-			// Test the image lazy loading
-			img, err := gump.Image()
-			require.NoError(t, err)
-			require.NotNil(t, img)
+			assert.NotNil(t, gump.Image)
 
 			// Image dimensions should match expected values
-			assert.Equal(t, gump.Width, img.Bounds().Dx())
-			assert.Equal(t, gump.Height, img.Bounds().Dy())
+			assert.Equal(t, gump.Width, gump.Image.Bounds().Dx())
+			assert.Equal(t, gump.Height, gump.Image.Bounds().Dy())
 
 			//assert.NoError(t, savePng(img, "gump.png")
 		})

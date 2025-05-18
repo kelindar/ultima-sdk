@@ -8,9 +8,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"iter"
-	"os"
 
+	"codeberg.org/go-mmap/mmap"
 	"github.com/kelindar/ultima-sdk/internal/mul"
+	"github.com/kelindar/ultima-sdk/internal/uofile"
 )
 
 const (
@@ -144,33 +145,7 @@ func (s *SDK) LandTile(id int) (LandTileData, error) {
 		return LandTileData{}, err
 	}
 
-	data, _, err := file.Read(uint32(landOffset + id))
-	if err != nil {
-		return LandTileData{}, fmt.Errorf("error reading land tile data: %w", err)
-	}
-
-	return makeLandTileData(data, s.isNewTileDataFormat()), nil
-}
-
-// makeLandTileData converts raw bytes into a LandTileData struct
-func makeLandTileData(data []byte, isNewFormat bool) LandTileData {
-	var result LandTileData
-
-	// Land tile format:
-	// - flags: uint32/uint64 (depends on format)
-	// - textureID: uint16
-	// - name: char[20]
-	if isNewFormat {
-		result.Flags = TileFlag(binary.LittleEndian.Uint64(data[0:8]))
-		result.TextureID = binary.LittleEndian.Uint16(data[8:10])
-		result.Name = readStringFromBytes(data[10:30])
-	} else {
-		result.Flags = TileFlag(binary.LittleEndian.Uint32(data[0:4]))
-		result.TextureID = binary.LittleEndian.Uint16(data[4:6])
-		result.Name = readStringFromBytes(data[6:26])
-	}
-
-	return result
+	return uofile.Decode(file, uint32(landOffset+id), decodeLandTile)
 }
 
 // StaticTile returns a specific static tile's data by ID
@@ -184,64 +159,7 @@ func (s *SDK) StaticTile(id int) (StaticItemData, error) {
 		return StaticItemData{}, err
 	}
 
-	data, _, err := file.Read(uint32(id))
-	if err != nil {
-		return StaticItemData{}, fmt.Errorf("error reading static tile data: %w", err)
-	}
-
-	return makeStaticItemData(data, s.isNewTileDataFormat()), nil
-}
-
-// makeStaticItemData converts raw bytes into a StaticItemData struct
-func makeStaticItemData(data []byte, isNewFormat bool) StaticItemData {
-	var result StaticItemData
-	var offset int
-
-	// Static tile format:
-	// - flags: uint32/uint64 (depends on format)
-	// - weight: byte
-	// - quality: byte
-	// - miscData: int16
-	// - unk2: byte
-	// - quantity: byte
-	// - animation: int16
-	// - unk3: byte
-	// - hue: byte
-	// - stackingOffset: byte
-	// - value: byte
-	// - height: byte
-	// - name: char[20]
-	if isNewFormat {
-		result.Flags = TileFlag(binary.LittleEndian.Uint64(data[0:8]))
-		offset = 8
-	} else {
-		result.Flags = TileFlag(binary.LittleEndian.Uint32(data[0:4]))
-		offset = 4
-	}
-
-	result.Weight = data[offset]
-	result.Quality = data[offset+1]
-	result.MiscData = int16(binary.LittleEndian.Uint16(data[offset+2 : offset+4]))
-	result.Unk2 = data[offset+4]
-	result.Quantity = data[offset+5]
-	result.Animation = int16(binary.LittleEndian.Uint16(data[offset+6 : offset+8]))
-	result.Unk3 = data[offset+8]
-	result.Hue = data[offset+9]
-	result.StackingOffset = data[offset+10]
-	result.Value = data[offset+11]
-	result.Height = data[offset+12]
-	result.Name = readStringFromBytes(data[offset+13 : offset+33])
-
-	return result
-}
-
-// isNewTileDataFormat returns whether the newer tiledata format should be used
-// This would typically be determined by client version, but for now we'll assume
-// the newer format is used
-func (s *SDK) isNewTileDataFormat() bool {
-	// TODO: Implement proper client version checking similar to C#'s Art.IsUOAHS()
-	// For now, we'll assume the newer format
-	return true
+	return uofile.Decode(file, uint32(id), decodeStaticTile)
 }
 
 // staticTileCount returns the number of static tiles in the tiledata file
@@ -258,16 +176,14 @@ func (s *SDK) LandTiles() iter.Seq[LandTileData] {
 		return func(yield func(LandTileData) bool) {}
 	}
 
-	isNewFormat := s.isNewTileDataFormat()
-
 	return func(yield func(LandTileData) bool) {
 		for i := 0; i < 0x4000; i++ {
-			data, _, err := file.Read(uint32(landOffset + i))
+			tile, err := uofile.Decode(file, uint32(landOffset+i), decodeLandTile)
 			if err != nil {
 				continue
 			}
 
-			if !yield(makeLandTileData(data, isNewFormat)) {
+			if !yield(tile) {
 				break
 			}
 		}
@@ -281,17 +197,16 @@ func (s *SDK) StaticTiles() iter.Seq[StaticItemData] {
 		return func(yield func(StaticItemData) bool) {}
 	}
 
-	isNewFormat := s.isNewTileDataFormat()
 	count := s.staticTileCount()
 
 	return func(yield func(StaticItemData) bool) {
 		for i := 0; i < count; i++ {
-			data, _, err := file.Read(uint32(i))
+			tile, err := uofile.Decode(file, uint32(i), decodeStaticTile)
 			if err != nil {
 				continue
 			}
 
-			if !yield(makeStaticItemData(data, isNewFormat)) {
+			if !yield(tile) {
 				break
 			}
 		}
@@ -300,8 +215,7 @@ func (s *SDK) StaticTiles() iter.Seq[StaticItemData] {
 
 // decodeTileDataFile loads the tiledata.mul file and populates the internal
 // data structures for land and static tiles
-func decodeTileDataFile(file *os.File, add mul.AddFn) error {
-	// Calculate file size to help determine format and static entries count
+func decodeTileDataFile(file *mmap.File, add mul.AddFn) error {
 	fileInfo, err := file.Stat()
 	if err != nil {
 		return err
@@ -314,11 +228,6 @@ func decodeTileDataFile(file *os.File, add mul.AddFn) error {
 	if err != nil {
 		return err
 	}
-
-	// Determine if this is a new format (post-AHS) or old format
-	// New format has 64-bit flags, old format has 32-bit flags
-	// The easiest way to distinguish is by file size
-	isNewFormat := true // Assume new format
 
 	// Land tiles are separated into blocks of 32 entries, each with a 4-byte header
 	landBlockCount := 0x4000 / 32 // 512 blocks of land tiles
@@ -334,12 +243,7 @@ func decodeTileDataFile(file *os.File, add mul.AddFn) error {
 			tileID := (block * 32) + i
 
 			// Read flags (4 or 8 bytes depending on format)
-			var flagsSize int
-			if isNewFormat {
-				flagsSize = 8
-			} else {
-				flagsSize = 4
-			}
+			const flagsSize = 8
 
 			// Read textureID (2 bytes) and name (20 bytes)
 			totalSize := flagsSize + 2 + 20
@@ -362,11 +266,7 @@ func decodeTileDataFile(file *os.File, add mul.AddFn) error {
 	// Calculate how many static tile blocks we have based on remaining file size
 	// Each static tile entry is larger than land tiles
 	staticEntrySize := 0
-	if isNewFormat {
-		staticEntrySize = 8 + 1 + 1 + 2 + 1 + 1 + 2 + 1 + 1 + 1 + 1 + 1 + 20
-	} else {
-		staticEntrySize = 4 + 1 + 1 + 2 + 1 + 1 + 2 + 1 + 1 + 1 + 1 + 1 + 20
-	}
+	staticEntrySize = 8 + 1 + 1 + 2 + 1 + 1 + 2 + 1 + 1 + 1 + 1 + 1 + 20
 
 	// Process static tiles - each block has a 4-byte header followed by 32 entries
 	// We'll use a sequential index for static tiles, starting at 0
@@ -408,4 +308,47 @@ func (s *SDK) HeightTable() ([]int, error) {
 	}
 
 	return heights, nil
+}
+
+func decodeLandTile(data []byte, _ uint64) (LandTileData, error) {
+	var out LandTileData
+	out.Flags = TileFlag(binary.LittleEndian.Uint64(data[0:8]))
+	out.TextureID = binary.LittleEndian.Uint16(data[8:10])
+	out.Name = readStringFromBytes(data[10:30])
+	return out, nil
+}
+
+func decodeStaticTile(data []byte, _ uint64) (StaticItemData, error) {
+	var out StaticItemData
+
+	// Static tile format:
+	// - flags: uint32/uint64 (depends on format)
+	// - weight: byte
+	// - quality: byte
+	// - miscData: int16
+	// - unk2: byte
+	// - quantity: byte
+	// - animation: int16
+	// - unk3: byte
+	// - hue: byte
+	// - stackingOffset: byte
+	// - value: byte
+	// - height: byte
+	// - name: char[20]
+	out.Flags = TileFlag(binary.LittleEndian.Uint64(data[0:8]))
+	offset := 8
+
+	out.Weight = data[offset]
+	out.Quality = data[offset+1]
+	out.MiscData = int16(binary.LittleEndian.Uint16(data[offset+2 : offset+4]))
+	out.Unk2 = data[offset+4]
+	out.Quantity = data[offset+5]
+	out.Animation = int16(binary.LittleEndian.Uint16(data[offset+6 : offset+8]))
+	out.Unk3 = data[offset+8]
+	out.Hue = data[offset+9]
+	out.StackingOffset = data[offset+10]
+	out.Value = data[offset+11]
+	out.Height = data[offset+12]
+	out.Name = readStringFromBytes(data[offset+13 : offset+33])
+	return out, nil
 }

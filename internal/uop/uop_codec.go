@@ -11,6 +11,16 @@ import (
 	"io"
 )
 
+// CompressionType represents the compression method used for a UOP entry
+type CompressionType int16
+
+// Compression flag constants
+const (
+	CompressionNone   CompressionType = 0
+	CompressionZlib   CompressionType = 1
+	CompressionMythic CompressionType = 2
+)
+
 // decode decompresses data based on the compression flag
 func decode(data []byte, flag CompressionType) ([]byte, error) {
 	switch flag {

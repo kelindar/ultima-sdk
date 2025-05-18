@@ -10,10 +10,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"iter"
 
+	"codeberg.org/go-mmap/mmap"
 	"github.com/kelindar/ultima-sdk/internal/mul"
 )
 
@@ -23,23 +23,21 @@ var (
 )
 
 // StringEntry represents a single localized string entry from a cliloc file.
-// It corresponds to the C# Ultima.StringEntry class.
-type StringEntry struct {
-	ID   int    // The numeric ID of the string.
-	Flag byte   // A flag associated with the string (e.g., custom, modified).
-	Text string // The localized text content. Placeholders like ~1_NAME~ are preserved.
+type StringEntry []byte
+
+// ID returns the ID of the string entry
+func (s StringEntry) ID() int {
+	return int(binary.LittleEndian.Uint32(s[0:4]))
 }
 
-// makeStringEntry converts raw byte data into a StringEntry
-func makeStringEntry(data []byte) StringEntry {
-	// First 4 bytes: ID (int32)
-	// Next 1 byte: Flag
-	// Remaining bytes: Text
-	return StringEntry{
-		ID:   int(binary.LittleEndian.Uint32(data[0:4])),
-		Flag: data[4],
-		Text: string(data[5:]),
-	}
+// Flag returns the flag of the string entry
+func (s StringEntry) Flag() byte {
+	return s[4]
+}
+
+// Text returns the text of the string entry
+func (s StringEntry) Text() string {
+	return string(s[5:])
 }
 
 // String retrieves a localized string by its ID using the default language ("enu").
@@ -55,7 +53,7 @@ func (s *SDK) StringWithLang(id int, lang string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return entry.Text, nil
+	return entry.Text(), nil
 }
 
 // StringEntry retrieves a string entry by its ID using the default language ("enu").
@@ -65,12 +63,12 @@ func (s *SDK) StringEntry(id int, lang string) (StringEntry, error) {
 		return StringEntry{}, err
 	}
 
-	data, _, err := file.Read(uint32(id))
+	data, err := file.ReadFull(uint32(id))
 	if err != nil {
-		return StringEntry{}, fmt.Errorf("%w: %d", ErrInvalidStringID, id)
+		return StringEntry{}, err
 	}
 
-	return makeStringEntry(data), nil
+	return StringEntry(data), nil
 }
 
 // Strings returns an iterator over all localized strings in the default language ("enu").
@@ -86,14 +84,19 @@ func (s *SDK) StringsWithLang(lang string) iter.Seq2[int, string] {
 	}
 
 	return func(yield func(int, string) bool) {
+		buffer := make([]byte, 1024)
 		for index := range file.Entries() {
-			data, _, err := file.Read(index)
+			entry, err := file.Entry(index)
 			if err != nil {
 				continue
 			}
 
-			entry := makeStringEntry(data)
-			if !yield(entry.ID, entry.Text) {
+			if _, err := entry.ReadAt(buffer[:entry.Len()], 0); err != nil {
+				continue
+			}
+
+			txt := StringEntry(buffer[:entry.Len()])
+			if !yield(txt.ID(), txt.Text()) {
 				break
 			}
 		}
@@ -110,7 +113,7 @@ func (s *SDK) StringsWithLang(lang string) iter.Seq2[int, string] {
 //   - Flag (byte)
 //   - Length (int16, LittleEndian)
 //   - Text (bytes[Length], UTF-8 encoded)
-func decodeClilocFile(file *os.File, add mul.AddFn) error {
+func decodeClilocFile(file *mmap.File, add mul.AddFn) error {
 	reader := bufio.NewReader(file)
 
 	// Read file headers

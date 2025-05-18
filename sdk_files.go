@@ -19,7 +19,7 @@ func (s *SDK) loadHues() (*uofile.File, error) {
 
 // loadRadarcol loads the radar colors file
 func (s *SDK) loadRadarcol() (*uofile.File, error) {
-	return s.load([]string{"radarcol.mul"}, totalRadarColors)
+	return s.load([]string{"radarcol.mul"}, 0)
 }
 
 // loadSkills loads the skills file
@@ -105,7 +105,6 @@ func (s *SDK) loadMap(mapID int) (*uofile.File, error) {
 // loadStatics loads the statics files for a specific map ID
 func (s *SDK) loadStatics(mapID int) (*uofile.File, error) {
 	return s.load([]string{
-		// UOP variant first, to apply patches from verdata
 		fmt.Sprintf("statics%dLegacyMUL.uop", mapID),
 		fmt.Sprintf("statics%d.mul", mapID),
 		fmt.Sprintf("staidx%d.mul", mapID),
@@ -122,13 +121,6 @@ func (s *SDK) loadMulti() (*uofile.File, error) {
 		"multi.mul",   // MUL format
 		"multi.idx",
 	}, 0x2200, uofile.WithIndexLength(14))
-}
-
-// loadVerdata loads the verdata file which contains patches
-func (s *SDK) loadVerdata() (*uofile.File, error) {
-	return s.load([]string{
-		"verdata.mul",
-	}, 0, uofile.WithIndexLength(12))
 }
 
 // loadAnim loads the animation files for a specific file type
@@ -157,13 +149,6 @@ func (s *SDK) loadAnimdata() (*uofile.File, error) {
 	return s.load([]string{"animdata.mul"}, 0, uofile.WithChunks(548))
 }
 
-// loadUnicodeFonts loads the Unicode fonts file
-func (s *SDK) loadUnicodeFonts() (*uofile.File, error) {
-	return s.load([]string{
-		"fonts.mul",
-	}, 0, uofile.WithIndexLength(12))
-}
-
 // load loads a file with the given file names and length
 // It tries to find the file in cache first, if not found, it creates a new file handle and caches it
 // The fileNames parameter should contain possible filenames to look for (e.g., both mul and uop variants)
@@ -187,17 +172,6 @@ func (s *SDK) load(fileNames []string, length int, options ...uofile.Option) (*u
 	}
 
 	return file, nil
-}
-
-// fileExists checks if a specific file exists in the basePath
-func (s *SDK) fileExists(fileName string) bool {
-	file := uofile.New(s.basePath, []string{fileName}, 0)
-	defer file.Close()
-
-	// Try to read entry 0, if it fails with a specific error that
-	// tells us the file doesn't exist, otherwise we assume it exists
-	_, _, err := file.Read(0)
-	return err == nil || err != uofile.ErrInvalidFormat
 }
 
 // closeAllFiles closes all open file handles

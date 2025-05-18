@@ -4,7 +4,6 @@
 package ultima
 
 import (
-	"encoding/binary"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -129,87 +128,4 @@ func TestTileData_Helpers(t *testing.T) {
 		assert.Equal(t, "", result)
 	})
 
-	t.Run("makeLandTileData", func(t *testing.T) {
-		// Test with new format
-		flagsValue := uint64(TileFlagBackground | TileFlagTransparent)
-		textureID := uint16(123)
-		name := "Test Land Tile"
-
-		// Create raw data in the expected format
-		data := make([]byte, 30)
-		// Write flags
-		binary.LittleEndian.PutUint64(data[0:8], flagsValue)
-		// Write textureID
-		binary.LittleEndian.PutUint16(data[8:10], textureID)
-		// Write name
-		copy(data[10:], append([]byte(name), 0))
-
-		result := makeLandTileData(data, true)
-
-		assert.Equal(t, TileFlag(flagsValue), result.Flags)
-		assert.Equal(t, textureID, result.TextureID)
-		assert.Equal(t, name, result.Name)
-	})
-
-	t.Run("makeStaticItemData", func(t *testing.T) {
-		// Test with new format (flags are uint64)
-		isNewFormat := true
-		flagsValue := uint64(TileFlagWearable | TileFlagContainer)
-		weight := byte(10)
-		quality := byte(20)
-		miscData := int16(30)
-		unk2 := byte(40)
-		quantity := byte(50)
-		animation := int16(60)
-		unk3 := byte(70)
-		hue := byte(80)
-		stackingOffset := byte(90)
-		value := byte(100)
-		height := byte(110)
-		name := "Test Static Item"
-
-		// Create raw data in the expected format
-		var data []byte
-		var headerSize int
-		if isNewFormat {
-			headerSize = 8                        // 64-bit flags
-			data = make([]byte, headerSize+13+20) // header + fields + name
-			binary.LittleEndian.PutUint64(data[0:8], flagsValue)
-		} else {
-			headerSize = 4                        // 32-bit flags
-			data = make([]byte, headerSize+13+20) // header + fields + name
-			binary.LittleEndian.PutUint32(data[0:4], uint32(flagsValue))
-		}
-
-		// Write basic fields
-		offset := headerSize
-		data[offset] = weight
-		data[offset+1] = quality
-		binary.LittleEndian.PutUint16(data[offset+2:offset+4], uint16(miscData))
-		data[offset+4] = unk2
-		data[offset+5] = quantity
-		binary.LittleEndian.PutUint16(data[offset+6:offset+8], uint16(animation))
-		data[offset+8] = unk3
-		data[offset+9] = hue
-		data[offset+10] = stackingOffset
-		data[offset+11] = value
-		data[offset+12] = height
-		copy(data[offset+13:], append([]byte(name), 0))
-
-		result := makeStaticItemData(data, isNewFormat)
-
-		assert.Equal(t, TileFlag(flagsValue), result.Flags)
-		assert.Equal(t, weight, result.Weight)
-		assert.Equal(t, quality, result.Quality)
-		assert.Equal(t, miscData, result.MiscData)
-		assert.Equal(t, unk2, result.Unk2)
-		assert.Equal(t, quantity, result.Quantity)
-		assert.Equal(t, animation, result.Animation)
-		assert.Equal(t, unk3, result.Unk3)
-		assert.Equal(t, hue, result.Hue)
-		assert.Equal(t, stackingOffset, result.StackingOffset)
-		assert.Equal(t, value, result.Value)
-		assert.Equal(t, height, result.Height)
-		assert.Equal(t, name, result.Name)
-	})
 }
