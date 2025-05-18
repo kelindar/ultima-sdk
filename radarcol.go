@@ -112,8 +112,7 @@ func (s *SDK) RadarColors() iter.Seq[RadarColor] {
 		}
 
 		for i := 0; i < entryCount; i++ {
-			color := binary.LittleEndian.Uint16(data[i*2:])
-			radarColor := makeRadarColor(i, color)
+			radarColor := makeRadarColor(i, binary.LittleEndian.Uint16(data[i*2:]))
 
 			if !yield(radarColor) {
 				break

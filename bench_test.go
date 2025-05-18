@@ -13,11 +13,11 @@ import (
 
 /*
 cpu: 13th Gen Intel(R) Core(TM) i7-13700K
-BenchmarkSDK/MapImage-24         	       1	1263445600 ns/op	580756288 B/op	50332215 allocs/op
-BenchmarkSDK/MapTiles-24         	      28	  43026179 ns/op	12591062 B/op	  393505 allocs/op
-BenchmarkSDK/GumpImage-24        	      12	  96974425 ns/op	106561401 B/op	    4285 allocs/op
-BenchmarkSDK/SpeechIter-24       	    9487	    129235 ns/op	  115592 B/op	    6124 allocs/op
-BenchmarkSDK/ClilocIter-24       	     820	   1415395 ns/op	     165 B/op	      10 allocs/op
+BenchmarkSDK/MapImage-24         	       5	 236404220 ns/op	101894808 B/op	25165936 allocs/op
+BenchmarkSDK/MapTiles-24         	      20	  52408685 ns/op	28328139 B/op	 1179853 allocs/op
+BenchmarkSDK/GumpImage-24        	 3057141	       392.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSDK/SpeechIter-24       	    3674	    318688 ns/op	  363553 B/op	   18336 allocs/op
+BenchmarkSDK/ClilocIter-24       	     802	   1518125 ns/op	    1220 B/op	      11 allocs/op
 */
 func BenchmarkSDK(b *testing.B) {
 	benchWith(b, func(sdk *SDK) {

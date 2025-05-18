@@ -204,6 +204,11 @@ func (m *TileMap) Image() (image.Image, error) {
 	img := bitmap.NewARGB1555(image.Rect(0, 0, m.width, m.height))
 	blocksDown := m.height / 8
 
+	colors := make([]RadarColor, 0, totalRadarColors)
+	for c := range m.sdk.RadarColors() {
+		colors = append(colors, c)
+	}
+
 	buffer := make([]byte, 196*blocksPerEntry)
 	for entry := range m.mapFile.Entries() {
 		data, err := m.mapFile.Entry(uint32(entry))
@@ -236,12 +241,11 @@ func (m *TileMap) Image() (image.Image, error) {
 				tileID := binary.LittleEndian.Uint16(tiles[off : off+2])
 				x0 := (i % 8) + blockX*8
 				y0 := (i / 8) + blockY*8
-				rc, err := m.sdk.RadarColor(int(tileID))
-				if err != nil {
+				if int(tileID) >= len(colors) {
 					continue
 				}
 
-				img.Set(x0, y0, rc.GetColor())
+				img.Set(x0, y0, colors[tileID].GetColor())
 			}
 		}
 	}
