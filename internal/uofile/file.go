@@ -39,7 +39,6 @@ var (
 
 // Reader defines the common interface for both MUL and UOP readers
 type Reader interface {
-	Read(*bytes.Buffer, uint32) ([]byte, uint64, error)
 	Entry(key uint32) (Entry, error)
 	Entries() iter.Seq[uint32]
 	Close() error

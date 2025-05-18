@@ -4,7 +4,6 @@
 package uop
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -244,36 +243,6 @@ func (r *Reader) Close() error {
 	r.closed = true
 	r.entries = nil
 	return r.file.Close()
-}
-
-// Read reads data from the file at the specified index
-func (r *Reader) Read(buffer *bytes.Buffer, key uint32) (out []byte, extra uint64, err error) {
-	entry, err := r.entryAt(key)
-	switch {
-	case err != nil:
-		return nil, 0, err
-	case entry == nil:
-		return nil, 0, ErrInvalidEntry
-	case entry.offset == 0xFFFFFFFF: // Skip invalid entries (offset == 0xFFFFFFFF or length == 0)
-		return nil, 0, nil
-	case entry.length == 0:
-		return nil, 0, nil
-	}
-
-	// Ensure the buffer is large enough
-	if buffer != nil {
-		buffer.Grow(int(entry.length))
-		out = buffer.Bytes()[:entry.length]
-	} else {
-		out = make([]byte, entry.length)
-	}
-
-	// Read data from the file at the specified offset
-	if _, err := r.file.ReadAt(out, int64(entry.offset)); err != nil {
-		return nil, 0, fmt.Errorf("failed to read data at index %d: %w", key, err)
-	}
-
-	return out, uint64(entry.extra), err
 }
 
 // Entry returns an entry reader

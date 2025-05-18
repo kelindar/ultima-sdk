@@ -6,7 +6,6 @@ package uop
 import (
 	"bytes"
 	"compress/zlib"
-	"iter"
 	"path/filepath"
 	"testing"
 
@@ -65,43 +64,14 @@ func TestEntryOperations(t *testing.T) {
 	// Test Read method with the first valid index
 	if len(indices) > 0 {
 		firstIndex := indices[0]
-		data, _, err := reader.Read(firstIndex)
+		data, err := reader.Entry(firstIndex)
 		require.NoError(t, err)
 		assert.NotNil(t, data, "Data should not be nil")
-		assert.Greater(t, len(data), 0, "Data should not be empty")
 
 		// Test invalid index
-		_, _, err = reader.Read(uint32(0xFFFFFFFF))
+		_, err = reader.Entry(uint32(0xFFFFFFFF))
 		assert.Error(t, err, "Reading invalid index should return error")
 	}
-}
-
-// TestReaderInterface tests that Reader implements the required interface
-func TestReaderInterface(t *testing.T) {
-	testDataPath := uotest.Path()
-	require.NotEmpty(t, testDataPath, "Test data path should not be empty")
-
-	// Find UOP files in test data directory
-	uopFiles, err := filepath.Glob(filepath.Join(testDataPath, "*.uop"))
-	if err != nil || len(uopFiles) == 0 {
-		t.Skip("No UOP files found in test data directory")
-		return
-	}
-
-	// Use the first found UOP file for testing
-	testUOP := uopFiles[0]
-
-	// Create a reader
-	reader, err := Open(testUOP, 10)
-	require.NoError(t, err)
-	defer reader.Close()
-
-	// Test that we can assign the reader to a variable of the interface type
-	var _ interface {
-		Read(uint32) ([]byte, uint64, error)
-		Entries() iter.Seq[uint32]
-		Close() error
-	} = reader
 }
 
 // TestCompression tests the compression/decompression functionality
