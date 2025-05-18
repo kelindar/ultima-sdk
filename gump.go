@@ -10,24 +10,15 @@ import (
 	"iter"
 
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
+	"github.com/kelindar/ultima-sdk/internal/uofile"
 )
 
 // Gump represents a UI element or graphic.
 type Gump struct {
-	ID        int    // ID of the gump
-	Width     int    // Width in pixels
-	Height    int    // Height in pixels
-	imageData []byte // Raw gump data
-}
-
-// Image retrieves and decodes the gump's graphical representation.
-func (g *Gump) Image() (image.Image, error) {
-	if len(g.imageData) == 0 {
-		return nil, fmt.Errorf("%w: no gump data available", ErrInvalidArtData)
-	}
-
-	// Decode the image
-	return decodeGumpData(g.imageData, g.Width, g.Height)
+	ID     int         // ID of the gump
+	Width  int         // Width in pixels
+	Height int         // Height in pixels
+	Image  image.Image // Image of the gump
 }
 
 // Gump retrieves a specific gump graphic by its ID.
@@ -39,27 +30,13 @@ func (s *SDK) Gump(id int) (*Gump, error) {
 		return nil, err
 	}
 
-	// Read the raw data and info
-	data, extra, err := file.Read(uint32(id))
+	g, err := uofile.Decode(file, uint32(id), decodeGump)
 	if err != nil {
 		return nil, err
 	}
 
-	// The extra data contains width and height information
-	width := int(extra & 0xFFFF)
-	height := int((extra >> 32) & 0xFFFF)
-
-	// Sanity check
-	if width <= 0 || height <= 0 || width > 2048 || height > 2048 {
-		return nil, fmt.Errorf("%w: invalid gump dimensions %dx%d", ErrInvalidArtData, width, height)
-	}
-
-	return &Gump{
-		ID:        id,
-		Width:     width,
-		Height:    height,
-		imageData: data,
-	}, nil
+	g.ID = id
+	return g, nil
 }
 
 // Gumps returns an iterator over metadata (ID, width, height) for all available gumps.
@@ -72,31 +49,38 @@ func (s *SDK) Gumps() iter.Seq[*Gump] {
 		}
 
 		for id := range file.Entries() {
-			data, extra, err := file.Read(id)
+			g, err := uofile.Decode(file, uint32(id), decodeGump)
 			if err != nil {
-				break // End of file or invalid entry
-			}
-
-			// The extra data contains width and height information
-			width := int(extra & 0xFFFF)
-			height := int((extra >> 32) & 0xFFFF)
-
-			// Sanity check
-			if width <= 0 || height <= 0 || width > 2048 || height > 2048 {
 				continue
 			}
 
-			// Yield the info to the iterator
-			if !yield(&Gump{
-				ID:        int(id),
-				Width:     width,
-				Height:    height,
-				imageData: data,
-			}) {
+			g.ID = int(id)
+			if !yield(g) {
 				break
 			}
 		}
 	}
+}
+
+func decodeGump(data []byte, extra uint64) (*Gump, error) {
+	width := int(extra & 0xFFFF)
+	height := int((extra >> 32) & 0xFFFF)
+
+	// Sanity check
+	if width <= 0 || height <= 0 || width > 2048 || height > 2048 {
+		return nil, fmt.Errorf("%w: invalid gump dimensions %dx%d", ErrInvalidArtData, width, height)
+	}
+
+	img, err := decodeGumpData(data, width, height)
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to decode gump: %v", ErrInvalidArtData, err)
+	}
+
+	return &Gump{
+		Width:  width,
+		Height: height,
+		Image:  img,
+	}, nil
 }
 
 // decodeGumpData converts raw gump data into an image.Image (RGBA8888).
@@ -139,72 +123,4 @@ func decodeGumpData(data []byte, width, height int) (image.Image, error) {
 	}
 
 	return img1555, nil
-}
-
-// decodeGumpData converts raw gump data to an image.Image.
-// Gumps are stored in a run-length encoded format with 16-bit color values.
-func decodeGumpData2(data []byte, width, height int) (image.Image, error) {
-	if len(data) < 4 {
-		return nil, fmt.Errorf("%w: gump data too short for lookup table", ErrInvalidArtData)
-	}
-
-	// Create a new bitmap to hold the decoded image
-	img := bitmap.NewARGB1555(image.Rect(0, 0, width, height))
-
-	// Read lookup pointers for each line
-	lookupTable := make([]int, height)
-	for y := 0; y < height; y++ {
-		// Each lookup is a 4-byte offset from the start of the data
-		if (y*4)+4 > len(data) {
-			return nil, fmt.Errorf("%w: gump data truncated in lookup table at line %d", ErrInvalidArtData, y)
-		}
-		lookupTable[y] = int(binary.LittleEndian.Uint32(data[y*4 : y*4+4]))
-	}
-
-	// Process each line
-	for y := 0; y < height; y++ {
-		x := 0 // Current x position in the output image
-
-		offset := lookupTable[y]
-		if offset < 0 || offset >= len(data) {
-			return nil, fmt.Errorf("%w: invalid lookup offset %d for line %d", ErrInvalidArtData, offset, y)
-		}
-
-		// Process RLE data for this line
-		for x < width {
-			// Need at least 4 more bytes for an RLE pair (2 bytes color + 2 bytes run length)
-			if offset+4 > len(data) {
-				return nil, fmt.Errorf("%w: gump data truncated during RLE decoding at y=%d, x=%d", ErrInvalidArtData, y, x)
-			}
-
-			// Read color and run length
-			colorValue := binary.LittleEndian.Uint16(data[offset : offset+2])
-			offset += 2
-			runLength := int(binary.LittleEndian.Uint16(data[offset : offset+2]))
-			offset += 2
-
-			// 0,0 is the terminator for the line
-			if colorValue == 0 && runLength == 0 {
-				break
-			}
-
-			if colorValue == 0 {
-				// Transparent run
-				x += runLength
-			} else {
-				// Opaque run - flip the most significant bit to set alpha
-				colorValue ^= 0x8000
-
-				// Draw the pixels
-				for i := 0; i < runLength; i++ {
-					if x+i < width {
-						img.Set(x+i, y, bitmap.ARGB1555Color(colorValue))
-					}
-				}
-				x += runLength
-			}
-		}
-	}
-
-	return img, nil
 }

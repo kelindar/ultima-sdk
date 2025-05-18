@@ -15,12 +15,21 @@ import (
 const blocksPerEntry = 4096
 
 // StaticItem represents a single static placed on the map.
-type StaticItem struct {
-	ID  uint16 // Static tile ID
-	X   uint8  // X offset within the block
-	Y   uint8  // Y offset within the block
-	Z   int8   // Elevation
-	Hue uint16 // Color hue
+type StaticItem []byte
+
+// ID returns the static ID
+func (s *StaticItem) ID() uint16 {
+	return binary.LittleEndian.Uint16((*s)[:2])
+}
+
+// Location returns the static location
+func (s *StaticItem) Location() (x, y uint8, z int8) {
+	return (*s)[2], (*s)[3], int8((*s)[4])
+}
+
+// Hue returns the static hue
+func (s *StaticItem) Hue() uint16 {
+	return binary.LittleEndian.Uint16((*s)[5:7])
 }
 
 // Tile represents a single map tile, including statics.
@@ -55,17 +64,19 @@ func decodeMapTile(block []byte, tileIndex int, statics []StaticItem) (*Tile, er
 	if len(block) < 196 {
 		return nil, fmt.Errorf("decodeMapTile: expected 196 bytes, got %d", len(block))
 	}
+
 	tileData := block[tileIndex*3 : tileIndex*3+3]
-	// Calculate x, y within the block
 	x := tileIndex % 8
 	y := tileIndex / 8
+
 	// Filter statics for this tile
 	var tileStatics []StaticItem
 	for _, s := range statics {
-		if int(s.X) == x && int(s.Y) == y {
+		if sx, sy, _ := s.Location(); int(sx) == x && int(sy) == y {
 			tileStatics = append(tileStatics, s)
 		}
 	}
+
 	return &Tile{
 		ID:      binary.LittleEndian.Uint16(tileData[:2]),
 		Z:       int8(tileData[2]),
@@ -86,53 +97,59 @@ func (m *TileMap) TileAt(x, y int) (*Tile, error) {
 	blockIndex := blockX*blocksDown + blockY
 	entryIndex := blockIndex / blocksPerEntry
 	blockOffset := blockIndex % blocksPerEntry
+	blockStart := 4 + blockOffset*196
+	tileIndex := (y%8)*8 + (x % 8)
 
 	// Read the entry and check if it's valid
-	entry, _, err := m.mapFile.Read(uint32(entryIndex))
+	entry, err := m.mapFile.Entry(uint32(entryIndex))
 	switch {
 	case err != nil:
 		return nil, fmt.Errorf("TileAt: failed reading UOP entry: %w", err)
-	case len(entry) < 4+(blockOffset+1)*196:
-		return nil, fmt.Errorf("TileAt: entry too small for block offset (entry len=%d, needed=%d)", len(entry), 4+(blockOffset+1)*196)
+	case entry.Len() < 4+(blockOffset+1)*196:
+		return nil, fmt.Errorf("TileAt: entry too small for block offset (entry len=%d, needed=%d)", entry.Len(), 4+(blockOffset+1)*196)
 	}
 
 	// Get the block data
-	blockStart := 4 + blockOffset*196
-	blockData := entry[blockStart : blockStart+196]
-	tileIndex := (y%8)*8 + (x % 8)
+	buffer, release := uofile.Borrow(196)
+	defer release()
+
+	n, err := entry.ReadAt(buffer, int64(blockStart))
+	switch {
+	case err != nil:
+		return nil, fmt.Errorf("TileAt: failed reading entry: %w", err)
+	case n < 196:
+		return nil, fmt.Errorf("TileAt: entry too small for block offset (entry len=%d, needed=%d)", n, 196)
+	}
 
 	// Read statics for this block
 	statics, err := m.readStatics(blockIndex)
 	if err != nil {
 		return nil, fmt.Errorf("TileAt: failed to read statics: %w", err)
 	}
-	return decodeMapTile(blockData, tileIndex, statics)
+	return decodeMapTile(buffer, tileIndex, statics)
 }
 
 // readStatics reads and parses statics for a given block index.
 func (m *TileMap) readStatics(blockIndex int) ([]StaticItem, error) {
-	data, _, err := m.staticsFile.Read(uint32(blockIndex))
-	if err != nil || len(data) == 0 {
+	entry, err := m.staticsFile.Entry(uint32(blockIndex))
+	switch {
+	case err != nil:
+		return nil, fmt.Errorf("readStatics: failed reading UOP entry: %w", err)
+	case entry == nil:
 		return nil, nil
 	}
 
-	count := len(data) / 7
-	statics := make([]StaticItem, 0, count)
-	for i := 0; i < count; i++ {
-		off := i * 7
-		if off+7 > len(data) {
-			break
-		}
-		id := binary.LittleEndian.Uint16(data[off : off+2])
-		item := StaticItem{
-			ID:  id,
-			X:   data[off+2],
-			Y:   data[off+3],
-			Z:   int8(data[off+4]),
-			Hue: binary.LittleEndian.Uint16(data[off+5 : off+7]),
-		}
-		statics = append(statics, item)
+	buffer := make([]byte, entry.Len())
+	_, err = entry.ReadAt(buffer, 0)
+	if err != nil {
+		return nil, fmt.Errorf("readStatics: failed reading entry: %w", err)
 	}
+
+	statics := make([]StaticItem, 0, entry.Len()/7)
+	for i := 0; i < entry.Len()/7; i++ {
+		statics = append(statics, StaticItem(buffer[i*7:i*7+7]))
+	}
+
 	return statics, nil
 }
 
@@ -187,21 +204,32 @@ func (m *TileMap) Image() (image.Image, error) {
 	img := bitmap.NewARGB1555(image.Rect(0, 0, m.width, m.height))
 	blocksDown := m.height / 8
 
+	colors := make([]RadarColor, 0, totalRadarColors)
+	for c := range m.sdk.RadarColors() {
+		colors = append(colors, c)
+	}
+
+	buffer := make([]byte, 196*blocksPerEntry)
 	for entry := range m.mapFile.Entries() {
-		data, _, err := m.mapFile.Read(uint32(entry))
+		data, err := m.mapFile.Entry(uint32(entry))
 		switch {
 		case err != nil:
 			return nil, fmt.Errorf("map.Image: failed reading entry %d: %w", entry, err)
-		case len(data)%196 != 0:
-			return nil, fmt.Errorf("map.Image: entry %d has invalid length (%d bytes)", entry, len(data))
+		case data.Len()%196 != 0:
+			return nil, fmt.Errorf("map.Image: entry %d has invalid length (%d bytes)", entry, data.Len())
 		}
 
-		length := len(data) / 196
+		n, err := data.ReadAt(buffer, 0)
+		if err != nil {
+			return nil, fmt.Errorf("map.Image: failed reading entry %d: %w", entry, err)
+		}
+
+		length := n / 196
 		for blockIndex := 0; blockIndex < length; blockIndex++ {
 			blockAbs := int(entry)*length + blockIndex
 			blockX := blockAbs / blocksDown
 			blockY := blockAbs % blocksDown
-			blockData := data[blockIndex*196 : blockIndex*196+196]
+			blockData := buffer[blockIndex*196 : blockIndex*196+196]
 			if len(blockData) < 4+192 {
 				return nil, fmt.Errorf("map.Image: block %d too short (%d bytes)", blockAbs, len(blockData))
 			}
@@ -213,11 +241,11 @@ func (m *TileMap) Image() (image.Image, error) {
 				tileID := binary.LittleEndian.Uint16(tiles[off : off+2])
 				x0 := (i % 8) + blockX*8
 				y0 := (i / 8) + blockY*8
-				rc, err := m.sdk.RadarColor(int(tileID))
-				if err != nil {
+				if int(tileID) >= len(colors) {
 					continue
 				}
-				img.Set(x0, y0, rc.GetColor())
+
+				img.Set(x0, y0, colors[tileID].GetColor())
 			}
 		}
 	}

@@ -68,50 +68,40 @@ func makeRadarColor(id int, value uint16) RadarColor {
 	return RadarColor(result)
 }
 
-// loadRadarData loads the entire radar color data file
-func (s *SDK) loadRadarData() ([]byte, error) {
-	file, err := s.loadRadarcol()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load radar colors: %w", err)
-	}
-
-	data, _, err := file.Read(0)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read radar color data: %w", err)
-	}
-
-	return data, nil
-}
-
 // RadarColor retrieves the radar color for a given tile ID
 func (s *SDK) RadarColor(tileID int) (RadarColor, error) {
-	// Validate the tile ID range (0 to 0x7FFF)
 	if tileID < 0 || tileID >= totalRadarColors {
 		return 0, fmt.Errorf("%w: %d (must be between 0 and 0x7FFF)", ErrInvalidRadarColorIndex, tileID)
 	}
 
-	data, err := s.loadRadarData()
+	file, err := s.loadRadarcol()
+	if err != nil {
+		return 0, fmt.Errorf("failed to load radar colors: %w", err)
+	}
+
+	entry, err := file.Entry(0)
 	if err != nil {
 		return 0, err
 	}
 
-	// Calculate byte position - tileID is already the correct position in the file
-	bytePos := tileID * 2
-	if bytePos+2 > len(data) {
-		return 0, fmt.Errorf("invalid radar color data: file too small for tile ID %d", tileID)
+	bytePos := int64(tileID) * 2
+	data := make([]byte, 2)
+	if _, err := entry.ReadAt(data, bytePos); err != nil {
+		return 0, err
 	}
 
-	// Extract the color value (little-endian)
-	value := binary.LittleEndian.Uint16(data[bytePos:])
-
-	// Create and return the bit-packed RadarColor
-	return makeRadarColor(tileID, value), nil
+	return makeRadarColor(tileID, binary.LittleEndian.Uint16(data)), nil
 }
 
 // RadarColors returns an iterator over all defined radar color mappings
 func (s *SDK) RadarColors() iter.Seq[RadarColor] {
 	return func(yield func(RadarColor) bool) {
-		data, err := s.loadRadarData()
+		file, err := s.loadRadarcol()
+		if err != nil {
+			return
+		}
+
+		data, err := file.ReadFull(0)
 		if err != nil {
 			return
 		}
@@ -122,8 +112,7 @@ func (s *SDK) RadarColors() iter.Seq[RadarColor] {
 		}
 
 		for i := 0; i < entryCount; i++ {
-			color := binary.LittleEndian.Uint16(data[i*2:])
-			radarColor := makeRadarColor(i, color)
+			radarColor := makeRadarColor(i, binary.LittleEndian.Uint16(data[i*2:]))
 
 			if !yield(radarColor) {
 				break

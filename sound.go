@@ -20,7 +20,8 @@ func (s *SDK) Sound(index int) (*Sound, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, _, err := file.Read(uint32(idx))
+
+	data, err := file.ReadFull(uint32(idx))
 	if err != nil || len(data) <= 32 {
 		return nil, nil
 	}

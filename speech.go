@@ -8,10 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"iter"
 
+	"codeberg.org/go-mmap/mmap"
 	"github.com/kelindar/ultima-sdk/internal/mul"
 )
 
@@ -21,16 +21,16 @@ var (
 )
 
 // Speech represents a single speech entry from speech.mul
-type Speech struct {
-	ID   int    // ID of the speech entry (from file)
-	Text string // Text content of the speech entry
+type Speech []byte
+
+// ID returns the id of the speecn entry
+func (s Speech) ID() int {
+	return int(binary.BigEndian.Uint16(s[0:2]))
 }
 
-func makeSpeech(data []byte) Speech {
-	return Speech{
-		ID:   int(binary.BigEndian.Uint16(data[0:2])),
-		Text: string(data[2:]),
-	}
+// Text returns the associated text
+func (s Speech) Text() string {
+	return string(s[2:])
 }
 
 // SpeechEntry retrieves a predefined speech entry by its ID
@@ -40,12 +40,12 @@ func (s *SDK) SpeechEntry(id int) (Speech, error) {
 		return Speech{}, err
 	}
 
-	data, _, err := file.Read(uint32(id))
+	data, err := file.ReadFull(uint32(id))
 	if err != nil {
 		return Speech{}, err
 	}
 
-	return makeSpeech(data), nil
+	return Speech(data), nil
 }
 
 // SpeechEntries returns an iterator over all defined speech entries
@@ -57,12 +57,12 @@ func (s *SDK) SpeechEntries() iter.Seq[Speech] {
 
 	return func(yield func(Speech) bool) {
 		for index := range file.Entries() {
-			data, _, err := file.Read(index)
+			data, err := file.ReadFull(index)
 			if err != nil {
 				continue
 			}
 
-			if !yield(makeSpeech(data)) {
+			if !yield(Speech(data)) {
 				break
 			}
 		}
@@ -76,7 +76,7 @@ func (s *SDK) SpeechEntries() iter.Seq[Speech] {
 //   - ID (int16, BigEndian)
 //   - Length (int16, BigEndian)
 //   - Text (bytes[Length], UTF-8 encoded)
-func decodeSpeechFile(reader *os.File, add mul.AddFn) error {
+func decodeSpeechFile(reader *mmap.File, add mul.AddFn) error {
 	const maxlen = 128
 	buffer := make([]byte, maxlen)
 	for index := uint32(0); ; index++ {

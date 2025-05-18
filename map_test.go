@@ -42,7 +42,7 @@ func TestTileMap_TileAt(t *testing.T) {
 				if tc.wantStatics != nil {
 					var tileStatics []uint16
 					for _, s := range tile.Statics {
-						tileStatics = append(tileStatics, s.ID)
+						tileStatics = append(tileStatics, s.ID())
 					}
 					assert.Equal(t, tc.wantStatics, tileStatics)
 				} else {
@@ -64,6 +64,6 @@ func TestTileMap_Image(t *testing.T) {
 		assert.Equal(t, m.width, bounds.Dx())
 		assert.Equal(t, m.height, bounds.Dy())
 
-		//savePng(img, "test.png")
+		assert.NoError(t, savePng(img, "test/map.png"))
 	})
 }

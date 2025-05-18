@@ -21,9 +21,8 @@ func TestFont_Load(t *testing.T) {
 				assert.NotNil(t, c, "Font %d: missing 'A'", i)
 				assert.Greater(t, c.Width, 0)
 				assert.Greater(t, c.Height, 0)
-				assert.NotNil(t, c.Bitmap)
-
-				//savePng(c.Bitmap, "a.png")
+				assert.NotNil(t, c.Image)
+				assert.NoError(t, savePng(c.Image, "test/font_ascii.png"))
 			}
 		})
 
@@ -34,8 +33,7 @@ func TestFont_Load(t *testing.T) {
 			assert.NotNil(t, c)
 			assert.GreaterOrEqual(t, c.Width, 0)
 			assert.GreaterOrEqual(t, c.Height, 0)
-
-			//savePng(c.Bitmap, "x.png")
+			assert.NoError(t, savePng(c.Image, "test/font_utf8.png"))
 		})
 	})
 }

@@ -18,14 +18,12 @@ func TestArt(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, tile)
 			assert.Equal(t, 0, tile.ID)
-			assert.True(t, tile.isLand)
 			assert.NotEmpty(t, tile.Name)
 			assert.NotEqual(t, uint64(0), tile.Flags)
 
-			img, err := tile.Image()
 			assert.NoError(t, err)
-			assert.NotNil(t, img)
-			//assert.NoError(t, savePng(img, "land.png"))
+			assert.NotNil(t, tile.Image)
+			assert.NoError(t, savePng(tile.Image, "test/art_land.png"))
 		})
 
 		t.Run("StaticArt", func(t *testing.T) {
@@ -34,13 +32,11 @@ func TestArt(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, tile)
 			assert.Equal(t, 0x0E3D+0x4000, tile.ID)
-			assert.False(t, tile.isLand)
 			assert.NotEmpty(t, tile.Name)
 
-			img, err := tile.Image()
 			assert.NoError(t, err)
-			assert.NotNil(t, img)
-			//assert.NoError(t, savePng(img, "static.png"))
+			assert.NotNil(t, tile.Image)
+			assert.NoError(t, savePng(tile.Image, "test/art_static.png"))
 		})
 
 		t.Run("ArtTile_Land", func(t *testing.T) {
@@ -49,7 +45,6 @@ func TestArt(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.Equal(t, 100, tile.ID)
-			assert.True(t, tile.isLand)
 		})
 
 		t.Run("ArtTile_Static", func(t *testing.T) {
@@ -58,20 +53,16 @@ func TestArt(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.Equal(t, 0x4000+8000, tile.ID)
-			assert.False(t, tile.isLand)
 		})
 
 		t.Run("LandArtImage", func(t *testing.T) {
 			// Test loading and decoding a land art image
 			tile, err := sdk.LandArtTile(100)
 			require.NoError(t, err)
-
-			img, err := tile.Image()
-			assert.NoError(t, err)
-			assert.NotNil(t, img)
+			assert.NotNil(t, tile.Image)
 
 			// Land art tiles should always be 44x44
-			bounds := img.Bounds()
+			bounds := tile.Image.Bounds()
 			assert.Equal(t, 44, bounds.Dx())
 			assert.Equal(t, 44, bounds.Dy())
 		})
@@ -79,14 +70,11 @@ func TestArt(t *testing.T) {
 		t.Run("StaticArtImage", func(t *testing.T) {
 			// Test loading and decoding a static art image
 			tile, err := sdk.StaticArtTile(8000)
-			require.NoError(t, err)
-
-			img, err := tile.Image()
 			assert.NoError(t, err)
-			assert.NotNil(t, img)
+			assert.NotNil(t, tile.Image)
 
 			// Static art tiles can have various dimensions, just make sure they're reasonable
-			bounds := img.Bounds()
+			bounds := tile.Image.Bounds()
 			assert.Greater(t, bounds.Dx(), 0)
 			assert.Greater(t, bounds.Dy(), 0)
 			assert.Less(t, bounds.Dx(), 1024) // Reasonable size limit
@@ -113,7 +101,6 @@ func TestArt(t *testing.T) {
 			counter := 0
 			for tile := range sdk.LandArtTiles() {
 				assert.NotNil(t, tile)
-				assert.True(t, tile.isLand)
 				assert.Less(t, tile.ID, 0x4000)
 
 				// Just check the first few to keep test runtime reasonable
@@ -129,7 +116,6 @@ func TestArt(t *testing.T) {
 			counter := 0
 			for tile := range sdk.StaticArtTiles() {
 				assert.NotNil(t, tile)
-				assert.False(t, tile.isLand)
 				assert.GreaterOrEqual(t, tile.ID, 0x4000)
 
 				// Just check the first few to keep test runtime reasonable
@@ -138,40 +124,6 @@ func TestArt(t *testing.T) {
 				}
 			}
 			assert.Greater(t, counter, 0, "Expected at least one static art tile")
-		})
-
-		t.Run("NoImageData", func(t *testing.T) {
-			// Test the behavior when an ArtTile has no image data
-			tile := ArtTile{
-				ID:        1000,
-				imageData: nil, // No image data
-			}
-
-			_, err := tile.Image()
-			assert.Error(t, err)
-		})
-
-		t.Run("RetrieveTwice", func(t *testing.T) {
-			// Get the same tile twice, should not reprocess the image
-			tile1, err := sdk.ArtTile(100)
-			require.NoError(t, err)
-
-			// Load the image
-			img1, err := tile1.Image()
-			require.NoError(t, err)
-
-			// Get the same tile again
-			tile2, err := sdk.ArtTile(100)
-			require.NoError(t, err)
-
-			// Load the image again
-			img2, err := tile2.Image()
-			require.NoError(t, err)
-
-			// Images should not be the same object as they come from different ArtTile instances
-			// But they should have the same dimensions
-			assert.NotSame(t, img1, img2)
-			assert.Equal(t, img1.Bounds(), img2.Bounds())
 		})
 	})
 }
@@ -182,12 +134,12 @@ func TestInvalidImageData(t *testing.T) {
 		// Test decoding land art with invalid data
 
 		// Too short
-		_, err := decodeLandArt([]byte{1, 2})
+		_, err := decodeLandImage([]byte{1, 2})
 		assert.Error(t, err)
 
 		// Valid header but truncated data
 		shortData := make([]byte, 100) // Not enough for a 44x44 land tile
-		_, err = decodeLandArt(shortData)
+		_, err = decodeLandImage(shortData)
 		assert.Error(t, err)
 	})
 
@@ -195,7 +147,7 @@ func TestInvalidImageData(t *testing.T) {
 		// Test decoding static art with invalid data
 
 		// Too short
-		_, err := decodeStaticArt([]byte{1, 2, 3, 4})
+		_, err := decodeStaticImage([]byte{1, 2, 3, 4})
 		assert.Error(t, err)
 
 		// Invalid dimensions (too large)
@@ -204,7 +156,7 @@ func TestInvalidImageData(t *testing.T) {
 			0xFF, 0xFF, // width = 65535 (too large)
 			0xFF, 0xFF, // height = 65535 (too large)
 		}
-		_, err = decodeStaticArt(badDimensions)
+		_, err = decodeStaticImage(badDimensions)
 		assert.Error(t, err)
 
 		// Valid header but truncated lookup table
@@ -215,7 +167,7 @@ func TestInvalidImageData(t *testing.T) {
 			0, 0, // First lookup entry
 			// Missing rest of lookup table
 		}
-		_, err = decodeStaticArt(badLookup)
+		_, err = decodeStaticImage(badLookup)
 		assert.Error(t, err)
 	})
 }

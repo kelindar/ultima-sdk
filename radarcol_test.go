@@ -11,15 +11,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestRadarColorZero(t *testing.T) {
+	runWith(t, func(sdk *SDK) {
+		color, err := sdk.RadarColor(0)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, color.ID())
+		assert.False(t, color.IsStatic())
+		assert.True(t, color.IsLand())
+		assert.Equal(t, uint16(0x842), color.Value())
+	})
+}
+
 func TestRadarColor(t *testing.T) {
 	runWith(t, func(sdk *SDK) {
 		// Test retrieving a land tile color
-		color, err := sdk.RadarColor(1) // Land tile (ID < 0x4000)
+		color, err := sdk.RadarColor(16) // Land tile (ID < 0x4000)
 		assert.NoError(t, err)
-		assert.Equal(t, 1, color.ID())
+		assert.Equal(t, 16, color.ID())
 		assert.False(t, color.IsStatic())
 		assert.True(t, color.IsLand())
-		assert.NotEqual(t, uint16(0), color.Value()) // The color should be non-zero
+		assert.Equal(t, uint16(0x1ca4), color.Value())
 
 		// Verify GetColor works correctly
 		goColor := color.GetColor()
@@ -72,21 +83,6 @@ func TestRadarColorsIterators(t *testing.T) {
 
 			assert.Greater(t, count, 0, "Should have iterated through at least one radar color")
 		})
-	})
-}
-
-// TestSDKLoadRadarcol tests that the loadRadarcol function works correctly
-func TestSDKLoadRadarcol(t *testing.T) {
-	runWith(t, func(sdk *SDK) {
-		// Load the radar color file
-		file, err := sdk.loadRadarcol()
-		assert.NoError(t, err, "Should be able to load the radar color file")
-		assert.NotNil(t, file, "Radar color file should not be nil")
-
-		// Read a chunk of data to verify we can access the file
-		data, _, err := file.Read(0)
-		assert.NoError(t, err, "Should be able to read from the radar color file")
-		assert.NotEmpty(t, data, "Radar color data should not be empty")
 	})
 }
 

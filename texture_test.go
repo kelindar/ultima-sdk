@@ -15,8 +15,8 @@ func TestTexture_Load(t *testing.T) {
 		tex, err := sdk.Texture(3)
 		assert.NoError(t, err)
 		assert.NotNil(t, tex)
-		assert.NotNil(t, tex.Image())
-		//savePng(tex.Image(), "test_texture.png")
+		assert.NotNil(t, tex.Image)
+		assert.NoError(t, savePng(tex.Image, "test/texture.png"))
 
 		// Test loading an out-of-bounds texture (should return nil, no error)
 		tex, err = sdk.Texture(0x4000)

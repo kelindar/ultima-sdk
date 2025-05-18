@@ -5,7 +5,8 @@ package mul
 
 import (
 	"fmt"
-	"os"
+
+	"codeberg.org/go-mmap/mmap"
 )
 
 type AddFn = func(id, offset, length, extra uint32, value []byte)
@@ -21,7 +22,7 @@ func WithEntrySize(size int) Option {
 }
 
 // WithDecode sets a custom parser function for the reader
-func WithDecode(fn func(file *os.File, add AddFn) error) Option {
+func WithDecode(fn func(file *mmap.File, add AddFn) error) Option {
 	return func(r *Reader) {
 		if err := fn(r.file, r.add); err != nil {
 			panic(fmt.Sprintf("failed to parse entries: %v", err))
@@ -31,7 +32,7 @@ func WithDecode(fn func(file *os.File, add AddFn) error) Option {
 
 // WithChunks configures the reader to handle files with fixed-size chunks
 func WithChunks(chunkSize int) Option {
-	return WithDecode(func(file *os.File, add AddFn) error {
+	return WithDecode(func(file *mmap.File, add AddFn) error {
 		info, err := file.Stat()
 		if err != nil {
 			return fmt.Errorf("failed to get file stats: %w", err)

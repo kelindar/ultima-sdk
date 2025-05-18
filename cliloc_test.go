@@ -4,8 +4,6 @@
 package ultima
 
 import (
-	"bytes"
-	"encoding/binary"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,14 +15,13 @@ func TestCliloc(t *testing.T) {
 			entry, err := sdk.StringEntry(1000009, "enu")
 			assert.NoError(t, err)
 			assert.NotNil(t, entry)
-			assert.GreaterOrEqual(t, entry.ID, 0)
-			assert.NotEmpty(t, entry.Text)
+			assert.GreaterOrEqual(t, entry.ID(), 0)
+			assert.NotEmpty(t, entry.Text())
 		})
 
 		t.Run("StringEntry_Invalid", func(t *testing.T) {
 			_, err := sdk.StringEntry(-1, "enu")
 			assert.Error(t, err)
-			assert.ErrorIs(t, err, ErrInvalidStringID)
 		})
 
 		t.Run("String", func(t *testing.T) {
@@ -57,29 +54,6 @@ func TestCliloc(t *testing.T) {
 			}
 		})
 	})
-}
-
-// Test makeStringEntry with crafted test data
-func TestMakeStringEntry(t *testing.T) {
-	// Create test data in expected format: ID (4 bytes) + Flag (1 byte) + Text
-	buffer := new(bytes.Buffer)
-
-	// ID = 1000
-	binary.Write(buffer, binary.LittleEndian, int32(1000))
-
-	// Flag = 5
-	buffer.WriteByte(5)
-
-	// Text = "Hello World"
-	buffer.Write([]byte("Hello World"))
-
-	data := buffer.Bytes()
-
-	// Test makeStringEntry
-	entry := makeStringEntry(data)
-	assert.Equal(t, 1000, entry.ID)
-	assert.Equal(t, byte(5), entry.Flag)
-	assert.Equal(t, "Hello World", entry.Text)
 }
 
 // Tests for the decode function

@@ -7,20 +7,14 @@ import (
 	"image"
 
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
+	"github.com/kelindar/ultima-sdk/internal/uofile"
 )
 
 // Texture represents a texture entry loaded from texmaps.mul.
 type Texture struct {
-	Index int    // Texture index
-	Size  int    // Texture size (64 or 128)
-	image []byte // Texture data
-}
-
-// Image returns the image of the texture.
-func (t *Texture) Image() image.Image {
-	img := bitmap.NewARGB1555(image.Rect(0, 0, t.Size, t.Size))
-	img.Pix = t.image
-	return img
+	Index int         // Texture index
+	Size  int         // Texture size (64 or 128)
+	Image image.Image // Texture data
 }
 
 // Texture returns a texture by index.
@@ -31,21 +25,21 @@ func (s *SDK) Texture(index int) (*Texture, error) {
 		return nil, err
 	}
 
-	data, extra, err := file.Read(uint32(idx))
-	if err != nil || len(data) == 0 {
-		return nil, nil
-	}
+	return uofile.Decode(file, uint32(idx), func(data []byte, extra uint64) (*Texture, error) {
+		size := 64
+		if extra == 1 {
+			size = 128
+		}
+		img := bitmap.NewARGB1555(image.Rect(0, 0, size, size))
+		img.Pix = make([]byte, len(data))
+		copy(img.Pix, data)
+		return &Texture{
+			Index: idx,
+			Size:  size,
+			Image: img,
+		}, nil
+	})
 
-	size := 64
-	if extra == 1 {
-		size = 128
-	}
-
-	return &Texture{
-		Index: idx,
-		Size:  size,
-		image: data,
-	}, nil
 }
 
 // Textures returns an iterator over all available textures.

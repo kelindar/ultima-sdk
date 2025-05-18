@@ -188,6 +188,7 @@ func TestHueImageRendering(t *testing.T) {
 		// Generate a small visualization image
 		img := hue.Image(2, 10)
 		require.NotNil(t, img)
+		assert.NoError(t, savePng(img, "test/hue.png"))
 
 		// Check image dimensions
 		bounds := img.Bounds()
