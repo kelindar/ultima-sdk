@@ -23,7 +23,7 @@ func TestArt(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.NotNil(t, tile.Image)
-			//assert.NoError(t, savePng(img, "land.png"))
+			assert.NoError(t, savePng(tile.Image, "test/art_land.png"))
 		})
 
 		t.Run("StaticArt", func(t *testing.T) {
@@ -36,7 +36,7 @@ func TestArt(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.NotNil(t, tile.Image)
-			//assert.NoError(t, savePng(img, "static.png"))
+			assert.NoError(t, savePng(tile.Image, "test/art_static.png"))
 		})
 
 		t.Run("ArtTile_Land", func(t *testing.T) {

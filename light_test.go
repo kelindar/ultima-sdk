@@ -19,7 +19,7 @@ func TestLight(t *testing.T) {
 			assert.Greater(t, light.Width, 0, "Light width should be positive")
 			assert.Greater(t, light.Height, 0, "Light height should be positive")
 			assert.Equal(t, 0, light.ID, "Light ID should match requested ID")
-			//assert.NoError(t, savePng(light.Image(), "light.png"), "Failed to save light image")
+			assert.NoError(t, savePng(light.Image(), "test/light.png"))
 			assert.NotNil(t, light.Image())
 		})
 

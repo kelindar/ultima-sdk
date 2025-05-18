@@ -170,22 +170,6 @@ func (m *TileMap) readStatics(blockIndex int) ([]StaticItem, error) {
 	}
 
 	return statics, nil
-
-	/*statics, _, err := uofile.Decode(m.staticsFile, uint32(blockIndex), func(data []byte) ([]StaticItem, error) {
-		count := len(data) / 7
-		statics := make([]StaticItem, 0, count)
-		for i := 0; i < count; i++ {
-			off := i * 7
-			if off+7 > len(data) {
-				break
-			}
-
-			item := StaticItem(data[off : off+7])
-			statics = append(statics, item)
-		}
-		return statics, nil
-	})
-	return statics, err*/
 }
 
 // Map returns the TileMap for the given map index, loading if necessary.

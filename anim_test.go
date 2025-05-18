@@ -71,7 +71,7 @@ func testLoadAnimation(t *testing.T, body, action, direction int) {
 			assert.NotZero(t, bounds.Dx(), "Frame width should not be zero")
 			assert.NotZero(t, bounds.Dy(), "Frame height should not be zero")
 			called = true
-			// savePng(img, "frame.png")
+			assert.NoError(t, savePng(img, "test/anim_frame.png"))
 			break
 		}
 		assert.True(t, called, "Expected at least one frame")
