@@ -84,8 +84,9 @@ func (s *SDK) RadarColor(tileID int) (RadarColor, error) {
 		return 0, err
 	}
 
+	bytePos := int64(tileID) * 2
 	data := make([]byte, 2)
-	if _, err := entry.ReadAt(data, int64(tileID)*2); err != nil {
+	if _, err := entry.ReadAt(data, bytePos); err != nil {
 		return 0, err
 	}
 

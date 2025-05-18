@@ -274,7 +274,7 @@ func (r reader) Extra() uint64 {
 
 func (r reader) ReadAt(p []byte, off int64) (n int, err error) {
 	if r.entry.decoded != nil {
-		return copy(p, r.entry.decoded), nil
+		return copy(p, r.entry.decoded[int(off):]), nil
 	}
 
 	return r.reader.ReadAt(p, int64(r.entry.offset)+off)

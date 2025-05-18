@@ -11,6 +11,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestRadarColorZero(t *testing.T) {
+	runWith(t, func(sdk *SDK) {
+		color, err := sdk.RadarColor(0)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, color.ID())
+		assert.False(t, color.IsStatic())
+		assert.True(t, color.IsLand())
+		assert.Equal(t, uint16(0x842), color.Value())
+	})
+}
+
 func TestRadarColor(t *testing.T) {
 	runWith(t, func(sdk *SDK) {
 		// Test retrieving a land tile color
@@ -19,8 +30,7 @@ func TestRadarColor(t *testing.T) {
 		assert.Equal(t, 16, color.ID())
 		assert.False(t, color.IsStatic())
 		assert.True(t, color.IsLand())
-		assert.NotEqual(t, uint16(0), color.Value()) // The color should be non-zero
-		assert.Equal(t, uint16(12549), color.Value())
+		assert.Equal(t, uint16(0x1ca4), color.Value())
 
 		// Verify GetColor works correctly
 		goColor := color.GetColor()
