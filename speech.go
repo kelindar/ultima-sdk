@@ -21,16 +21,16 @@ var (
 )
 
 // Speech represents a single speech entry from speech.mul
-type Speech struct {
-	ID   int    // ID of the speech entry (from file)
-	Text string // Text content of the speech entry
+type Speech []byte
+
+// ID returns the id of the speecn entry
+func (s Speech) ID() int {
+	return int(binary.BigEndian.Uint16(s[0:2]))
 }
 
-func makeSpeech(data []byte) Speech {
-	return Speech{
-		ID:   int(binary.BigEndian.Uint16(data[0:2])),
-		Text: string(data[2:]),
-	}
+// Text returns the associated text
+func (s Speech) Text() string {
+	return string(s[2:])
 }
 
 // SpeechEntry retrieves a predefined speech entry by its ID
@@ -45,7 +45,7 @@ func (s *SDK) SpeechEntry(id int) (Speech, error) {
 		return Speech{}, err
 	}
 
-	return makeSpeech(data), nil
+	return Speech(data), nil
 }
 
 // SpeechEntries returns an iterator over all defined speech entries
@@ -62,7 +62,7 @@ func (s *SDK) SpeechEntries() iter.Seq[Speech] {
 				continue
 			}
 
-			if !yield(makeSpeech(data)) {
+			if !yield(Speech(data)) {
 				break
 			}
 		}

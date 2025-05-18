@@ -17,7 +17,7 @@ type FontRune struct {
 	Height  int
 	XOffset int
 	YOffset int
-	Bitmap  *bitmap.ARGB1555 // Always ARGB1555, nil if not present
+	Image   image.Image
 }
 
 // Font is the interface for font types (ASCII, Unicode)
@@ -80,7 +80,7 @@ func (s *SDK) FontUnicode() (Font, error) {
 			Height:  height,
 			XOffset: xOff,
 			YOffset: yOff,
-			Bitmap:  bmp,
+			Image:   bmp,
 		}
 	}
 	return font, nil
@@ -152,7 +152,7 @@ func (s *SDK) Font() ([]Font, error) {
 			fonts[i].Characters[k] = &FontRune{
 				Width:  width,
 				Height: height,
-				Bitmap: bmp,
+				Image:  bmp,
 			}
 		}
 	}

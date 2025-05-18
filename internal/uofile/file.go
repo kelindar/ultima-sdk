@@ -133,6 +133,11 @@ func New(basePath string, fileNames []string, length int, options ...Option) *Fi
 		option(f)
 	}
 
+	// Open the file
+	if err := f.open(); err != nil {
+		panic(err)
+	}
+
 	return f
 }
 
@@ -246,15 +251,6 @@ func (f *File) open() error {
 
 // Entry returns a specific entry
 func (f *File) Entry(key uint32) (Entry, error) {
-	if err := f.open(); err != nil {
-		return nil, err
-	}
-
-	// Double-check reader is not nil after initialization
-	if f.reader == nil {
-		return nil, fmt.Errorf("reader not initialized for %s", f.path)
-	}
-
 	return f.reader.Entry(key)
 }
 
@@ -278,10 +274,6 @@ func (f *File) ReadFull(key uint32) ([]byte, error) {
 
 // Entries returns a sequence of entry indices
 func (f *File) Entries() iter.Seq[uint32] {
-	if err := f.open(); err != nil {
-		panic(err)
-	}
-
 	return f.reader.Entries()
 }
 

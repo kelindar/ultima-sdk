@@ -13,11 +13,11 @@ import (
 
 /*
 cpu: 13th Gen Intel(R) Core(TM) i7-13700K
-BenchmarkSDK/MapImage-24         	       5	 236404220 ns/op	101894808 B/op	25165936 allocs/op
-BenchmarkSDK/MapTiles-24         	      20	  52408685 ns/op	28328139 B/op	 1179853 allocs/op
-BenchmarkSDK/GumpImage-24        	 3057141	       392.8 ns/op	       0 B/op	       0 allocs/op
-BenchmarkSDK/SpeechIter-24       	    3674	    318688 ns/op	  363553 B/op	   18336 allocs/op
-BenchmarkSDK/ClilocIter-24       	     802	   1518125 ns/op	    1220 B/op	      11 allocs/op
+BenchmarkSDK/MapImage-24         	       5	 239619060 ns/op	101894747 B/op	25165935 allocs/op
+BenchmarkSDK/MapTiles-24         	      20	  52252060 ns/op	28328275 B/op	 1179852 allocs/op
+BenchmarkSDK/GumpImage-24        	 3051325	       397.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSDK/SpeechIter-24       	    4653	    255869 ns/op	  266456 B/op	   12322 allocs/op
+BenchmarkSDK/ClilocIter-24       	     854	   1392080 ns/op	    1219 B/op	      11 allocs/op
 */
 func BenchmarkSDK(b *testing.B) {
 	benchWith(b, func(sdk *SDK) {
@@ -74,7 +74,7 @@ func BenchmarkSDK(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				count := 0
 				for entry := range sdk.SpeechEntries() {
-					if entry.ID >= 0 && len(entry.Text) > 0 {
+					if entry.ID() >= 0 && len(entry.Text()) > 0 {
 						count++
 					}
 				}

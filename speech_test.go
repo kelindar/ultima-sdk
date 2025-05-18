@@ -19,8 +19,8 @@ func TestSpeech(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.NotNil(t, entry)
-			assert.Equal(t, 168, entry.ID)
-			assert.NotEmpty(t, entry.Text)
+			assert.Equal(t, 168, entry.ID())
+			assert.Equal(t, "*wo ist nuje", entry.Text())
 		})
 
 		t.Run("SpeechEntry_Invalid", func(t *testing.T) {
@@ -41,7 +41,7 @@ func TestSpeech(t *testing.T) {
 			for _, entry := range entries {
 				assert.NotNil(t, entry)
 				// Entry ID should be >= 0 if file format is correct
-				assert.GreaterOrEqual(t, entry.ID, 0)
+				assert.GreaterOrEqual(t, entry.ID(), 0)
 			}
 		})
 	})
