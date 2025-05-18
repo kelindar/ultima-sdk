@@ -37,7 +37,7 @@ func (af AnimationFrame) Image() (image.Image, error) {
 // Use Frames() to iterate through AnimationFrame instances.
 // Metadata returns the animation metadata from animdata.mul.
 type Animation struct {
-	Name         string
+	Name          string
 	AnimdataEntry *AnimdataEntry
 	frames        []AnimationFrame
 }
@@ -113,8 +113,6 @@ func (s *SDK) Animation(body, action, direction, hue int, preserveHue, firstFram
 		return nil, fmt.Errorf("Animation: animdata chunk too small for body %d", body)
 	}
 	entry := chunk[4+entryOffset*68 : 4+(entryOffset+1)*68]
-	fmt.Printf("body=%d chunkIndex=%d entryOffset=%d chunkLen=%d entry[0:8]=%v\n",
-		body, chunkIndex, entryOffset, len(chunk), entry[:8])
 	meta, err := decodeAnimdata(entry)
 	if err != nil {
 		return nil, fmt.Errorf("Animation: failed decoding animdata entry: %w", err)
@@ -178,7 +176,7 @@ func (s *SDK) Animation(body, action, direction, hue int, preserveHue, firstFram
 		name = n
 	}
 	return &Animation{
-		Name:         name,
+		Name:          name,
 		AnimdataEntry: meta,
 		frames:        frames,
 	}, nil
