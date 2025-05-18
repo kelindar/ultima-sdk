@@ -30,14 +30,12 @@ var (
 )
 
 // ArtTile represents a piece of art (land or static item).
-// Information is combined from art.mul/artidx.mul and tiledata.mul.
-// The image is loaded lazily.
 type ArtTile struct {
 	ID     int         // ID of the tile
 	Name   string      // Name from TileData
 	Flags  TileFlag    // Flags from TileData
 	Height int8        // Height of the tile, from TileData
-	Image  image.Image // Image of the gump
+	Image  image.Image // Decoded image for the tile
 }
 
 // ArtTile returns an art tile by ID.
