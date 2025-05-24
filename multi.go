@@ -271,7 +271,7 @@ func (s *SDK) MultiFromCSV(data []byte) (*Multi, error) {
 		if len(record) > 5 {
 			clilocVal, err := strconv.ParseUint(record[5], 10, 32)
 			if err != nil {
-				return nil, fmt.Errorf("multi: invalid Unk1 in row %d: %w", rowNum+2, err)
+				return nil, fmt.Errorf("multi: invalid cliloc in row %d: %w", rowNum+2, err)
 			}
 			cliloc = uint32(clilocVal)
 		}
