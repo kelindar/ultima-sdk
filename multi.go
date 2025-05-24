@@ -4,22 +4,25 @@
 package ultima
 
 import (
+	"bytes"
 	"encoding/binary"
+	"encoding/csv"
 	"fmt"
 	"image"
 	"sort"
+	"strconv"
 
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
 )
 
 // MultiItem represents a single item within a multi-structure.
 type MultiItem struct {
-	ItemID  uint16 // Tile ID of the item.
-	OffsetX int16
-	OffsetY int16
-	OffsetZ int16
-	Flags   uint32
-	Unk1    uint32 // Only present in UOAHS format (16 bytes per entry)
+	Item   uint16 // Tile ID of the item.
+	X      int16
+	Y      int16
+	Z      int16
+	Flags  uint32
+	Cliloc uint32 // Only present in UOAHS format (16 bytes per entry)
 }
 
 // Multi represents a multi-structure (e.g., house, boat) in Ultima Online.
@@ -48,7 +51,7 @@ func (m *Multi) Image() (image.Image, error) {
 	}, 0, len(m.Items))
 
 	for _, item := range m.Items {
-		art, err := m.sdk.StaticArtTile(int(item.ItemID))
+		art, err := m.sdk.StaticArtTile(int(item.Item))
 		if err != nil || art == nil {
 			continue
 		}
@@ -57,11 +60,11 @@ func (m *Multi) Image() (image.Image, error) {
 		artW := tileBounds.Dx()
 		artH := tileBounds.Dy()
 
-		tileX := int(item.OffsetX)
-		tileY := int(item.OffsetY)
+		tileX := int(item.X)
+		tileY := int(item.Y)
 		drawX := (tileX - tileY) * isoX
 		drawY := (tileX + tileY) * isoY
-		drawY -= int(item.OffsetZ) * 4
+		drawY -= int(item.Z) * 4
 		drawX -= artW / 2
 		drawY -= artH
 
@@ -94,9 +97,9 @@ func (m *Multi) Image() (image.Image, error) {
 	// Sort items by OffsetZ, then OffsetY, then OffsetX, then ItemID (matches UO stacking logic)
 	sort.SliceStable(tilePositions, func(i, j int) bool {
 		a, b := tilePositions[i], tilePositions[j]
-		az, bz := int(a.item.OffsetZ), int(b.item.OffsetZ)
-		ay, by := int(a.item.OffsetY), int(b.item.OffsetY)
-		ax, bx := int(a.item.OffsetX), int(b.item.OffsetX)
+		az, bz := int(a.item.Z), int(b.item.Z)
+		ay, by := int(a.item.Y), int(b.item.Y)
+		ax, bx := int(a.item.X), int(b.item.X)
 		if az != bz {
 			return az < bz
 		}
@@ -106,12 +109,12 @@ func (m *Multi) Image() (image.Image, error) {
 		if ax != bx {
 			return ax < bx
 		}
-		return a.item.ItemID < b.item.ItemID
+		return a.item.Item < b.item.Item
 	})
 
 	// Second pass: draw tiles at adjusted positions
 	for _, pos := range tilePositions {
-		art, err := m.sdk.StaticArtTile(int(pos.item.ItemID))
+		art, err := m.sdk.StaticArtTile(int(pos.item.Item))
 		if err != nil || art == nil {
 			continue
 		}
@@ -138,6 +141,39 @@ func (m *Multi) Image() (image.Image, error) {
 	return img, nil
 }
 
+// ToCSV exports all MultiItems to CSV format with headers: item, x, y, z, flags, cliloc.
+// Returns the CSV data as bytes following the standard Go marshaling pattern.
+func (m *Multi) ToCSV() ([]byte, error) {
+	var buf bytes.Buffer
+	writer := csv.NewWriter(&buf)
+
+	// Write CSV header
+	header := []string{"item", "x", "y", "z", "flags", "cliloc"}
+	if err := writer.Write(header); err != nil {
+		return nil, fmt.Errorf("multi: failed to write CSV header: %w", err)
+	}
+
+	// Write each MultiItem as a CSV row
+	for _, item := range m.Items {
+		record := []string{
+			strconv.FormatUint(uint64(item.Item), 10),
+			strconv.FormatInt(int64(item.X), 10),
+			strconv.FormatInt(int64(item.Y), 10),
+			strconv.FormatInt(int64(item.Z), 10),
+			strconv.FormatUint(uint64(item.Flags), 10),
+			strconv.FormatUint(uint64(item.Cliloc), 10),
+		}
+
+		if err := writer.Write(record); err != nil {
+			return nil, fmt.Errorf("multi: failed to write CSV record: %w", err)
+		}
+	}
+
+	// Flush the writer to ensure all data is written to the buffer
+	writer.Flush()
+	return buf.Bytes(), nil
+}
+
 // Multi returns a Multi structure by id, loading from multi.mul/multi.idx
 func (s *SDK) Multi(id int) (*Multi, error) {
 	file, err := s.loadMulti()
@@ -160,12 +196,94 @@ func (s *SDK) Multi(id int) (*Multi, error) {
 	var items []MultiItem
 	for i := 0; i+entrySize <= len(data); i += entrySize {
 		items = append(items, MultiItem{
-			ItemID:  binary.LittleEndian.Uint16(data[i:]),
-			OffsetX: int16(binary.LittleEndian.Uint16(data[i+2:])),
-			OffsetY: int16(binary.LittleEndian.Uint16(data[i+4:])),
-			OffsetZ: int16(binary.LittleEndian.Uint16(data[i+6:])),
-			Flags:   binary.LittleEndian.Uint32(data[i+8:]),
-			Unk1:    binary.LittleEndian.Uint32(data[i+12:]),
+			Item:   binary.LittleEndian.Uint16(data[i:]),
+			X:      int16(binary.LittleEndian.Uint16(data[i+2:])),
+			Y:      int16(binary.LittleEndian.Uint16(data[i+4:])),
+			Z:      int16(binary.LittleEndian.Uint16(data[i+6:])),
+			Flags:  binary.LittleEndian.Uint32(data[i+8:]),
+			Cliloc: binary.LittleEndian.Uint32(data[i+12:]),
+		})
+	}
+
+	return &Multi{
+		sdk:   s,
+		Items: items,
+	}, nil
+}
+
+// MultiFromCSV parses CSV data and returns a Multi structure.
+// The CSV is expected to have columns: item, x, y, z, [flags], [cliloc].
+// The first row is assumed to be a header and is skipped.
+// The last 2 columns (flags and cliloc) are optional and will default to 0 if not present.
+func (s *SDK) MultiFromCSV(data []byte) (*Multi, error) {
+	reader := csv.NewReader(bytes.NewReader(data))
+
+	// Read all records
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("multi: failed to parse CSV: %w", err)
+	}
+
+	if len(records) == 0 {
+		return nil, fmt.Errorf("multi: CSV data is empty")
+	}
+
+	// Skip the first row (header) and parse data rows
+	var items []MultiItem
+	for rowNum, record := range records[1:] { // Skip header
+		if len(record) < 4 {
+			return nil, fmt.Errorf("multi: invalid CSV row %d, expected at least 4 columns (item,x,y,z), got %d", rowNum+2, len(record))
+		}
+
+		// Parse ItemID
+		itemID, err := strconv.ParseUint(record[0], 10, 16)
+		if err != nil {
+			return nil, fmt.Errorf("multi: invalid ItemID in row %d: %w", rowNum+2, err)
+		}
+
+		// Parse OffsetX
+		offsetX, err := strconv.ParseInt(record[1], 10, 16)
+		if err != nil {
+			return nil, fmt.Errorf("multi: invalid OffsetX in row %d: %w", rowNum+2, err)
+		}
+
+		// Parse OffsetY
+		offsetY, err := strconv.ParseInt(record[2], 10, 16)
+		if err != nil {
+			return nil, fmt.Errorf("multi: invalid OffsetY in row %d: %w", rowNum+2, err)
+		}
+		// Parse OffsetZ
+		offsetZ, err := strconv.ParseInt(record[3], 10, 16)
+		if err != nil {
+			return nil, fmt.Errorf("multi: invalid OffsetZ in row %d: %w", rowNum+2, err)
+		}
+
+		// Parse Flags (optional, defaults to 0)
+		var flags uint32
+		if len(record) > 4 {
+			flagsVal, err := strconv.ParseUint(record[4], 10, 32)
+			if err != nil {
+				return nil, fmt.Errorf("multi: invalid Flags in row %d: %w", rowNum+2, err)
+			}
+			flags = uint32(flagsVal)
+		}
+
+		// Parse Unk1/cliloc (optional, defaults to 0)
+		var unk1 uint32
+		if len(record) > 5 {
+			unk1Val, err := strconv.ParseUint(record[5], 10, 32)
+			if err != nil {
+				return nil, fmt.Errorf("multi: invalid Unk1 in row %d: %w", rowNum+2, err)
+			}
+			unk1 = uint32(unk1Val)
+		}
+		items = append(items, MultiItem{
+			Item:   uint16(itemID),
+			X:      int16(offsetX),
+			Y:      int16(offsetY),
+			Z:      int16(offsetZ),
+			Flags:  flags,
+			Cliloc: unk1,
 		})
 	}
 
