@@ -171,6 +171,9 @@ func (m *Multi) ToCSV() ([]byte, error) {
 
 	// Flush the writer to ensure all data is written to the buffer
 	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return nil, fmt.Errorf("multi: failed to flush CSV writer: %w", err)
+	}
 	return buf.Bytes(), nil
 }
 
