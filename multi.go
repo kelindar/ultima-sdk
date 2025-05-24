@@ -240,22 +240,19 @@ func (s *SDK) MultiFromCSV(data []byte) (*Multi, error) {
 		if err != nil {
 			return nil, fmt.Errorf("multi: invalid ItemID in row %d: %w", rowNum+2, err)
 		}
-
 		// Parse OffsetX
 		offsetX, err := strconv.ParseInt(record[1], 10, 16)
 		if err != nil {
-			return nil, fmt.Errorf("multi: invalid OffsetX in row %d: %w", rowNum+2, err)
+			return nil, fmt.Errorf("multi: invalid X in row %d: %w", rowNum+2, err)
 		}
-
 		// Parse OffsetY
 		offsetY, err := strconv.ParseInt(record[2], 10, 16)
 		if err != nil {
-			return nil, fmt.Errorf("multi: invalid OffsetY in row %d: %w", rowNum+2, err)
-		}
-		// Parse OffsetZ
+			return nil, fmt.Errorf("multi: invalid Y in row %d: %w", rowNum+2, err)
+		}		// Parse OffsetZ
 		offsetZ, err := strconv.ParseInt(record[3], 10, 16)
 		if err != nil {
-			return nil, fmt.Errorf("multi: invalid OffsetZ in row %d: %w", rowNum+2, err)
+			return nil, fmt.Errorf("multi: invalid Z in row %d: %w", rowNum+2, err)
 		}
 
 		// Parse Flags (optional, defaults to 0)
@@ -266,24 +263,23 @@ func (s *SDK) MultiFromCSV(data []byte) (*Multi, error) {
 				return nil, fmt.Errorf("multi: invalid Flags in row %d: %w", rowNum+2, err)
 			}
 			flags = uint32(flagsVal)
-		}
-
-		// Parse Unk1/cliloc (optional, defaults to 0)
-		var unk1 uint32
+		}		// Parse Unk1/cliloc (optional, defaults to 0)
+		var cliloc uint32
 		if len(record) > 5 {
-			unk1Val, err := strconv.ParseUint(record[5], 10, 32)
+			clilocVal, err := strconv.ParseUint(record[5], 10, 32)
 			if err != nil {
 				return nil, fmt.Errorf("multi: invalid Unk1 in row %d: %w", rowNum+2, err)
 			}
-			unk1 = uint32(unk1Val)
+			cliloc = uint32(clilocVal)
 		}
+		
 		items = append(items, MultiItem{
 			Item:   uint16(itemID),
 			X:      int16(offsetX),
 			Y:      int16(offsetY),
 			Z:      int16(offsetZ),
 			Flags:  flags,
-			Cliloc: unk1,
+			Cliloc: cliloc,
 		})
 	}
 
