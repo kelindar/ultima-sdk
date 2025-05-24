@@ -266,7 +266,7 @@ func (s *SDK) MultiFromCSV(data []byte) (*Multi, error) {
 				return nil, fmt.Errorf("multi: invalid Flags in row %d: %w", rowNum+2, err)
 			}
 			flags = uint32(flagsVal)
-		}		// Parse Unk1/cliloc (optional, defaults to 0)
+		}		// Parse cliloc (optional, defaults to 0)
 		var cliloc uint32
 		if len(record) > 5 {
 			clilocVal, err := strconv.ParseUint(record[5], 10, 32)
