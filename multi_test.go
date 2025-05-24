@@ -240,7 +240,7 @@ invalid,-10,5,0,1,0`
 	multi, err := sdk.MultiFromCSV([]byte(csvData))
 	assert.Error(t, err)
 	assert.Nil(t, multi)
-	assert.Contains(t, err.Error(), "invalid ItemID")
+	assert.Contains(t, err.Error(), "invalid item in row")
 }
 
 func TestSDK_UnmarshalMultiCSV_EmptyData(t *testing.T) {
