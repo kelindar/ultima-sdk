@@ -241,7 +241,7 @@ func (s *SDK) MultiFromCSV(data []byte) (*Multi, error) {
 		// Parse ItemID
 		itemID, err := strconv.ParseUint(record[0], 10, 16)
 		if err != nil {
-			return nil, fmt.Errorf("multi: invalid ItemID in row %d: %w", rowNum+2, err)
+			return nil, fmt.Errorf("multi: invalid item in row %d: %w", rowNum+2, err)
 		}
 		// Parse OffsetX
 		offsetX, err := strconv.ParseInt(record[1], 10, 16)
