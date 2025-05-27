@@ -46,17 +46,79 @@ func main() {
 }
 ```
 
-## API Highlights
+## API Reference
+
+### Core SDK Operations
 
 - `Open(dir string) (*SDK, error)` – Open a UO client directory
+- `(*SDK).Close() error` – Close SDK and release resources
+- `(*SDK).BasePath() string` – Get the base directory path
+
+### Animation
+
 - `(*SDK).Animation(body, action, direction, hue int, preserveHue, firstFrame bool) (*Animation, error)` – Load animation frames
+
+### Localization (Cliloc)
+
 - `(*SDK).String(id int) (string, error)` – Retrieve localized string
-- `(*SDK).Font() ([]Font, error)` – Load UO fonts
+- `(*SDK).StringWithLang(id int, lang string) (string, error)` – Retrieve string in specific language
+- `(*SDK).StringEntry(id int, lang string) (StringEntry, error)` – Get string entry with metadata
+- `(*SDK).Strings() iter.Seq2[int, string]` – Iterate over all strings
+- `(*SDK).StringsWithLang(lang string) iter.Seq2[int, string]` – Iterate over strings in specific language
+
+### Fonts
+
+- `(*SDK).Font() ([]Font, error)` – Load ASCII fonts
+- `(*SDK).FontUnicode() (Font, error)` – Load Unicode font
+
+### Hues/Colors
+
 - `(*SDK).Hue(index int) (*Hue, error)` – Get hue/color data
+- `(*SDK).Hues() iter.Seq[*Hue]` – Iterate over all hues
+
+### Gumps (UI Graphics)
+
 - `(*SDK).Gump(id int) (*Gump, error)` – Load gump images
+- `(*SDK).Gumps() iter.Seq[*Gump]` – Iterate over all gumps
+
+### Maps & Tiles
+
 - `(*SDK).Map(mapID int) (*TileMap, error)` – Load map data
 - `(*SDK).Land(id int) (*Land, error)` – Load land art tiles
+- `(*SDK).Lands() iter.Seq[*Land]` – Iterate over all land tiles
 - `(*SDK).Item(id int) (*Item, error)` – Load static art tiles
+- `(*SDK).Items() iter.Seq[*Item]` – Iterate over all static items
+
+### Multi-Tile Objects
+
+- `(*SDK).Multi(id int) (*Multi, error)` – Load multi-tile object
+- `(*SDK).MultiFromCSV(id int) (*Multi, error)` – Load multi from CSV data
+
+### Radar Colors
+
+- `(*SDK).RadarColor(id int) (RadarColor, error)` – Get radar color
+- `(*SDK).RadarColors() iter.Seq[RadarColor]` – Iterate over all radar colors
+
+### Audio
+
+- `(*SDK).Sound(id int) (Sound, error)` – Load sound data
+- `(*SDK).Sounds() iter.Seq[Sound]` – Iterate over all sounds
+- `(*SDK).SpeechEntry(id int) (Speech, error)` – Get speech entry
+- `(*SDK).SpeechEntries() iter.Seq[Speech]` – Iterate over all speech entries
+
+### Skills
+
+- `(*SDK).Skill(id int) (*Skill, error)` – Get skill information
+- `(*SDK).Skills() iter.Seq[*Skill]` – Iterate over all skills
+- `(*SDK).SkillGroup(id int) (*SkillGroup, error)` – Get skill group
+- `(*SDK).SkillGroups() iter.Seq[*SkillGroup]` – Iterate over all skill groups
+
+### Lighting & Textures
+
+- `(*SDK).Light(id int) (Light, error)` – Load light data
+- `(*SDK).Lights() iter.Seq[Light]` – Iterate over all lights
+- `(*SDK).Texture(id int) (Texture, error)` – Load texture data
+- `(*SDK).Textures() iter.Seq[Texture]` – Iterate over all textures
 
 ## Contributing
 
