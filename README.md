@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	str, _ := sdk.String(3000001)
 	fmt.Println(str)
 }
@@ -55,12 +55,13 @@ func main() {
 - `(*SDK).Hue(id int) (*Hue, error)` – Get hue/color data
 - `(*SDK).Gump(id int) (*Gump, error)` – Load gump images
 - `(*SDK).Map(id int) (*Map, error)` – Load map data
-- `(*SDK).LandArtTile(id int) (*ArtTile, error)` – Load land art tiles
-- `(*SDK).StaticArtTile(id int) (*ArtTile, error)` – Load static art tiles
+- `(*SDK).Land(id int) (*Land, error)` – Load land art tiles
+- `(*SDK).Item(id int) (*Item, error)` – Load static art tiles
 
 ## Contributing
 
 PRs are welcome! Please:
+
 - Follow the established code style and architectural patterns
 - Add doc comments for all exported functions
 - Avoid package-level mutable state
