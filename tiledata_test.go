@@ -7,13 +7,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestTileData(t *testing.T) {
 	runWith(t, func(sdk *SDK) {
 		t.Run("LandTile", func(t *testing.T) {
-			landTile, err := sdk.LandTile(0)
+			landTile, err := sdk.landInfo(0)
 
 			assert.NoError(t, err)
 			assert.NotEmpty(t, landTile.Name) // ED
@@ -21,91 +20,28 @@ func TestTileData(t *testing.T) {
 		})
 
 		t.Run("LandTile_InvalidID", func(t *testing.T) {
-			_, err := sdk.LandTile(-1)
+			_, err := sdk.landInfo(-1)
 			assert.Error(t, err)
 
-			_, err = sdk.LandTile(0xFFFFF)
+			_, err = sdk.landInfo(0xFFFFF)
 			assert.Error(t, err)
 		})
 
 		t.Run("StaticTile", func(t *testing.T) {
-			staticTile, err := sdk.StaticTile(3)
+			staticTile, err := sdk.staticInfo(3)
 
 			assert.NoError(t, err)
 			assert.NotEmpty(t, staticTile.Name)
 		})
 
 		t.Run("StaticTile_InvalidID", func(t *testing.T) {
-			_, err := sdk.StaticTile(-1)
+			_, err := sdk.staticInfo(-1)
 			assert.Error(t, err)
 
-			_, err = sdk.StaticTile(sdk.staticTileCount())
+			_, err = sdk.staticInfo(sdk.staticTileCount())
 			assert.Error(t, err)
 		})
 
-		t.Run("LandTiles_Iterator", func(t *testing.T) {
-			count := 0
-			for tile := range sdk.LandTiles() {
-				if tile.Name != "" {
-					count++
-				}
-				if count >= 5 {
-					break
-				}
-			}
-			assert.Equal(t, 5, count)
-		})
-
-		t.Run("StaticTiles_Iterator", func(t *testing.T) {
-			count := 0
-			for tile := range sdk.StaticTiles() {
-				if tile.Name != "" {
-					count++
-				}
-				if count >= 5 {
-					break
-				}
-			}
-			assert.Equal(t, 5, count)
-		})
-
-		t.Run("StaticItemData_Properties", func(t *testing.T) {
-			// Test some properties that are commonly used
-
-			// Find a known bridge tile to test CalcHeight
-			var bridgeTile StaticItemData
-			bridgeFound := false
-
-			for tile := range sdk.StaticTiles() {
-				if tile.Flags&TileFlagBridge != 0 {
-					bridgeTile = tile
-					bridgeFound = true
-					break
-				}
-			}
-
-			if bridgeFound {
-				assert.Equal(t, int(bridgeTile.Height)/2, bridgeTile.CalcHeight())
-			}
-
-			// Test flag helper methods on some tile
-			staticTile, err := sdk.StaticTile(1)
-			require.NoError(t, err)
-
-			assert.Equal(t, staticTile.Flags&TileFlagBackground != 0, staticTile.Background())
-			assert.Equal(t, staticTile.Flags&TileFlagBridge != 0, staticTile.Bridge())
-			assert.Equal(t, staticTile.Flags&TileFlagImpassable != 0, staticTile.Impassable())
-			assert.Equal(t, staticTile.Flags&TileFlagSurface != 0, staticTile.Surface())
-			assert.Equal(t, staticTile.Flags&TileFlagWearable != 0, staticTile.Wearable())
-		})
-
-		t.Run("HeightTable", func(t *testing.T) {
-			heights, err := sdk.HeightTable()
-
-			assert.NoError(t, err)
-			assert.NotNil(t, heights)
-			assert.Len(t, heights, sdk.staticTileCount())
-		})
 	})
 }
 

@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"iter"
 
 	"codeberg.org/go-mmap/mmap"
 	"github.com/kelindar/ultima-sdk/internal/mul"
@@ -68,15 +67,15 @@ const (
 	TileFlagMultiMovable TileFlag = 0x10000000000
 )
 
-// LandTileData represents the data for a single land tile.
-type LandTileData struct {
+// LandInfo represents the data for a single land tile.
+type LandInfo struct {
 	TextureID uint16   // Texture ID for the land tile
 	Flags     TileFlag // Properties of this land tile
 	Name      string   // Name of the tile
 }
 
-// StaticItemData represents the data for a single static item tile.
-type StaticItemData struct {
+// StaticInfo represents the data for a single static item tile.
+type StaticInfo struct {
 	Flags          TileFlag // Properties of this static item
 	Weight         byte     // Weight of the item
 	Quality        byte     // Quality/Layer of the item
@@ -88,37 +87,35 @@ type StaticItemData struct {
 	StackingOffset byte     // Stacking offset if Generic flag is set
 	Name           string   // Name of the item
 	MiscData       int16    // Miscellaneous data
-	Unk2           byte     // Unknown field 2
-	Unk3           byte     // Unknown field 3
 }
 
 // Background returns whether the static item has the Background flag set
-func (s StaticItemData) Background() bool {
+func (s StaticInfo) Background() bool {
 	return s.Flags&TileFlagBackground != 0
 }
 
 // Bridge returns whether the static item has the Bridge flag set
-func (s StaticItemData) Bridge() bool {
+func (s StaticInfo) Bridge() bool {
 	return s.Flags&TileFlagBridge != 0
 }
 
 // Impassable returns whether the static item has the Impassable flag set
-func (s StaticItemData) Impassable() bool {
+func (s StaticInfo) Impassable() bool {
 	return s.Flags&TileFlagImpassable != 0
 }
 
 // Surface returns whether the static item has the Surface flag set
-func (s StaticItemData) Surface() bool {
+func (s StaticInfo) Surface() bool {
 	return s.Flags&TileFlagSurface != 0
 }
 
 // Wearable returns whether the static item has the Wearable flag set
-func (s StaticItemData) Wearable() bool {
+func (s StaticInfo) Wearable() bool {
 	return s.Flags&TileFlagWearable != 0
 }
 
 // CalcHeight returns the calculated height of the item. For bridges, this is Height/2.
-func (s StaticItemData) CalcHeight() int {
+func (s StaticInfo) CalcHeight() int {
 	if s.Flags&TileFlagBridge != 0 {
 		return int(s.Height) / 2
 	}
@@ -134,32 +131,32 @@ func readStringFromBytes(b []byte) string {
 	return string(b[:n])
 }
 
-// LandTile returns a specific land tile's data by ID
-func (s *SDK) LandTile(id int) (LandTileData, error) {
+// landInfo returns a specific land tile's data by ID
+func (s *SDK) landInfo(id int) (*LandInfo, error) {
 	if id < 0 || id >= 0x4000 {
-		return LandTileData{}, fmt.Errorf("invalid land tile ID: %d", id)
+		return nil, fmt.Errorf("invalid land tile ID: %d", id)
 	}
 
 	file, err := s.loadTiledata()
 	if err != nil {
-		return LandTileData{}, err
+		return nil, err
 	}
 
-	return uofile.Decode(file, uint32(landOffset+id), decodeLandTile)
+	return uofile.Decode(file, uint32(landOffset+id), decodeLandInfo)
 }
 
-// StaticTile returns a specific static tile's data by ID
-func (s *SDK) StaticTile(id int) (StaticItemData, error) {
+// staticInfo returns a specific static tile's data by ID
+func (s *SDK) staticInfo(id int) (*StaticInfo, error) {
 	if id < 0 || id >= s.staticTileCount() {
-		return StaticItemData{}, fmt.Errorf("invalid static tile ID: %d", id)
+		return nil, fmt.Errorf("invalid static tile ID: %d", id)
 	}
 
 	file, err := s.loadTiledata()
 	if err != nil {
-		return StaticItemData{}, err
+		return nil, err
 	}
 
-	return uofile.Decode(file, uint32(id), decodeStaticTile)
+	return uofile.Decode(file, uint32(id), decodeStaticInfo)
 }
 
 // staticTileCount returns the number of static tiles in the tiledata file
@@ -167,50 +164,6 @@ func (s *SDK) StaticTile(id int) (StaticItemData, error) {
 func (s *SDK) staticTileCount() int {
 	// Most clients have 0x10000 static tiles (65536)
 	return 0x10000
-}
-
-// LandTiles returns an iterator over all land tiles
-func (s *SDK) LandTiles() iter.Seq[LandTileData] {
-	file, err := s.loadTiledata()
-	if err != nil {
-		return func(yield func(LandTileData) bool) {}
-	}
-
-	return func(yield func(LandTileData) bool) {
-		for i := 0; i < 0x4000; i++ {
-			tile, err := uofile.Decode(file, uint32(landOffset+i), decodeLandTile)
-			if err != nil {
-				continue
-			}
-
-			if !yield(tile) {
-				break
-			}
-		}
-	}
-}
-
-// StaticTiles returns an iterator over all static tiles
-func (s *SDK) StaticTiles() iter.Seq[StaticItemData] {
-	file, err := s.loadTiledata()
-	if err != nil {
-		return func(yield func(StaticItemData) bool) {}
-	}
-
-	count := s.staticTileCount()
-
-	return func(yield func(StaticItemData) bool) {
-		for i := 0; i < count; i++ {
-			tile, err := uofile.Decode(file, uint32(i), decodeStaticTile)
-			if err != nil {
-				continue
-			}
-
-			if !yield(tile) {
-				break
-			}
-		}
-	}
 }
 
 // decodeTileDataFile loads the tiledata.mul file and populates the internal
@@ -295,31 +248,16 @@ func decodeTileDataFile(file *mmap.File, add mul.AddFn) error {
 	return nil
 }
 
-// HeightTable returns an array containing the heights of all static tiles
-func (s *SDK) HeightTable() ([]int, error) {
-	count := s.staticTileCount()
-	heights := make([]int, count)
-
-	// Populate the height table by iterating through all static tiles
-	for data := range s.StaticTiles() {
-		if data.Animation < int16(count) && data.Animation >= 0 {
-			heights[data.Animation] = int(data.Height)
-		}
-	}
-
-	return heights, nil
-}
-
-func decodeLandTile(data []byte, _ uint64) (LandTileData, error) {
-	var out LandTileData
+func decodeLandInfo(data []byte, _ uint64) (*LandInfo, error) {
+	var out LandInfo
 	out.Flags = TileFlag(binary.LittleEndian.Uint64(data[0:8]))
 	out.TextureID = binary.LittleEndian.Uint16(data[8:10])
 	out.Name = readStringFromBytes(data[10:30])
-	return out, nil
+	return &out, nil
 }
 
-func decodeStaticTile(data []byte, _ uint64) (StaticItemData, error) {
-	var out StaticItemData
+func decodeStaticInfo(data []byte, _ uint64) (*StaticInfo, error) {
+	var out StaticInfo
 
 	// Static tile format:
 	// - flags: uint32/uint64 (depends on format)
@@ -341,14 +279,14 @@ func decodeStaticTile(data []byte, _ uint64) (StaticItemData, error) {
 	out.Weight = data[offset]
 	out.Quality = data[offset+1]
 	out.MiscData = int16(binary.LittleEndian.Uint16(data[offset+2 : offset+4]))
-	out.Unk2 = data[offset+4]
+	//out.Unk2 = data[offset+4]
 	out.Quantity = data[offset+5]
 	out.Animation = int16(binary.LittleEndian.Uint16(data[offset+6 : offset+8]))
-	out.Unk3 = data[offset+8]
+	//out.Unk3 = data[offset+8]
 	out.Hue = data[offset+9]
 	out.StackingOffset = data[offset+10]
 	out.Value = data[offset+11]
 	out.Height = data[offset+12]
 	out.Name = readStringFromBytes(data[offset+13 : offset+33])
-	return out, nil
+	return &out, nil
 }

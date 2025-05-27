@@ -13,7 +13,7 @@ import (
 func TestArt(t *testing.T) {
 	runWith(t, func(sdk *SDK) {
 		t.Run("LandArt", func(t *testing.T) {
-			tile, err := sdk.LandArtTile(0)
+			tile, err := sdk.Land(0)
 
 			assert.NoError(t, err)
 			assert.NotNil(t, tile)
@@ -27,7 +27,7 @@ func TestArt(t *testing.T) {
 		})
 
 		t.Run("StaticArt", func(t *testing.T) {
-			tile, err := sdk.StaticArtTile(0x0E3D)
+			tile, err := sdk.Static(0x0E3D)
 
 			assert.NoError(t, err)
 			assert.NotNil(t, tile)
@@ -39,25 +39,9 @@ func TestArt(t *testing.T) {
 			assert.NoError(t, savePng(tile.Image, "test/art_static.png"))
 		})
 
-		t.Run("ArtTile_Land", func(t *testing.T) {
-			// Test retrieving a land tile with the general-purpose ArtTile method
-			tile, err := sdk.ArtTile(100)
-
-			assert.NoError(t, err)
-			assert.Equal(t, 100, tile.ID)
-		})
-
-		t.Run("ArtTile_Static", func(t *testing.T) {
-			// Test retrieving a static tile with the general-purpose ArtTile method
-			tile, err := sdk.ArtTile(0x4000 + 8000)
-
-			assert.NoError(t, err)
-			assert.Equal(t, 0x4000+8000, tile.ID)
-		})
-
 		t.Run("LandArtImage", func(t *testing.T) {
 			// Test loading and decoding a land art image
-			tile, err := sdk.LandArtTile(100)
+			tile, err := sdk.Land(100)
 			require.NoError(t, err)
 			assert.NotNil(t, tile.Image)
 
@@ -69,7 +53,7 @@ func TestArt(t *testing.T) {
 
 		t.Run("StaticArtImage", func(t *testing.T) {
 			// Test loading and decoding a static art image
-			tile, err := sdk.StaticArtTile(8000)
+			tile, err := sdk.Static(8000)
 			assert.NoError(t, err)
 			assert.NotNil(t, tile.Image)
 
@@ -82,16 +66,13 @@ func TestArt(t *testing.T) {
 		})
 
 		t.Run("InvalidIDs", func(t *testing.T) {
-			// Test negative ID
-			_, err := sdk.ArtTile(-1)
-			assert.Error(t, err)
 
 			// Test invalid land ID
-			_, err = sdk.LandArtTile(-1)
+			_, err := sdk.Land(-1)
 			assert.Error(t, err)
 
 			// Test land ID too large
-			_, err = sdk.LandArtTile(0x4000)
+			_, err = sdk.Land(0x4000)
 			assert.Error(t, err)
 
 		})
@@ -99,8 +80,9 @@ func TestArt(t *testing.T) {
 		t.Run("LandArtTiles_Iterator", func(t *testing.T) {
 			// Test the land art iterator
 			counter := 0
-			for tile := range sdk.LandArtTiles() {
+			for tile := range sdk.Lands() {
 				assert.NotNil(t, tile)
+				assert.NotNil(t, tile.Art, "ArtTile should not be nil")
 				assert.Less(t, tile.ID, 0x4000)
 
 				// Just check the first few to keep test runtime reasonable
@@ -114,8 +96,9 @@ func TestArt(t *testing.T) {
 		t.Run("StaticArtTiles_Iterator", func(t *testing.T) {
 			// Test the static art iterator
 			counter := 0
-			for tile := range sdk.StaticArtTiles() {
+			for tile := range sdk.Statics() {
 				assert.NotNil(t, tile)
+				assert.NotNil(t, tile.Art, "ArtTile should not be nil")
 				assert.GreaterOrEqual(t, tile.ID, 0x4000)
 
 				// Just check the first few to keep test runtime reasonable

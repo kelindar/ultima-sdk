@@ -94,7 +94,7 @@ func TestHue_Image(t *testing.T) {
 
 func TestSDK_HueAt(t *testing.T) {
 	runWith(t, func(sdk *SDK) {
-		hue, err := sdk.HueAt(1337)
+		hue, err := sdk.Hue(1337)
 		require.NoError(t, err)
 		assert.Equal(t, 1337, hue.Index)
 		assert.NotEmpty(t, hue.Name)
@@ -108,19 +108,19 @@ func TestSDK_HueAt(t *testing.T) {
 		}
 
 		// Test a hue in the middle of the range
-		hue, err = sdk.HueAt(1000)
+		hue, err = sdk.Hue(1000)
 		require.NoError(t, err)
 		assert.Equal(t, 1000, hue.Index)
 
 		// Test retrieving a hue at the upper end of the range
-		hue, err = sdk.HueAt(2999)
+		hue, err = sdk.Hue(2999)
 		require.NoError(t, err)
 		assert.Equal(t, 2999, hue.Index)
 
 		// Test invalid indices
-		_, err = sdk.HueAt(-1)
+		_, err = sdk.Hue(-1)
 		assert.Error(t, err)
-		_, err = sdk.HueAt(3000)
+		_, err = sdk.Hue(3000)
 		assert.Error(t, err)
 	})
 }
@@ -153,7 +153,7 @@ func TestSDK_Hues(t *testing.T) {
 
 func TestHueColorConversion(t *testing.T) {
 	runWith(t, func(sdk *SDK) {
-		hue, err := sdk.HueAt(1) // Get hue #1 (typically a bright red)
+		hue, err := sdk.Hue(1) // Get hue #1 (typically a bright red)
 		require.NoError(t, err)
 
 		// Get a color from the hue
@@ -182,7 +182,7 @@ func TestHueColorConversion(t *testing.T) {
 
 func TestHueImageRendering(t *testing.T) {
 	runWith(t, func(sdk *SDK) {
-		hue, err := sdk.HueAt(5) // Get a sample hue
+		hue, err := sdk.Hue(5) // Get a sample hue
 		require.NoError(t, err)
 
 		// Generate a small visualization image
