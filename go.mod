@@ -4,7 +4,7 @@ go 1.24.2
 
 require (
 	codeberg.org/go-mmap/mmap v0.8.0
-	github.com/kelindar/intmap v1.4.1
+	github.com/kelindar/intmap v1.5.0
 	github.com/stretchr/testify v1.10.0
 )
 

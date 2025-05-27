@@ -57,7 +57,7 @@ func OpenOne(filename string, options ...Option) (*Reader, error) {
 
 	r := &Reader{
 		file:      file,
-		lookup:    intmap.New(8000, .95),
+		lookup:    intmap.New(8000),
 		entrySize: 12,
 	}
 
@@ -96,7 +96,7 @@ func Open(mulFilename, idxFilename string, options ...Option) (*Reader, error) {
 	r := &Reader{
 		file:      file,
 		index:     idxFile,
-		lookup:    intmap.New(128, .95),
+		lookup:    intmap.New(128),
 		entrySize: 12, // Default entry size is 12 bytes (3 uint32s)
 	}
 
