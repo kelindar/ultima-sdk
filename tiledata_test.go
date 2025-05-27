@@ -64,4 +64,68 @@ func TestTileData_Helpers(t *testing.T) {
 		assert.Equal(t, "", result)
 	})
 
+	t.Run("ItemInfo_ContextualMethods", func(t *testing.T) {
+		// Test a mock weapon item
+		weaponItem := ItemInfo{
+			Flags:    TileFlagWeapon,
+			Quantity: 5, // Weapon class
+		}
+
+		// Test IsWeapon returns both value and bool
+		weaponClass, isWeapon := weaponItem.IsWeapon()
+		assert.True(t, isWeapon)
+		assert.Equal(t, byte(5), weaponClass)
+
+		// Test IsArmor returns false for weapon
+		_, isArmor := weaponItem.IsArmor()
+		assert.False(t, isArmor)
+
+		// Test a mock wearable item
+		wearableItem := ItemInfo{
+			Flags:   TileFlagWearable,
+			Quality: 10, // Layer
+		}
+
+		// Test IsWearable returns both value and bool
+		layer, isWearable := wearableItem.IsWearable()
+		assert.True(t, isWearable)
+		assert.Equal(t, byte(10), layer)
+
+		// Test convenience Layer() method
+		assert.Equal(t, byte(10), wearableItem.Layer())
+
+		// Test a mock light source
+		lightItem := ItemInfo{
+			Flags:   TileFlagLightSource,
+			Quality: 3, // Light ID
+		}
+
+		// Test IsLightSource returns both value and bool
+		lightID, isLight := lightItem.IsLightSource()
+		assert.True(t, isLight)
+		assert.Equal(t, byte(3), lightID)
+
+		// Test convenience LightID() method
+		assert.Equal(t, byte(3), lightItem.LightID())
+
+		// Test item with no special flags
+		normalItem := ItemInfo{
+			Flags:    TileFlagNone,
+			Quality:  1,
+			Quantity: 2,
+		}
+
+		_, isWeapon = normalItem.IsWeapon()
+		assert.False(t, isWeapon)
+
+		_, isWearable = normalItem.IsWearable()
+		assert.False(t, isWearable)
+
+		_, isLight = normalItem.IsLightSource()
+		assert.False(t, isLight)
+
+		// Test StackQuantity always returns Quantity
+		assert.Equal(t, byte(2), normalItem.StackQuantity())
+	})
+
 }

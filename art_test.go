@@ -27,7 +27,7 @@ func TestArt(t *testing.T) {
 		})
 
 		t.Run("StaticArt", func(t *testing.T) {
-			tile, err := sdk.Static(0x0E3D)
+			tile, err := sdk.Item(0x0E3D)
 
 			assert.NoError(t, err)
 			assert.NotNil(t, tile)
@@ -53,7 +53,7 @@ func TestArt(t *testing.T) {
 
 		t.Run("StaticArtImage", func(t *testing.T) {
 			// Test loading and decoding a static art image
-			tile, err := sdk.Static(8000)
+			tile, err := sdk.Item(8000)
 			assert.NoError(t, err)
 			assert.NotNil(t, tile.Image)
 
@@ -96,7 +96,7 @@ func TestArt(t *testing.T) {
 		t.Run("StaticArtTiles_Iterator", func(t *testing.T) {
 			// Test the static art iterator
 			counter := 0
-			for tile := range sdk.Statics() {
+			for tile := range sdk.Items() {
 				assert.NotNil(t, tile)
 				assert.NotNil(t, tile.Art, "ArtTile should not be nil")
 				assert.GreaterOrEqual(t, tile.ID, 0x4000)

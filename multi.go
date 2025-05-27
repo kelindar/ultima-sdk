@@ -51,7 +51,7 @@ func (m *Multi) Image() (image.Image, error) {
 	}, 0, len(m.Items))
 
 	for _, item := range m.Items {
-		art, err := m.sdk.Static(int(item.Item))
+		art, err := m.sdk.Item(int(item.Item))
 		if err != nil || art == nil {
 			continue
 		}
@@ -114,7 +114,7 @@ func (m *Multi) Image() (image.Image, error) {
 
 	// Second pass: draw tiles at adjusted positions
 	for _, pos := range tilePositions {
-		art, err := m.sdk.Static(int(pos.item.Item))
+		art, err := m.sdk.Item(int(pos.item.Item))
 		if err != nil || art == nil {
 			continue
 		}

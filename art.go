@@ -41,10 +41,10 @@ type Land struct {
 	*LandInfo
 }
 
-// Static represents a complete static item with both art and tile data.
-type Static struct {
+// Item represents a complete static item with both art and tile data.
+type Item struct {
 	Art
-	*StaticInfo
+	*ItemInfo
 }
 
 // Land retrieves a land art tile by its ID.
@@ -83,8 +83,8 @@ func (s *SDK) Land(id int) (*Land, error) {
 	}, nil
 }
 
-// Static retrieves a static art tile by its ID.
-func (s *SDK) Static(id int) (*Static, error) {
+// Item retrieves a static art tile by its ID.
+func (s *SDK) Item(id int) (*Item, error) {
 	if id < 0 || id > maxValidArtIndex-staticTileMinID {
 		return nil, fmt.Errorf("%w: static tile ID %d out of range [0-%d]",
 			ErrInvalidTileID, id, maxValidArtIndex-staticTileMinID)
@@ -116,9 +116,9 @@ func (s *SDK) Static(id int) (*Static, error) {
 		return nil, err
 	}
 
-	return &Static{
-		Art:        artTile,
-		StaticInfo: info,
+	return &Item{
+		Art:      artTile,
+		ItemInfo: info,
 	}, nil
 }
 
@@ -138,11 +138,11 @@ func (s *SDK) Lands() iter.Seq[*Land] {
 	}
 }
 
-// Statics returns an iterator over all available static art tiles.
-func (s *SDK) Statics() iter.Seq[*Static] {
-	return func(yield func(*Static) bool) {
+// Items returns an iterator over all available static art tiles.
+func (s *SDK) Items() iter.Seq[*Item] {
+	return func(yield func(*Item) bool) {
 		for i := uint32(staticTileMinID); i <= maxValidArtIndex; i++ {
-			tile, err := s.Static(int(i - staticTileMinID))
+			tile, err := s.Item(int(i - staticTileMinID))
 			if tile == nil || err != nil {
 				continue
 			}

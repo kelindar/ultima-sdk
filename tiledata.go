@@ -74,52 +74,141 @@ type LandInfo struct {
 	Name      string   // Name of the tile
 }
 
-// StaticInfo represents the data for a single static item tile.
-type StaticInfo struct {
-	Flags          TileFlag // Properties of this static item
-	Weight         byte     // Weight of the item
-	Quality        byte     // Quality/Layer of the item
-	Quantity       byte     // Quantity of the item
-	Value          byte     // Value of the item
-	Height         byte     // Height of the item
-	Animation      int16    // Animation ID of the item
-	Hue            byte     // Hue of the item
-	StackingOffset byte     // Stacking offset if Generic flag is set
-	Name           string   // Name of the item
-	MiscData       int16    // Miscellaneous data
+// ItemInfo represents the data for a single static item tile in Ultima Online.
+// This structure contains all the properties that define how an item behaves
+// in the game world, including physical properties, rendering information,
+// and game mechanics data.
+//
+// Context-Sensitive Fields:
+// The Quality and Quantity fields contain different data depending on the item's flags.
+// Use the typed helper methods for safe access:
+//   - IsWearable() (layer byte, ok bool) - equipment layer for wearable items
+//   - IsWeapon() (weaponClass byte, ok bool) - weapon class for weapons
+//   - IsArmor() (armorClass byte, ok bool) - armor class for armor
+//   - IsLightSource() (lightID byte, ok bool) - light pattern ID for light sources
+type ItemInfo struct {
+	// Name is the display name of the item as it appears in the game.
+	Name string
+
+	// Flags contains bitwise flags that define the item's properties and behaviors.
+	// Use the helper methods (IsWearable, IsWeapon, etc.) for easier access.
+	Flags TileFlag
+
+	// Physical Properties
+	Weight byte // Item weight in game units (255 = immovable)
+	Height byte // Physical height for collision detection and line-of-sight
+	Value  byte // Item's worth for vendor pricing and insurance
+
+	// Visual Properties
+	AnimationID    int16 // Animation/Body ID (0 = no animation)
+	Hue            byte  // Color/tint value for visual effects
+	StackingOffset byte  // Visual offset when stacked (requires Generic flag)
+
+	// Context-Sensitive Properties
+	// These fields contain different data depending on the item's flags:
+	Quality  byte  // Layer (wearable), LightID (light source), or other quality data
+	Quantity byte  // WeaponClass (weapon), ArmorClass (armor), stack quantity, etc.
+	MiscData int16 // Legacy data for old weapon templates
 }
 
-// Background returns whether the static item has the Background flag set
-func (s StaticInfo) Background() bool {
-	return s.Flags&TileFlagBackground != 0
+// Background returns whether the item has the Background flag set
+func (i ItemInfo) Background() bool {
+	return i.Flags&TileFlagBackground != 0
 }
 
-// Bridge returns whether the static item has the Bridge flag set
-func (s StaticInfo) Bridge() bool {
-	return s.Flags&TileFlagBridge != 0
+// Bridge returns whether the item has the Bridge flag set
+func (i ItemInfo) Bridge() bool {
+	return i.Flags&TileFlagBridge != 0
 }
 
-// Impassable returns whether the static item has the Impassable flag set
-func (s StaticInfo) Impassable() bool {
-	return s.Flags&TileFlagImpassable != 0
+// Impassable returns whether the item has the Impassable flag set
+func (i ItemInfo) Impassable() bool {
+	return i.Flags&TileFlagImpassable != 0
 }
 
-// Surface returns whether the static item has the Surface flag set
-func (s StaticInfo) Surface() bool {
-	return s.Flags&TileFlagSurface != 0
+// Surface returns whether the item has the Surface flag set
+func (i ItemInfo) Surface() bool {
+	return i.Flags&TileFlagSurface != 0
 }
 
-// Wearable returns whether the static item has the Wearable flag set
-func (s StaticInfo) Wearable() bool {
-	return s.Flags&TileFlagWearable != 0
+// IsWearable returns whether the item can be worn/equipped, and if so, the equipment layer
+func (i ItemInfo) IsWearable() (layer byte, ok bool) {
+	if i.Flags&TileFlagWearable != 0 {
+		return i.Quality, true
+	}
+	return 0, false
+}
+
+// IsWeapon returns whether the item is a weapon, and if so, the weapon class
+func (i ItemInfo) IsWeapon() (weaponClass byte, ok bool) {
+	if i.Flags&TileFlagWeapon != 0 {
+		return i.Quantity, true
+	}
+	return 0, false
+}
+
+// IsArmor returns whether the item is armor, and if so, the armor class
+func (i ItemInfo) IsArmor() (armorClass byte, ok bool) {
+	if i.Flags&TileFlagArmor != 0 {
+		return i.Quantity, true
+	}
+	return 0, false
+}
+
+// IsLightSource returns whether the item produces light, and if so, the light pattern ID
+func (i ItemInfo) IsLightSource() (lightID byte, ok bool) {
+	if i.Flags&TileFlagLightSource != 0 {
+		return i.Quality, true
+	}
+	return 0, false
+}
+
+// IsContainer returns whether the item can hold other items
+func (i ItemInfo) IsContainer() bool {
+	return i.Flags&TileFlagContainer != 0
+}
+
+// StackQuantity returns the default stack quantity for stackable items.
+// For non-stackable items, this returns the context-specific Quantity value.
+func (i ItemInfo) StackQuantity() byte {
+	return i.Quantity
+}
+
+// Layer returns the equipment layer for wearable items, or 0 if not wearable.
+// For better type safety, prefer using IsWearable() which returns (layer, bool).
+func (i ItemInfo) Layer() byte {
+	if i.Flags&TileFlagWearable != 0 {
+		return i.Quality
+	}
+	return 0
+}
+
+// LightID returns the light pattern ID for light sources, or 0 if not a light source.
+// For better type safety, prefer using IsLightSource() which returns (lightID, bool).
+func (i ItemInfo) LightID() byte {
+	if i.Flags&TileFlagLightSource != 0 {
+		return i.Quality
+	}
+	return 0
+}
+
+// IsMoveable returns whether the item can be moved/picked up.
+// Items with Weight=255 are considered immovable.
+func (i ItemInfo) IsMoveable() bool {
+	return i.Weight != 255
+}
+
+// HasAnimation returns whether this item has an associated animation.
+func (i ItemInfo) HasAnimation() bool {
+	return i.AnimationID != 0
 }
 
 // CalcHeight returns the calculated height of the item. For bridges, this is Height/2.
-func (s StaticInfo) CalcHeight() int {
-	if s.Flags&TileFlagBridge != 0 {
-		return int(s.Height) / 2
+func (i ItemInfo) CalcHeight() int {
+	if i.Flags&TileFlagBridge != 0 {
+		return int(i.Height) / 2
 	}
-	return int(s.Height)
+	return int(i.Height)
 }
 
 // readStringFromBytes reads a null-terminated string from a fixed-length byte array
@@ -146,7 +235,7 @@ func (s *SDK) landInfo(id int) (*LandInfo, error) {
 }
 
 // staticInfo returns a specific static tile's data by ID
-func (s *SDK) staticInfo(id int) (*StaticInfo, error) {
+func (s *SDK) staticInfo(id int) (*ItemInfo, error) {
 	if id < 0 || id >= s.staticTileCount() {
 		return nil, fmt.Errorf("invalid static tile ID: %d", id)
 	}
@@ -256,33 +345,36 @@ func decodeLandInfo(data []byte, _ uint64) (*LandInfo, error) {
 	return &out, nil
 }
 
-func decodeStaticInfo(data []byte, _ uint64) (*StaticInfo, error) {
-	var out StaticInfo
+func decodeStaticInfo(data []byte, _ uint64) (*ItemInfo, error) {
+	var out ItemInfo
 
-	// Static tile format:
-	// - flags: uint32/uint64 (depends on format)
-	// - weight: byte
-	// - quality: byte
-	// - miscData: int16
-	// - unk2: byte
-	// - quantity: byte
-	// - animation: int16
-	// - unk3: byte
-	// - hue: byte
-	// - stackingOffset: byte
-	// - value: byte
-	// - height: byte
-	// - name: char[20]
+	// Static tile data format in tiledata.mul:
+	// Offset | Size | Field        | Description
+	// -------|------|--------------|-------------
+	//   0    |  8   | flags        | TileFlag bitfield (64-bit)
+	//   8    |  1   | weight       | Item weight (255 = immovable)
+	//   9    |  1   | quality      | Layer for wearables, LightID for lights
+	//  10    |  2   | miscData     | Miscellaneous data (old weapon templates)
+	//  12    |  1   | unk2         | Unknown field (skipped)
+	//  13    |  1   | quantity     | Weapon/Armor class, or stack quantity
+	//  14    |  2   | animation    | Animation/Body ID (0 = no animation)
+	//  16    |  1   | unk3         | Unknown field (skipped)
+	//  17    |  1   | hue          | Color/hue value
+	//  18    |  1   | stackOffset  | Visual stacking offset (Generic flag)
+	//  19    |  1   | value        | Item value/worth
+	//  20    |  1   | height       | Physical height in game units
+	//  21    | 20   | name         | Null-terminated item name string
+
 	out.Flags = TileFlag(binary.LittleEndian.Uint64(data[0:8]))
 	offset := 8
 
 	out.Weight = data[offset]
-	out.Quality = data[offset+1]
+	out.Quality = data[offset+1] // Context-sensitive: Layer, LightID, etc.
 	out.MiscData = int16(binary.LittleEndian.Uint16(data[offset+2 : offset+4]))
-	//out.Unk2 = data[offset+4]
-	out.Quantity = data[offset+5]
-	out.Animation = int16(binary.LittleEndian.Uint16(data[offset+6 : offset+8]))
-	//out.Unk3 = data[offset+8]
+	//out.Unk2 = data[offset+4] // Unknown field, skipped
+	out.Quantity = data[offset+5] // Context-sensitive: WeaponClass, ArmorClass, etc.
+	out.AnimationID = int16(binary.LittleEndian.Uint16(data[offset+6 : offset+8]))
+	//out.Unk3 = data[offset+8] // Unknown field, skipped
 	out.Hue = data[offset+9]
 	out.StackingOffset = data[offset+10]
 	out.Value = data[offset+11]
