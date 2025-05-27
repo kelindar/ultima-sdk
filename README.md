@@ -51,10 +51,10 @@ func main() {
 - `Open(dir string) (*SDK, error)` – Open a UO client directory
 - `(*SDK).Animation(body, action, direction, hue int, preserveHue, firstFrame bool) (*Animation, error)` – Load animation frames
 - `(*SDK).String(id int) (string, error)` – Retrieve localized string
-- `(*SDK).Font() ([]*Font, error)` – Load UO fonts
-- `(*SDK).Hue(id int) (*Hue, error)` – Get hue/color data
+- `(*SDK).Font() ([]Font, error)` – Load UO fonts
+- `(*SDK).Hue(index int) (*Hue, error)` – Get hue/color data
 - `(*SDK).Gump(id int) (*Gump, error)` – Load gump images
-- `(*SDK).Map(id int) (*Map, error)` – Load map data
+- `(*SDK).Map(mapID int) (*TileMap, error)` – Load map data
 - `(*SDK).Land(id int) (*Land, error)` – Load land art tiles
 - `(*SDK).Item(id int) (*Item, error)` – Load static art tiles
 
