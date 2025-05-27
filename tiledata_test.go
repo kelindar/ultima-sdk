@@ -7,13 +7,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestTileData(t *testing.T) {
 	runWith(t, func(sdk *SDK) {
 		t.Run("LandTile", func(t *testing.T) {
-			landTile, err := sdk.LandTile(0)
+			landTile, err := sdk.landInfo(0)
 
 			assert.NoError(t, err)
 			assert.NotEmpty(t, landTile.Name) // ED
@@ -21,91 +20,28 @@ func TestTileData(t *testing.T) {
 		})
 
 		t.Run("LandTile_InvalidID", func(t *testing.T) {
-			_, err := sdk.LandTile(-1)
+			_, err := sdk.landInfo(-1)
 			assert.Error(t, err)
 
-			_, err = sdk.LandTile(0xFFFFF)
+			_, err = sdk.landInfo(0xFFFFF)
 			assert.Error(t, err)
 		})
 
 		t.Run("StaticTile", func(t *testing.T) {
-			staticTile, err := sdk.StaticTile(3)
+			staticTile, err := sdk.staticInfo(3)
 
 			assert.NoError(t, err)
 			assert.NotEmpty(t, staticTile.Name)
 		})
 
 		t.Run("StaticTile_InvalidID", func(t *testing.T) {
-			_, err := sdk.StaticTile(-1)
+			_, err := sdk.staticInfo(-1)
 			assert.Error(t, err)
 
-			_, err = sdk.StaticTile(sdk.staticTileCount())
+			_, err = sdk.staticInfo(sdk.staticTileCount())
 			assert.Error(t, err)
 		})
 
-		t.Run("LandTiles_Iterator", func(t *testing.T) {
-			count := 0
-			for tile := range sdk.LandTiles() {
-				if tile.Name != "" {
-					count++
-				}
-				if count >= 5 {
-					break
-				}
-			}
-			assert.Equal(t, 5, count)
-		})
-
-		t.Run("StaticTiles_Iterator", func(t *testing.T) {
-			count := 0
-			for tile := range sdk.StaticTiles() {
-				if tile.Name != "" {
-					count++
-				}
-				if count >= 5 {
-					break
-				}
-			}
-			assert.Equal(t, 5, count)
-		})
-
-		t.Run("StaticItemData_Properties", func(t *testing.T) {
-			// Test some properties that are commonly used
-
-			// Find a known bridge tile to test CalcHeight
-			var bridgeTile StaticItemData
-			bridgeFound := false
-
-			for tile := range sdk.StaticTiles() {
-				if tile.Flags&TileFlagBridge != 0 {
-					bridgeTile = tile
-					bridgeFound = true
-					break
-				}
-			}
-
-			if bridgeFound {
-				assert.Equal(t, int(bridgeTile.Height)/2, bridgeTile.CalcHeight())
-			}
-
-			// Test flag helper methods on some tile
-			staticTile, err := sdk.StaticTile(1)
-			require.NoError(t, err)
-
-			assert.Equal(t, staticTile.Flags&TileFlagBackground != 0, staticTile.Background())
-			assert.Equal(t, staticTile.Flags&TileFlagBridge != 0, staticTile.Bridge())
-			assert.Equal(t, staticTile.Flags&TileFlagImpassable != 0, staticTile.Impassable())
-			assert.Equal(t, staticTile.Flags&TileFlagSurface != 0, staticTile.Surface())
-			assert.Equal(t, staticTile.Flags&TileFlagWearable != 0, staticTile.Wearable())
-		})
-
-		t.Run("HeightTable", func(t *testing.T) {
-			heights, err := sdk.HeightTable()
-
-			assert.NoError(t, err)
-			assert.NotNil(t, heights)
-			assert.Len(t, heights, sdk.staticTileCount())
-		})
 	})
 }
 
@@ -126,6 +62,70 @@ func TestTileData_Helpers(t *testing.T) {
 		input = []byte{}
 		result = readStringFromBytes(input)
 		assert.Equal(t, "", result)
+	})
+
+	t.Run("ItemInfo_ContextualMethods", func(t *testing.T) {
+		// Test a mock weapon item
+		weaponItem := ItemInfo{
+			Flags:    TileFlagWeapon,
+			Quantity: 5, // Weapon class
+		}
+
+		// Test IsWeapon returns both value and bool
+		weaponClass, isWeapon := weaponItem.IsWeapon()
+		assert.True(t, isWeapon)
+		assert.Equal(t, byte(5), weaponClass)
+
+		// Test IsArmor returns false for weapon
+		_, isArmor := weaponItem.IsArmor()
+		assert.False(t, isArmor)
+
+		// Test a mock wearable item
+		wearableItem := ItemInfo{
+			Flags:   TileFlagWearable,
+			Quality: 10, // Layer
+		}
+
+		// Test IsWearable returns both value and bool
+		layer, isWearable := wearableItem.IsWearable()
+		assert.True(t, isWearable)
+		assert.Equal(t, byte(10), layer)
+
+		// Test convenience Layer() method
+		assert.Equal(t, byte(10), wearableItem.Layer())
+
+		// Test a mock light source
+		lightItem := ItemInfo{
+			Flags:   TileFlagLightSource,
+			Quality: 3, // Light ID
+		}
+
+		// Test IsLightSource returns both value and bool
+		lightID, isLight := lightItem.IsLightSource()
+		assert.True(t, isLight)
+		assert.Equal(t, byte(3), lightID)
+
+		// Test convenience LightID() method
+		assert.Equal(t, byte(3), lightItem.LightID())
+
+		// Test item with no special flags
+		normalItem := ItemInfo{
+			Flags:    TileFlagNone,
+			Quality:  1,
+			Quantity: 2,
+		}
+
+		_, isWeapon = normalItem.IsWeapon()
+		assert.False(t, isWeapon)
+
+		_, isWearable = normalItem.IsWearable()
+		assert.False(t, isWearable)
+
+		_, isLight = normalItem.IsLightSource()
+		assert.False(t, isLight)
+
+		// Test StackQuantity always returns Quantity
+		assert.Equal(t, byte(2), normalItem.StackQuantity())
 	})
 
 }

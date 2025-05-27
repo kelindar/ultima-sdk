@@ -65,8 +65,8 @@ func (h *Hue) Image(widthPerColor, height int) image.Image {
 	return img
 }
 
-// HueAt retrieves a specific hue by its index
-func (s *SDK) HueAt(index int) (*Hue, error) {
+// Hue retrieves a specific hue by its index
+func (s *SDK) Hue(index int) (*Hue, error) {
 	// Check for valid index range
 	if index < 0 || index >= 3000 {
 		return nil, fmt.Errorf("%w: %d (must be between 0 and 2999)", ErrInvalidHueIndex, index)
@@ -154,7 +154,7 @@ func (s *SDK) HueAt(index int) (*Hue, error) {
 func (s *SDK) Hues() iter.Seq[*Hue] {
 	return func(yield func(*Hue) bool) {
 		for i := 0; i < 3000; i++ {
-			hue, err := s.HueAt(i)
+			hue, err := s.Hue(i)
 			if err != nil {
 				continue // Skip any hues that can't be loaded
 			}

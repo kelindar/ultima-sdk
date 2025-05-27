@@ -51,7 +51,7 @@ func (m *Multi) Image() (image.Image, error) {
 	}, 0, len(m.Items))
 
 	for _, item := range m.Items {
-		art, err := m.sdk.StaticArtTile(int(item.Item))
+		art, err := m.sdk.Item(int(item.Item))
 		if err != nil || art == nil {
 			continue
 		}
@@ -114,7 +114,7 @@ func (m *Multi) Image() (image.Image, error) {
 
 	// Second pass: draw tiles at adjusted positions
 	for _, pos := range tilePositions {
-		art, err := m.sdk.StaticArtTile(int(pos.item.Item))
+		art, err := m.sdk.Item(int(pos.item.Item))
 		if err != nil || art == nil {
 			continue
 		}
@@ -252,7 +252,7 @@ func (s *SDK) MultiFromCSV(data []byte) (*Multi, error) {
 		offsetY, err := strconv.ParseInt(record[2], 10, 16)
 		if err != nil {
 			return nil, fmt.Errorf("multi: invalid Y in row %d: %w", rowNum+2, err)
-		}		// Parse OffsetZ
+		} // Parse OffsetZ
 		offsetZ, err := strconv.ParseInt(record[3], 10, 16)
 		if err != nil {
 			return nil, fmt.Errorf("multi: invalid Z in row %d: %w", rowNum+2, err)
@@ -266,7 +266,7 @@ func (s *SDK) MultiFromCSV(data []byte) (*Multi, error) {
 				return nil, fmt.Errorf("multi: invalid Flags in row %d: %w", rowNum+2, err)
 			}
 			flags = uint32(flagsVal)
-		}		// Parse cliloc (optional, defaults to 0)
+		} // Parse cliloc (optional, defaults to 0)
 		var cliloc uint32
 		if len(record) > 5 {
 			clilocVal, err := strconv.ParseUint(record[5], 10, 32)
@@ -275,7 +275,7 @@ func (s *SDK) MultiFromCSV(data []byte) (*Multi, error) {
 			}
 			cliloc = uint32(clilocVal)
 		}
-		
+
 		items = append(items, MultiItem{
 			Item:   uint16(itemID),
 			X:      int16(offsetX),

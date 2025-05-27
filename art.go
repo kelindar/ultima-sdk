@@ -29,30 +29,26 @@ var (
 	ErrInvalidArtData = errors.New("invalid art data")
 )
 
-// ArtTile represents a piece of art (land or static item).
-type ArtTile struct {
-	ID     int         // ID of the tile
-	Name   string      // Name from TileData
-	Flags  TileFlag    // Flags from TileData
-	Height int8        // Height of the tile, from TileData
-	Image  image.Image // Decoded image for the tile
+// Art represents a piece of art (land or static item).
+type Art struct {
+	ID    int         // ID of the tile
+	Image image.Image // Decoded image for the tile
 }
 
-// ArtTile returns an art tile by ID.
-// Use LandArtTile or StaticArtTile for clearer semantics.
-func (s *SDK) ArtTile(id int) (*ArtTile, error) {
-	if id < 0 || id > maxValidArtIndex {
-		return nil, ErrInvalidTileID
-	}
-
-	if id < landTileMax {
-		return s.LandArtTile(id)
-	}
-	return s.StaticArtTile(id - staticTileMinID)
+// Land represents a complete land tile with both art and tile data.
+type Land struct {
+	Art
+	*LandInfo
 }
 
-// LandArtTile retrieves a land art tile by its ID.
-func (s *SDK) LandArtTile(id int) (*ArtTile, error) {
+// Item represents a complete static item with both art and tile data.
+type Item struct {
+	Art
+	*ItemInfo
+}
+
+// Land retrieves a land art tile by its ID.
+func (s *SDK) Land(id int) (*Land, error) {
 	if id < 0 || id >= landTileMax {
 		return nil, fmt.Errorf("%w: land tile ID %d out of range [0-%d]",
 			ErrInvalidTileID, id, landTileMax-1)
@@ -65,24 +61,30 @@ func (s *SDK) LandArtTile(id int) (*ArtTile, error) {
 	}
 
 	// Read the land tile data
-	info, _ := s.LandTile(id)
-	return uofile.Decode(file, uint32(id), func(data []byte, extra uint64) (*ArtTile, error) {
+	info, _ := s.landInfo(id)
+	artTile, err := uofile.Decode(file, uint32(id), func(data []byte, extra uint64) (Art, error) {
 		img, err := decodeLandImage(data)
 		if err != nil {
-			return nil, err
+			return Art{}, err
 		}
 
-		return &ArtTile{
+		return Art{
 			ID:    id,
-			Name:  info.Name,
-			Flags: info.Flags,
 			Image: img,
 		}, nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &Land{
+		Art:      artTile,
+		LandInfo: info,
+	}, nil
 }
 
-// StaticArtTile retrieves a static art tile by its ID.
-func (s *SDK) StaticArtTile(id int) (*ArtTile, error) {
+// Item retrieves a static art tile by its ID.
+func (s *SDK) Item(id int) (*Item, error) {
 	if id < 0 || id > maxValidArtIndex-staticTileMinID {
 		return nil, fmt.Errorf("%w: static tile ID %d out of range [0-%d]",
 			ErrInvalidTileID, id, maxValidArtIndex-staticTileMinID)
@@ -98,28 +100,33 @@ func (s *SDK) StaticArtTile(id int) (*ArtTile, error) {
 	}
 
 	// Read the static tile data
-	info, _ := s.StaticTile(id)
-	return uofile.Decode(file, uint32(artID), func(data []byte, extra uint64) (*ArtTile, error) {
+	info, _ := s.staticInfo(id)
+	artTile, err := uofile.Decode(file, uint32(artID), func(data []byte, extra uint64) (Art, error) {
 		img, err := decodeStaticImage(data)
 		if err != nil {
-			return nil, err
+			return Art{}, err
 		}
 
-		return &ArtTile{
-			ID:     artID,
-			Name:   info.Name,
-			Flags:  info.Flags,
-			Height: int8(info.Height),
-			Image:  img,
+		return Art{
+			ID:    artID,
+			Image: img,
 		}, nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &Item{
+		Art:      artTile,
+		ItemInfo: info,
+	}, nil
 }
 
-// LandArtTiles returns an iterator over all available land art tiles.
-func (s *SDK) LandArtTiles() iter.Seq[*ArtTile] {
-	return func(yield func(*ArtTile) bool) {
+// Lands returns an iterator over all available land art tiles.
+func (s *SDK) Lands() iter.Seq[*Land] {
+	return func(yield func(*Land) bool) {
 		for i := uint32(0); i < landTileMax; i++ {
-			tile, err := s.LandArtTile(int(i))
+			tile, err := s.Land(int(i))
 			if tile == nil || err != nil {
 				continue
 			}
@@ -131,11 +138,11 @@ func (s *SDK) LandArtTiles() iter.Seq[*ArtTile] {
 	}
 }
 
-// StaticArtTiles returns an iterator over all available static art tiles.
-func (s *SDK) StaticArtTiles() iter.Seq[*ArtTile] {
-	return func(yield func(*ArtTile) bool) {
+// Items returns an iterator over all available static art tiles.
+func (s *SDK) Items() iter.Seq[*Item] {
+	return func(yield func(*Item) bool) {
 		for i := uint32(staticTileMinID); i <= maxValidArtIndex; i++ {
-			tile, err := s.StaticArtTile(int(i - staticTileMinID))
+			tile, err := s.Item(int(i - staticTileMinID))
 			if tile == nil || err != nil {
 				continue
 			}
