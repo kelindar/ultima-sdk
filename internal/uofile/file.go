@@ -12,7 +12,6 @@ import (
 	"iter"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -242,8 +241,6 @@ func (f *File) open() error {
 			f.state.Store(stateNew)
 			return fmt.Errorf("failed to initialize file %s: %w", f.path, err)
 		}
-	} else {
-		runtime.Gosched()
 	}
 
 	return nil

@@ -68,7 +68,16 @@ func makeRadarColor(id int, value uint16) RadarColor {
 	return RadarColor(result)
 }
 
-// RadarColor retrieves the radar color for a given tile ID
+// RadarColor retrieves the radar color for a given tile ID from the radarcol.mul file.
+// Radar colors are used to display tiles on the in-game mini-map radar.
+// 
+// Parameters:
+//   - tileID: The tile ID to get the radar color for (0-0x7FFF range)
+//     - 0x0000-0x3FFF: Land tiles
+//     - 0x4000-0x7FFF: Static/item tiles
+//
+// Returns a RadarColor value containing both the tile ID and its associated color,
+// or an error if the tile ID is out of range or the radarcol.mul file cannot be loaded.
 func (s *SDK) RadarColor(tileID int) (RadarColor, error) {
 	if tileID < 0 || tileID >= totalRadarColors {
 		return 0, fmt.Errorf("%w: %d (must be between 0 and 0x7FFF)", ErrInvalidRadarColorIndex, tileID)
