@@ -68,8 +68,8 @@ func decodeGump(data []byte, extra uint64) (*Gump, error) {
 	height := int((extra >> 32) & 0xFFFF)
 
 	if extra < math.MaxUint32 {
-		width = int(extra & 0xFFFF)
-		height = int((extra >> 16) & 0xFFFF)
+		height = int(extra & 0xFFFF)
+		width = int((extra >> 16) & 0xFFFF)
 	}
 
 	// Sanity check
@@ -95,6 +95,9 @@ func decodeGumpData(data []byte, width, height int) (image.Image, error) {
 	if len(data) < need {
 		return nil, fmt.Errorf("data too short for lookup table")
 	}
+
+	// Save binary data to file
+	//	os.WriteFile("gump-KO.bin", data, 0644)
 
 	// Parse lookup table (height * uint32).
 	lookup := make([]uint32, height)
