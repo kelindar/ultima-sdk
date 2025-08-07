@@ -76,7 +76,7 @@ func WithCount(count int) Option {
 // WithIndexLength sets the index length for UOP files
 func WithIndexLength(length int) Option {
 	return func(f *File) {
-		f.uopOpts = append(f.uopOpts, uop.WithIndexLength(length))
+		f.uopOpts = append(f.uopOpts, uop.WithLength(length))
 	}
 }
 
