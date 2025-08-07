@@ -42,15 +42,14 @@ type Entry6D struct {
 
 // Reader implements the interface for reading UOP files
 type Reader struct {
-	file      *mmap.File  // File handle
-	info      os.FileInfo // File information
-	entries   []Entry6D   // Map of entries by logical index or hash
-	length    int         // Length of the file
-	idxLength int         // Length of the index
-	ext       string      // File extension
-	closed    bool        // Flag to track if reader is closed
-	hasextra  bool        // Flag to indicate if extra data is present
-	strict    bool        // Flag to indicate if the reader should skip not found hashes
+	file     *mmap.File  // File handle
+	info     os.FileInfo // File information
+	entries  []Entry6D   // Map of entries by logical index or hash
+	length   int         // Length of the file
+	ext      string      // File extension
+	closed   bool        // Flag to track if reader is closed
+	hasextra bool        // Flag to indicate if extra data is present
+	strict   bool        // Flag to indicate if the reader should skip not found hashes
 }
 
 // Open creates a new UOP file reader
@@ -66,10 +65,10 @@ func Open(filename string, length int, options ...Option) (*Reader, error) {
 	}
 
 	r := &Reader{
-		file:      file,
-		info:      info,
-		ext:       ".dat",
-		idxLength: 0xFFFFFFFF,
+		file:   file,
+		info:   info,
+		ext:    ".dat",
+		length: length,
 	}
 
 	// Apply any provided options
@@ -175,7 +174,7 @@ func (r *Reader) parseFile() error {
 				continue
 			}
 
-			if entryIdx < 0 || entryIdx > r.idxLength {
+			if entryIdx < 0 || entryIdx > r.length {
 				return fmt.Errorf("hashes dictionary and files collection have different count of entries")
 			}
 

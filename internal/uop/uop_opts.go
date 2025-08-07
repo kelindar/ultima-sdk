@@ -20,10 +20,10 @@ func WithExtension(ext string) Option {
 	}
 }
 
-// WithIndexLength sets the length of the index.
-func WithIndexLength(length int) Option {
+// WithLength sets the length of the index.
+func WithLength(length int) Option {
 	return func(r *Reader) {
-		r.idxLength = length
+		r.length = length
 	}
 }
 

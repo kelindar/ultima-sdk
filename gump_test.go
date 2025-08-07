@@ -25,9 +25,6 @@ func TestGump(t *testing.T) {
 			count := 0
 			for range sdk.Gumps() {
 				count++
-				if count > 1000 {
-					break
-				}
 			}
 			assert.Greater(t, count, 0)
 		})
@@ -77,6 +74,15 @@ func TestGump(t *testing.T) {
 			gump, err := sdk.Gump(0xFFFFF) // Very high ID
 			assert.Error(t, err, "Should error on invalid gump ID")
 			assert.Nil(t, gump, "Should not return a gump for invalid ID")
+		})
+	})
+
+	t.Run("Gump40018", func(t *testing.T) {
+		runWith(t, func(sdk *SDK) {
+			gump, err := sdk.Gump(40018)
+			require.NoError(t, err)
+			require.NotNil(t, gump)
+			assert.NotNil(t, gump.Image)
 		})
 	})
 }

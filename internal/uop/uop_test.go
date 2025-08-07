@@ -42,7 +42,7 @@ func TestNewReader(t *testing.T) {
 func TestEntryOperations(t *testing.T) {
 	testUOP := filepath.Join(uotest.Path(), "artLegacyMUL.uop")
 
-	reader, err := Open(testUOP, 0x14000, WithExtension(".tga"), WithIndexLength(0x13FDC))
+	reader, err := Open(testUOP, 0x14000, WithExtension(".tga"), WithLength(0x13FDC))
 	require.NoError(t, err)
 	defer reader.Close()
 
