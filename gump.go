@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"image"
 	"iter"
+	"math"
 
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
 	"github.com/kelindar/ultima-sdk/internal/uofile"
@@ -65,6 +66,11 @@ func (s *SDK) Gumps() iter.Seq[*Gump] {
 func decodeGump(data []byte, extra uint64) (*Gump, error) {
 	width := int(extra & 0xFFFF)
 	height := int((extra >> 32) & 0xFFFF)
+
+	if extra < math.MaxUint32 {
+		width = int(extra & 0xFFFF)
+		height = int((extra >> 16) & 0xFFFF)
+	}
 
 	// Sanity check
 	if width <= 0 || height <= 0 || width > 2048 || height > 2048 {
