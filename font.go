@@ -28,11 +28,10 @@ type Font interface {
 
 // FontUnicode loads a Unicode font from unifont*.mul using the SDK file loader.
 func (s *SDK) FontUnicode() (Font, error) {
-	file, err := s.load([]string{"unifont1.mul"}, 0) // TODO: support multiple font files if needed
+	file, err := s.loadFontUnicode()
 	if err != nil {
 		return nil, fmt.Errorf("load unifont1.mul: %w", err)
 	}
-	defer file.Close()
 
 	data, err := file.ReadFull(0)
 	if err != nil {
@@ -50,6 +49,7 @@ func (s *SDK) FontUnicode() (Font, error) {
 		}
 		offsets[i] = int32(data[off]) | int32(data[off+1])<<8 | int32(data[off+2])<<16 | int32(data[off+3])<<24
 	}
+
 	for i := 0; i < 0x10000; i++ {
 		offset := offsets[i]
 		if offset <= 0 {
@@ -108,11 +108,10 @@ func decodeUnicodeBitmap(width, height int, data []byte) *bitmap.ARGB1555 {
 
 // Font loads all ASCII fonts from fonts.mul using the SDK file loader.
 func (s *SDK) Font() ([]Font, error) {
-	file, err := s.load([]string{"fonts.mul"}, 0)
+	file, err := s.loadFont()
 	if err != nil {
 		return nil, fmt.Errorf("load fonts.mul: %w", err)
 	}
-	defer file.Close()
 
 	data, err := file.ReadFull(0)
 	if err != nil {
@@ -177,16 +176,18 @@ type unicodeFont struct {
 	Characters [0x10000]*FontRune
 }
 
+// Character returns the FontRune for a given Unicode character.
 func (f *unicodeFont) Character(r rune) *FontRune {
-	idx := int(r) % 0x10000
-	return f.Characters[idx]
+	return f.Characters[int(r)%0x10000]
 }
 
+// Size returns the width and height of the text in pixels.
 func (f *unicodeFont) Size(text string) (int, int) {
 	w, h := 0, 0
 	for _, r := range text {
 		c := f.Character(r)
 		if c == nil {
+			w += 8
 			continue
 		}
 

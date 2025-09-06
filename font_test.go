@@ -27,9 +27,12 @@ func TestFont_Load(t *testing.T) {
 		})
 
 		t.Run("Unicode", func(t *testing.T) {
+			_, err := sdk.FontUnicode()
+			assert.NoError(t, err)
+
 			font, err := sdk.FontUnicode()
 			assert.NoError(t, err)
-			c := font.Character('你') // Example: Chinese char
+			c := font.Character('你')
 			assert.NotNil(t, c)
 			assert.GreaterOrEqual(t, c.Width, 0)
 			assert.GreaterOrEqual(t, c.Height, 0)
