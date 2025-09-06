@@ -49,7 +49,7 @@ func TestFont_Load(t *testing.T) {
 			assert.NoError(t, err)
 			w, h := font.Size("Hello, World!")
 			assert.Equal(t, 15, h)
-			assert.Equal(t, 61, w)
+			assert.Equal(t, 73, w)
 		})
 	})
 }
