@@ -144,8 +144,12 @@ func (s *SDK) loadFont() (*uofile.File, error) {
 }
 
 // loadFontUnicode loads the Unicode font file
-func (s *SDK) loadFontUnicode() (*uofile.File, error) {
-	return s.load([]string{"unifont1.mul"}, 0)
+func (s *SDK) loadFontUnicode(n int) (*uofile.File, error) {
+	if n <= 0 {
+		return s.load([]string{"unifont.mul"}, 0)
+	}
+
+	return s.load([]string{fmt.Sprintf("unifont%d.mul", n)}, 0)
 }
 
 // loadAnimdata loads the animdata file
