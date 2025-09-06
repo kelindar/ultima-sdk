@@ -10,25 +10,28 @@ import (
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
 )
 
-// FontRune represents a single character's metadata and bitmap.
-// FontRune holds metadata and bitmap for a single font character.
-type FontRune struct {
-	Width   int
-	Height  int
-	XOffset int
-	YOffset int
+const (
+	unicodeFontSize = 0x10000 // 65536
+)
+
+// Rune represents a single character's metadata and bitmap.
+type Rune struct {
 	Image   image.Image
+	Width   int8
+	Height  int8
+	XOffset int8
+	YOffset int8
 }
 
 // Font is the interface for font types (ASCII, Unicode)
 type Font interface {
-	Character(rune) *FontRune
+	Rune(rune) *Rune
 	Size(string) (int, int)
 }
 
 // FontUnicode loads a Unicode font from unifont*.mul using the SDK file loader.
-func (s *SDK) FontUnicode() (Font, error) {
-	file, err := s.loadFontUnicode()
+func (s *SDK) FontUnicode(n int) (Font, error) {
+	file, err := s.loadFontUnicode(n)
 	if err != nil {
 		return nil, fmt.Errorf("load unifont1.mul: %w", err)
 	}
@@ -40,9 +43,9 @@ func (s *SDK) FontUnicode() (Font, error) {
 
 	font := &unicodeFont{}
 
-	// Read 0x10000 (65536) 4-byte offsets
-	offsets := make([]int32, 0x10000)
-	for i := 0; i < 0x10000; i++ {
+	// Read 4-byte offsets
+	offsets := make([]int32, unicodeFontSize)
+	for i := 0; i < unicodeFontSize; i++ {
 		off := i * 4
 		if off+4 > len(data) {
 			return nil, fmt.Errorf("offset table out of bounds at %d", i)
@@ -50,20 +53,23 @@ func (s *SDK) FontUnicode() (Font, error) {
 		offsets[i] = int32(data[off]) | int32(data[off+1])<<8 | int32(data[off+2])<<16 | int32(data[off+3])<<24
 	}
 
-	for i := 0; i < 0x10000; i++ {
+	for i := 0; i < unicodeFontSize; i++ {
+
 		offset := offsets[i]
 		if offset <= 0 {
-			font.Characters[i] = &FontRune{}
 			continue
 		}
+
 		if int(offset)+4 > len(data) {
 			return nil, fmt.Errorf("char meta out of bounds at %d", i)
 		}
+
 		meta := data[offset : offset+4]
-		xOff := int(int8(meta[0]))
-		yOff := int(int8(meta[1]))
+		xOff := int(meta[0])
+		yOff := int(meta[1])
 		width := int(meta[2])
 		height := int(meta[3])
+
 		var bmp *bitmap.ARGB1555
 		if width > 0 && height > 0 {
 			bytesPerRow := (width + 7) / 8
@@ -75,11 +81,11 @@ func (s *SDK) FontUnicode() (Font, error) {
 			bmp = decodeUnicodeBitmap(width, height, charData)
 		}
 
-		font.Characters[i] = &FontRune{
-			Width:   width,
-			Height:  height,
-			XOffset: xOff,
-			YOffset: yOff,
+		font.Characters[i] = Rune{
+			Width:   int8(width),
+			Height:  int8(height),
+			XOffset: int8(xOff),
+			YOffset: int8(yOff),
 			Image:   bmp,
 		}
 	}
@@ -148,9 +154,10 @@ func (s *SDK) Font() ([]Font, error) {
 					fonts[i].Height = height
 				}
 			}
-			fonts[i].Characters[k] = &FontRune{
-				Width:  width,
-				Height: height,
+
+			fonts[i].Characters[k] = Rune{
+				Width:  int8(width),
+				Height: int8(height),
 				Image:  bmp,
 			}
 		}
@@ -173,51 +180,51 @@ func decodeARGB1555(width, height int, data []byte) *bitmap.ARGB1555 {
 
 // unicodeFont implements Font for Unicode fonts (unifont*.mul)
 type unicodeFont struct {
-	Characters [0x10000]*FontRune
+	Characters [unicodeFontSize]Rune
 }
 
-// Character returns the FontRune for a given Unicode character.
-func (f *unicodeFont) Character(r rune) *FontRune {
-	return f.Characters[int(r)%0x10000]
+// Rune returns the FontRune for a given Unicode character.
+func (f *unicodeFont) Rune(r rune) *Rune {
+	return &f.Characters[int(r)%unicodeFontSize]
 }
 
 // Size returns the width and height of the text in pixels.
-func (f *unicodeFont) Size(text string) (int, int) {
-	w, h := 0, 0
+func (f *unicodeFont) Size(text string) (w int, h int) {
 	for _, r := range text {
-		c := f.Character(r)
-		if c == nil {
+		c := f.Rune(r)
+		if c == nil || c.Width == 0 {
 			w += 8
 			continue
 		}
 
-		w += c.Width + c.XOffset
-		if (c.Height + c.YOffset) > h {
-			h = c.Height + c.YOffset
+		w += int(c.Width) + int(c.XOffset)
+		if (int(c.Height) + int(c.YOffset)) > h {
+			h = int(c.Height) + int(c.YOffset)
 		}
 	}
-	return w, h
+	return
 }
 
 // asciiFont implements Font for ASCII fonts (fonts.mul)
 type asciiFont struct {
 	Header     byte
 	Unk        [224]byte
-	Characters [224]*FontRune
+	Characters [224]Rune
 	Height     int
 }
 
-func (f *asciiFont) Character(r rune) *FontRune {
-	idx := int((r - 0x20) & 0x7FFFFFFF % 224)
-	return f.Characters[idx]
+// Rune returns the FontRune for a given ASCII character.
+func (f *asciiFont) Rune(r rune) *Rune {
+	return &f.Characters[int((r-0x20)&0x7FFFFFFF%224)]
 }
 
-func (f *asciiFont) Size(text string) (int, int) {
-	w, h := 0, f.Height
+// Size returns the width and height of the text in pixels.
+func (f *asciiFont) Size(text string) (w int, h int) {
+	w, h = 0, f.Height
 	for _, r := range text {
-		if c := f.Character(r); c != nil {
-			w += c.Width
+		if c := f.Rune(r); c != nil {
+			w += int(c.Width)
 		}
 	}
-	return w, h
+	return
 }

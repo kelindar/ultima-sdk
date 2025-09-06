@@ -31,8 +31,8 @@ func TestMockSDK_AddAndRetrieve(t *testing.T) {
 // dummyFont implements ultima.Font for testing purposes.
 type dummyFont struct{}
 
-func (dummyFont) Character(r rune) *ultima.FontRune { return &ultima.FontRune{} }
-func (dummyFont) Size(string) (int, int)            { return 0, 0 }
+func (dummyFont) Rune(r rune) *ultima.Rune { return &ultima.Rune{} }
+func (dummyFont) Size(string) (int, int)   { return 0, 0 }
 
 // setup creates a mock SDK populated with sample data covering the full
 // exported surface of the SDK type.
