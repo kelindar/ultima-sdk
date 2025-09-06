@@ -4,8 +4,9 @@ import (
 	"errors"
 	"image"
 
-	"github.com/kelindar/ultima-sdk"
 	"iter"
+
+	"github.com/kelindar/ultima-sdk"
 )
 
 var ErrNotFound = errors.New("not found")
@@ -201,7 +202,7 @@ func (s *SDK) StringsWithLang(lang string) iter.Seq2[int, string] {
 	}
 }
 
-func (s *SDK) FontUnicode() (ultima.Font, error) {
+func (s *SDK) FontUnicode(int) (ultima.Font, error) {
 	if s.UnicodeFont == nil {
 		return nil, ErrNotFound
 	}
@@ -213,6 +214,10 @@ func (s *SDK) Font() ([]ultima.Font, error) {
 		return nil, ErrNotFound
 	}
 	return s.Fonts, nil
+}
+
+func (s *SDK) Text(font ultima.Font, text string, hue int) image.Image {
+	return image.NewRGBA(image.Rect(0, 0, 1, 1))
 }
 
 func (s *SDK) Gump(id int) (*ultima.Gump, error) {
