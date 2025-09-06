@@ -138,6 +138,16 @@ func (s *SDK) loadAnim(fileType int) (*uofile.File, error) {
 	return s.load(files, 0, uofile.WithIndexLength(12))
 }
 
+// loadFont loads the ASCII fonts file
+func (s *SDK) loadFont() (*uofile.File, error) {
+	return s.load([]string{"fonts.mul"}, 0)
+}
+
+// loadFontUnicode loads the Unicode font file
+func (s *SDK) loadFontUnicode() (*uofile.File, error) {
+	return s.load([]string{"unifont1.mul"}, 0)
+}
+
 // loadAnimdata loads the animdata file
 // animdata.mul format:
 //   - File is divided into chunks of 548 bytes each (4-byte header + 8 entries * 68 bytes)
