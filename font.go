@@ -7,6 +7,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"image"
+	"image/color"
+	"image/draw"
 
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
 )
@@ -263,4 +265,110 @@ func (f *asciiFont) Size(text string) (int, int) {
 	// Add 1 pixel for spacing between characters
 	w += len(text) - 1
 	return w, h
+}
+
+// Text renders text using the SDK's Unicode font with hue coloring
+func (s *SDK) Text(font Font, text string, hue int) image.Image {
+	if text == "" {
+		return nil
+	}
+
+	// Calculate text dimensions with 1 pixel spacing between characters
+	width, height := font.Size(text)
+	img := image.NewNRGBA(image.Rect(0, 0, width, height))
+
+	// Render each character
+	x := 0
+	runes := []rune(text)
+	for i, runeChar := range runes {
+		fontRune := font.Rune(runeChar)
+		if fontRune == nil || fontRune.Image == nil {
+			x += 4
+			continue // Skip unsupported characters or characters without images
+		}
+
+		// Apply hue coloring to the character image
+		charImg := s.applyHueToImage(fontRune.Image, hue)
+
+		// Draw the character at the correct position
+		charX := x + int(fontRune.XOffset)
+		charY := int(fontRune.YOffset)
+
+		// Ensure we don't draw outside bounds
+		if charX >= 0 && charY >= 0 && charX < width && charY < height {
+			draw.Draw(img,
+				image.Rect(charX, charY, charX+charImg.Bounds().Dx(), charY+charImg.Bounds().Dy()),
+				charImg,
+				charImg.Bounds().Min,
+				draw.Over)
+		}
+
+		x += int(fontRune.Width)
+
+		// Add 1 pixel spacing between characters (but not after the last character)
+		if i < len(runes)-1 {
+			x += 1
+		}
+	}
+
+	return img
+}
+
+// applyHueToImage applies a hue color to an image
+func (s *SDK) applyHueToImage(src image.Image, hueIndex int) image.Image {
+	if src == nil {
+		return nil
+	}
+	if hueIndex == 0 || s == nil {
+		return src
+	}
+
+	hue, err := s.Hue(hueIndex)
+	if err != nil || hue == nil {
+		// Fallback to original if hue not available
+		return src
+	}
+
+	bounds := src.Bounds()
+	dst := image.NewNRGBA(bounds)
+
+	// Pick a palette color suited for text. Prefer the end of the table (brightest)
+	// falling back to a mid-range if out of bounds.
+	paletteIndex := int(hue.TableEnd)
+	if paletteIndex < 0 || paletteIndex >= 32 {
+		paletteIndex = 31
+	}
+	hueColor, herr := hue.GetColor(paletteIndex)
+	if herr != nil {
+		hueColor = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	}
+	hr, hg, hb, _ := hueColor.RGBA()
+
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			sr, sg, sb, sa := src.At(x, y).RGBA()
+			if sa == 0 {
+				// Keep transparent pixels
+				dst.Set(x, y, color.NRGBA{R: 0, G: 0, B: 0, A: 0})
+				continue
+			}
+
+			// For Unicode font glyphs, source pixels are bitmask black (opaque) or transparent.
+			// Apply the hue color directly and preserve the original alpha.
+			na := uint8(sa >> 8)
+			nr := uint8(hr >> 8)
+			ng := uint8(hg >> 8)
+			nb := uint8(hb >> 8)
+
+			// If the glyph image contains grayscale intensity, we could modulate.
+			// However, UO unicode fonts are binary; use full hue color for visibility.
+			_ = sr
+			_ = sg
+			_ = sb
+
+			dst.Set(x, y, color.NRGBA{R: nr, G: ng, B: nb, A: na})
+		}
+	}
+
+	return dst
 }

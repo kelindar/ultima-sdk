@@ -204,7 +204,7 @@ func TestMockSDK_Methods(t *testing.T) {
 	assert.Error(t, err)
 
 	// Font helpers
-	if f, err := sdk.FontUnicode(); assert.NoError(t, err) {
+	if f, err := sdk.FontUnicode(1); assert.NoError(t, err) {
 		assert.NotNil(t, f)
 	}
 	if fonts, err := sdk.Font(); assert.NoError(t, err) {
@@ -244,7 +244,7 @@ func TestMockSDK_NotFound(t *testing.T) {
 	assert.ErrorIs(t, err, ErrNotFound)
 	_, err = sdk.Multi(999)
 	assert.ErrorIs(t, err, ErrNotFound)
-	_, err = sdk.FontUnicode()
+	_, err = sdk.FontUnicode(999)
 	assert.ErrorIs(t, err, ErrNotFound)
 	_, err = sdk.Font()
 	assert.ErrorIs(t, err, ErrNotFound)

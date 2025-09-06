@@ -51,5 +51,13 @@ func TestFont_Load(t *testing.T) {
 			assert.Equal(t, 15, h)
 			assert.Equal(t, 73, w)
 		})
+
+		t.Run("Text", func(t *testing.T) {
+			font, err := sdk.FontUnicode(1)
+			assert.NoError(t, err)
+			img := sdk.Text(font, "Hello, World!", 1)
+			assert.NotNil(t, img)
+			assert.NoError(t, savePng(img, "test/font_text.png"))
+		})
 	})
 }
