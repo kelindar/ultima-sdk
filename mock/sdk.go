@@ -216,6 +216,10 @@ func (s *SDK) Font() ([]ultima.Font, error) {
 	return s.Fonts, nil
 }
 
+func (s *SDK) Text(font ultima.Font, text string, hue int) image.Image {
+	return image.NewRGBA(image.Rect(0, 0, 1, 1))
+}
+
 func (s *SDK) Gump(id int) (*ultima.Gump, error) {
 	v, ok := s.GumpsMap[id]
 	if !ok {
