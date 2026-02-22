@@ -98,17 +98,15 @@ func (s *SDK) Skill(id int) (*Skill, error) {
 
 // Skills returns an iterator over all defined skills
 func (s *SDK) Skills() iter.Seq[*Skill] {
-	return func(yield func(*Skill) bool) {
-		file, err := s.loadSkills()
-		if err != nil {
-			return
-		}
+	file, err := s.loadSkills()
+	if err != nil {
+		return func(func(*Skill) bool) {}
+	}
 
-		// Use the file.Entries() iterator to go through all entries
+	return func(yield func(*Skill) bool) {
 		for id := range file.Entries() {
 			skill, err := s.Skill(int(id))
 			if err != nil {
-				// Skip invalid entries and continue
 				continue
 			}
 
@@ -149,12 +147,12 @@ func (s *SDK) SkillGroup(id int) (*SkillGroup, error) {
 
 // SkillGroups returns an iterator over all defined skill groups
 func (s *SDK) SkillGroups() iter.Seq[*SkillGroup] {
-	return func(yield func(*SkillGroup) bool) {
-		groups, skillMap, err := s.loadSkillGroupData()
-		if err != nil {
-			return
-		}
+	groups, skillMap, err := s.loadSkillGroupData()
+	if err != nil {
+		return func(func(*SkillGroup) bool) {}
+	}
 
+	return func(yield func(*SkillGroup) bool) {
 		for id, name := range groups {
 			// Find all skills that belong to this group
 			var skills []int

@@ -80,7 +80,7 @@ func (s *SDK) Strings() iter.Seq2[int, string] {
 func (s *SDK) StringsWithLang(lang string) iter.Seq2[int, string] {
 	file, err := s.loadCliloc(lang)
 	if err != nil {
-		return func(yield func(int, string) bool) {} // Empty iterator
+		return func(func(int, string) bool) {}
 	}
 
 	return func(yield func(int, string) bool) {

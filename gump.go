@@ -43,12 +43,12 @@ func (s *SDK) Gump(id int) (*Gump, error) {
 // Gumps returns an iterator over metadata (ID, width, height) for all available gumps.
 // This is efficient for listing gumps without loading all their pixel data.
 func (s *SDK) Gumps() iter.Seq[*Gump] {
-	return func(yield func(*Gump) bool) {
-		file, err := s.loadGump()
-		if err != nil {
-			return
-		}
+	file, err := s.loadGump()
+	if err != nil {
+		return func(func(*Gump) bool) {}
+	}
 
+	return func(yield func(*Gump) bool) {
 		for id := range file.Entries() {
 			g, err := uofile.Decode(file, uint32(id), decodeGump)
 			if err != nil {

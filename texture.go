@@ -5,6 +5,7 @@ package ultima
 
 import (
 	"image"
+	"iter"
 
 	"github.com/kelindar/ultima-sdk/internal/bitmap"
 	"github.com/kelindar/ultima-sdk/internal/uofile"
@@ -43,7 +44,7 @@ func (s *SDK) Texture(index int) (*Texture, error) {
 }
 
 // Textures returns an iterator over all available textures.
-func (s *SDK) Textures() func(yield func(*Texture) bool) {
+func (s *SDK) Textures() iter.Seq[*Texture] {
 	return func(yield func(*Texture) bool) {
 		for i := 0; i < 0x4000; i++ {
 			tex, err := s.Texture(i)
