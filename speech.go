@@ -52,7 +52,7 @@ func (s *SDK) SpeechEntry(id int) (Speech, error) {
 func (s *SDK) SpeechEntries() iter.Seq[Speech] {
 	file, err := s.loadSpeech()
 	if err != nil {
-		return nil
+		return func(func(Speech) bool) {}
 	}
 
 	return func(yield func(Speech) bool) {

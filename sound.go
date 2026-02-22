@@ -3,7 +3,7 @@
 
 package ultima
 
-// No extra imports needed
+import "iter"
 
 // Sound represents a sound entry loaded from sound.mul.
 type Sound struct {
@@ -59,7 +59,7 @@ func indexOfNull(b []byte) int {
 // TODO: Translation/removed support via Sound.def (not implemented)
 
 // Sounds returns an iterator over all available sounds.
-func (s *SDK) Sounds() func(yield func(*Sound) bool) {
+func (s *SDK) Sounds() iter.Seq[*Sound] {
 	return func(yield func(*Sound) bool) {
 		for i := 0; i < 0x1000; i++ {
 			snd, err := s.Sound(i)

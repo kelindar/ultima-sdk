@@ -156,7 +156,7 @@ func (s *SDK) Hues() iter.Seq[*Hue] {
 		for i := 0; i < 3000; i++ {
 			hue, err := s.Hue(i)
 			if err != nil {
-				continue // Skip any hues that can't be loaded
+				continue
 			}
 
 			if !yield(hue) {
